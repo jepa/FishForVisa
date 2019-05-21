@@ -1,0 +1,432 @@
+---
+title: "Initial Analysis"
+author: "Juliano Palacios-Abrantes"
+date: '2019-02-04'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r setup, eval=T, echo=F, warning=F,message=F, results='hide'}
+
+#### READ ME !!! ####
+# Run this chunk before knit so you make sure you have all pkgs installed in R
+
+ipak <- function(pkg){
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg)) 
+    install.packages(new.pkg, dependencies = TRUE,repos = "http://cran.us.r-project.org")
+  sapply(pkg, require, character.only = TRUE)
+}
+
+
+#### Library ####
+packages <- c(
+  "readxl", # Read dataframe
+  "dplyr", # Data manipulation
+  "tidyr", # Data manipulation
+  "ggplot2", #Nice grpahs and spatial analysis
+  "cowplot",
+  "rgdal",
+  "RColorBrewer",
+  "knitr",
+  "kableExtra",
+  "data.table",
+  "ggrepel",
+  "gridExtra",
+  "ggmap",
+  "rgeos",
+  # "stringr",
+  # "stringer",
+  "spdep",
+  "sf", #Spatial analysis 
+  "sp", #Spatial analysis 
+  "purrr",#Spatial analysis 
+  # "rgdal", #Spatial analysis 
+  "tools", #Spatial analysis 
+  "png", # For reading plots in chunk codes
+  "grid" # For reading plots in chunk codes
+)
+
+ipak(packages)
+
+```
+
+
+# Methods
+
+These are the methods to follow:
+
+1. Determine which countries have neighboring EEZs  
+  1.1. For this we used the Marine regions EEZ maps (We have to change this because it does not discriminate by oceans and we need this) and a routine to identify neighboring polygons,
+  1.2. Then we match the DBEM spatial information (e.g. INDEX within EEZ and coordinates) with the neighboring data
+2. Overlap distribution maps with neighbors data  
+  2.1. For each species we merged the DBEM_Neighbors data with their known distribution (Gab's data)  
+3. Determine transboundary if:  
+  3.1. Species is present in both neighboring EEZs by INDEX  
+
+Alternatively, we could create a "confidence level" based on a ratio, i.e;
+- How many grid cells of both the EEZs is the species present on. A species that covers all cells would have 100% but a species that covers, lets say, all of EEZ1 but only half of EEZ2 would be 75%.  
+- Another option is to have the index based on the species distribution. That is to say, what proportion of the total species distribution actually falls within both EEZs....
+
+
+### Current issues
+
+- How to distinguish between North and South? Example of Brazil, Uruguay and French Guyana
+
+## Data
+
+```{r Speceis_Models, eval = F, echo = T}
+
+# Get the DBEM list of species to extract from other modesl
+#GFDL
+DBEM_species_G <- data_frame(TaxonKey = list.files("/Volumes/DATA/DATA/DBEM/GFDL26F1"))
+#IPSL
+DBEM_species_I <- data_frame(TaxonKey = list.files("/Volumes/DATA/DATA/DBEM/IPSL26F1"))
+#MPI
+DBEM_species_M <- data_frame(TaxonKey = list.files("/Volumes/DATA/DATA/DBEM/MPI26F1"))
+
+
+# Merge the, and save to send to gabs
+
+DBEM_Species_List <- DBEM_species_I %>% 
+  bind_rows(DBEM_species_G,
+            DBEM_species_M) %>% 
+  group_by(TaxonKey) %>% 
+  summarise() %>% 
+  filter(str_detect(TaxonKey, "^6"))
+
+
+# Include species name, as well... 
+
+exploited_species <- read.csv("/Volumes/DATA/PROJECTION exploited species ENM/exploited_species_list.csv")
+
+DBEM_Species_List <- DBEM_Species_List %>% 
+  left_join(exploited_species,
+            by ="TaxonKey")
+
+
+# write.csv(DBEM_Species_List,
+#           "DBEM_Species_List.csv",
+#           row.names = F)
+
+
+
+
+```
+
+
+
+```{r Spatial_Data, eval=T, echo=T, results='hide'}
+
+
+# Spatial analysis for Countries boundaries from marine regions ####
+
+###_______________________________Read Me_____________________________________________#
+#### Data License and references ###
+# Marine Regions’ data is licensed under CC-By-NC-SA (https://creativecommons.org/licenses/by-nc-sa/4.0/).
+# Flanders Marine Institute (2018). Maritime Boundaries Geodatabase: Maritime Boundaries and Exclusive Economic Zones (200NM), version 10. Available online at http://www.marineregions.org/. https://doi.org/10.14284/312
+
+#### Using the SAU shapefile that contains EEZ per ocean (E.G. Mexico Pacific and Mexico Atlantic)
+###________________________________________________________________________________#
+
+# The path
+path_world <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Spatial_Data/SAU_Shapefile/"
+#The File
+fnam_world <- "SAUEEZ_July2015.shp"
+#Load it!
+
+# World_EEZ <- readOGR(dsn = path_world,
+                     # layer =file_path_sans_ext(fnam_world))
+
+
+World_EEZs <- st_read(dsn = path_world,
+                      layer = file_path_sans_ext(fnam_world))
+
+# head(World_EEZs)
+
+#### Grid cell information ####
+
+# List of DBEM INDEX within the EEZ
+#Data provided by Vicki Lam
+
+EEZIDs_List <- read_excel("~/Documents/UBC/Oceans_Project/Distribution/By Cell/Cell_Data/Updated_EEZList_17June2016.xlsx")
+EEZ_CellID <- read_excel("~/Documents/UBC/Oceans_Project/Distribution/By Cell/Cell_Data/EEZ_CellID.xlsx")
+
+colnames(EEZ_CellID) <- c("EEZID","INDEX")
+
+# DBEM Coordinate system
+Coor <- fread("~/Documents/UBC/Oceans_Project/Distribution/DBEM/Data/Lon_Lat_DBEM.txt",header = FALSE)
+colnames(Coor) <- c("INDEX","Longitude","Latitude")
+
+# Species list
+
+# DBEM exploited species list 
+# exploited_species_list <- fread("/Volumes/DATA/PROJECTION exploited species ENM/exploited_species_list.csv")
+
+# Use thisone for testing 
+Selected_Species <- fread("~/Documents/UBC/Oceans_Project/Distribution/By Cell/Cell_Data/List_Species.csv") %>% 
+  select(1:2)
+
+
+```
+
+
+### Determine which countries are neighbors
+
+```{r Testing_Neighbors, eval=F, echo=T}
+# Determine which countries are neighbors
+
+# Method adopted from Adrew Heiss
+# https://gist.github.com/andrewheiss/926b9d60a26e29f6bf32
+
+# Subset data for testing
+South_America <-c("Mexico","Argentina","Chile","Peru","Ecuador","Colombia","Venezuela","Brazil")
+
+South_Americasp <- World_EEZ[World_EEZ@data$Name %in% South_America, ]
+
+#Look for comments in previous chunk
+
+# Get the list using the poly2nb function
+Neighbor_List <- poly2nb(South_Americasp)
+
+# Convert te nb data to a Matrix of crossing references
+Neighbor_Matrix <- nb2mat(Neighbor_List,
+                          style="B", 
+                          zero.policy=TRUE)
+
+# Rename the matrix axis
+colnames(Neighbor_Matrix) <- rownames(Neighbor_Matrix)
+
+
+# Get the names of the countries for identifying them
+Country_Names <- data_frame(id = row.names(South_Americasp@data),
+                            Country_Territory = as.character(South_Americasp@data$Territory1),
+                            Neighbor_Territory = Country_Territory)
+
+# Clean up and transform the neighbor matrix
+SA_Neighbors <- as.data.frame(Neighbor_Matrix) %>%
+  mutate(country = row.names(.)) %>%  # Convert row names to actual column
+  gather(neighbor, present, -country) %>%  # Convert to long
+  filter(present == 1) %>%  # Only look at cells with a match
+  # Add country names
+  left_join(select(Country_Names,
+                   -Neighbor_Territory), by=c("country" = "id")) %>%
+  left_join(select(Country_Names, 
+                   -Country_Territory), by=c("neighbor" = "id")) %>% 
+  select(4,5) # select final column
+
+head(SA_Neighbors)
+
+# Remove duplicates (e.g. Country A - Country B and Country B - Country A)
+### NOTE, I'm going to use the already created one. Load it fiz it and save it with the same name.
+
+SA_Neighbors_Clear <- SA_Neighbors[!duplicated(SA_Neighbors[1:length(SA_Neighbors)]), ] 
+
+
+#### Works beautifully! 
+```
+
+
+```{r Determine_neighbors_Test, eval = F, echo=T}
+
+#### SF package 
+
+SAU_Regions <- as.data.frame(unique(World_EEZs$Name))
+
+Test_Countries <-c("Mexico (Atlantic)","Mexico (Pacific)","Guatemala (Caribbean)","Guatemala (Pacific)","Belize")
+
+# Test_sp <- World_EEZ[World_EEZ@data$Name %in% Test_Countries, ]
+
+Test_sf <- filter(World_EEZs, Name %in% Test_Countries)
+
+# ggplot(Test_sf) +
+#   geom_sf() # 5 min 
+
+# Adds to the shapefile a column with the neighbourds 
+Neighbours_sf <- Test_sf %>%
+  mutate(Neighbours = map(.x = geometry, 
+                          .f = st_intersects, 
+                          y = st_geometry(Test_sf))
+         ) %>% 
+  st_transform(3832) %>% 
+  st_simplify(10000)
+
+head(Neighbours_sf)
+
+```
+
+### Merge Neighbors with DBEM data
+
+```{r Data_Wrangling, eval=T, echo=T, results='hide'}
+
+### Match DBEM list of countries wth Neighbors
+Matching_Names <- Neighbours_sf %>% 
+  semi_join(EEZIDs_List,
+            by ="EEZID") # Only half of them match
+
+head(Matching_Names)
+
+```
+
+
+
+```{r Trans_Spp_Function, eval=T,echo=T,warning=F,message=F}
+
+# Function to determine whether or not a species is transboundary
+
+# Varibales needed
+# Spp: Species to be abalized, data with presence/absence per gridcell
+# Index_EEZ: Reference list of all INDEX that fall within EEZs
+# Neighbors: Reference list of all the neighboring EEZs that each country has
+
+# The function
+Trans_Spp_Fun <- function(Spp,Index_EEZ,Neighbors){
+  
+  Trans_Spp <- Spp %>%
+    filter(V1 >= 1) %>% # Filter only presence
+    left_join(Index_EEZ,
+              by = "INDEX") %>% # Match the species distribution to the Countries EEZs
+    group_by(Country_Territory=Name,
+             Neighbor_Territory) %>% 
+    summarise(N_INDEX = n()) %>% # The number of cells present within each country's EEZ
+    mutate(Trans = 1) # Include one transboundary species
+  
+  
+  # Result 1. Number of Countries that share the species
+  Trans_Spp <- Neighbors %>% 
+    left_join(Trans_Spp,
+              by = c("Country_Territory","Neighbor_Territory")) %>% 
+    mutate_if(is.numeric, funs(replace(., is.na(.),0))) #%>% # Replaces NAs for 0's to sum
+    # mutate(Species = ifelse(Trans > 0,paste(Spp[1,2]),NA)) # Includes the species in question
+  
+  # Result 2. List of Countries that share the Species ####
+  
+  Countries_with_Specie <- Trans_Spp %>% 
+    filter(Trans == 1) %>% 
+    group_by(Neighbor_Territory) %>% 
+    summarise()
+  
+# Function Results  
+  
+  # print(Countries_with_Specie) # Prints the countries that share such species
+  return(Trans_Spp) # A dataframe with each country and neighbouring states sharing the species
+} # End function
+
+
+### Testing Function ####
+# WORKS!!!!
+
+# Load Species data
+# D_Path <- paste("./Data/123",".csv",sep="")
+
+# Reads file
+# Species <- read.csv(D_Path)
+
+# Call the function (Works)
+# Function_Test <- Trans_Spp_Fun(Species,DBEM_Neighbors_Data,Neighbors);View(Function_Test)
+
+```
+
+```{r World_Trans_Spp, eval=T,echo=T,warning=F,message=F}
+
+World_Trans_Spp <- function(Species_List,Data_Path,Result){
+  
+  # Repeat for each species
+  for (s in 1:nrow(Species_List)){ # Original code
+    
+    # Load species distribution data
+    Species_Distribution_Path <- paste(Data_Path,Species_List[s,2],".csv",sep="")
+    
+    # Reads file
+    Species_Distribution_Data <- read.csv(Species_Distribution_Path)
+    
+    # Pastes species name
+    Species_Name = Species_List[s,1]
+    
+    # Call function to determine transboundary species
+    Partial <- Trans_Spp_Fun(Species_Distribution_Data,
+                             DBEM_Neighbors_Data,
+                             Neighbors) %>% 
+      mutate(Species = ifelse(Trans > 0,paste(Species_Name),NA)) # Include species name
+    
+    ### Result 1. Numnber of transboundary species by Country ####
+    if(s == 1){
+      Trans_Country = Partial
+    }else{
+      Trans_Country[,3] <- Trans_Country[,3] + Partial [,3] # Sum transboundary species
+      Trans_Country[,4] <- Trans_Country[,4] + Partial [,4] # Sum Indexes within eez with TS
+      Trans_Country[,5] <- ifelse(Trans_Country[,4] >= 0, paste(Trans_Country[,5],Partial[,5], sep=";"),Trans_Country[,5]) # Paste the species that are transboundary
+    }
+    
+    # Result 2. Number of Countries per Transboundary Species ####
+    
+    Countries_with_Specie <- Partial %>% 
+      filter(Trans == 1) %>% 
+      group_by(Neighbor_Territory) %>% 
+      summarise() %>% 
+      summarise(Number_EEZ = n(),
+                Countries = paste(Neighbor_Territory,
+                                  collapse = ";")
+      ) %>% # Number of territories in this species
+      mutate(Species = Species_Name)
+    
+    
+    if(s == 1){
+      All_Countries_with_Specie <- Countries_with_Specie
+    }else{
+      All_Countries_with_Specie <- All_Countries_with_Specie %>% 
+        bind_rows(Countries_with_Specie)
+    }
+    
+  }# Closes species list
+  
+  # Function return
+  if(Result =="Country"){ # returns results based on countries 
+    return(Trans_Country)
+  }
+  if(Result == "Species"){ # returns results based on species 
+    return(All_Countries_with_Specie)
+  }
+}
+
+### Testing Function ####
+# (Works!!!!!!!!)
+
+### Dummy data ###
+# SppA <- Julianus_Coor %>% 
+#   filter(V1 >= 100000)
+# 
+# SppB <- Julianus_Coor %>% 
+#   filter(V1 <= 100000)
+
+# write.csv(SppB,
+#           "456.csv",
+#           row.names = F)
+
+Dummy_Species <- data.frame(
+  Species = c("SpeciesA","SpeciesB"),
+  TaxonKey = c(123,456)
+  )
+
+D_Path <- "./Data/"
+
+Function_Test <- World_Trans_Spp(Dummy_Species,D_Path, Result = "Country")
+
+```
+
+```{r Final_Analysis, eval=T, echo=F}
+
+# Varibales needed
+# Species_List
+# Data_Path
+
+# Data_Path <- Drobo... Gabs... Distributions...
+# DBEM_Species <- Selected_Species
+  
+  
+# World_Trans_Spp(DBEM_Species,Data_Path)
+
+
+```

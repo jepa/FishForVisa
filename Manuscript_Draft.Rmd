@@ -1,0 +1,34 @@
+---
+title: "How many fisheries need visas?"
+author: "Juliano Palacios Abrantes"
+date: "10/4/2018"
+output: pdf_document
+---
+
+# Introduction
+
+## Fisheries are important
+Marine fishes are an important source of food and wealth to million of people worldwide. Just in 2016, fisheries landings were estimated to be 90 million tonnes representing an important source of food security in many developing countries [@SOFIA]. The fishing industry employees XX thousand people worldwide and, combined with trade, generate US$ xxx billion in profits. An important part of these fisheries are cataloged as shared stocks. Shared fish stocks can be classified in two categories [@Bailey:2010ga]; 1) Transboundary, stocks occurring in the EEZs of 2 or more coastal states and 2) Straddling stocks, those occurring in the EEZs of at least one coastal state and the high seas. The management of these stocks differed from each other and from discrete fish stocks (e.g. stocks that only occur within the EEZ of a coastal nation or in the high seas).
+
+## Different ways to classify fisheries according to their distribution
+
+The management of shared fish stocks has been mainly studied trough the lenses of game theory. Since its early work Gordon 1976 blablabla.... Cooperative game... Nash equilibrium... balbalba... 
+
+
+## Lack of information on it
+
+Despite the importance of these stocks and the complex management reflected in years of research we still don't know how many fish stocks are actually transboundary in nations. Previous estimates suggest that there are around 1,500 transboundary fish stocks in the world [@Cady], however, such estimation lacks a proper assessment. Determine the nature of fish stocks (weather or not is a shared resource) can help the proper management of natural resources improving profits [@costello] and food security [@REF] worldwide.
+
+## What we did
+
+In the current paper we aimed to estimate the number of transboundary fished stocks and their contribution to food security and economics of the world. We used the known distribution [@GabsData] of all pelagic and demersal fish stocks listed in the Sea Around Us database [@Zeller] to determine what stocks are likely shared by two or more nations (transboundary), and what stocks are also likely to spend time in the high seas (straddling). Our results suggest that XXX global stocks are transboundary in nature from witch XXX also happen in the high seas. Transboundary stocks represent XX% of total landings and XX% of global revenues.
+
+# Methods
+
+We used the SAU database and filter the pelagic and demersal fish species fished by neighboring countries. We then used the SAU catch data and fishing distribution data to determine the central abundance of the stock. Assuming that this was the center of the distribution of the stock in question, we overlapped the current distribution of each species [@Gabriel] with the current location of coastal states EEZs [@Shapefile]. We used the average distribution (mobility) of each species from the stock abundance center. If the average distribution from the center reached within two or more coastal nations, such species was considered transboundary. IN the other hand, if the species range also included the high seas were classified as straddling. 
+
+
+# Results
+# Discussion
+# Conclussion
+# References
