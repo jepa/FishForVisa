@@ -24,32 +24,33 @@ ipak <- function(pkg){
 #### Library ####
 packages <- c(
   "readxl", # Read dataframe
+  "data.table", # Read dataframe (Fast!)
   "dplyr", # Data manipulation
   "tidyr", # Data manipulation
   "ggplot2", #Nice grpahs and spatial analysis
-  "cowplot",
-  "rgdal",
-  "RColorBrewer",
-  "knitr",
-  "kableExtra",
-  "data.table",
-  "ggrepel",
-  "gridExtra",
-  "ggmap",
-  "rgeos",
+  # "cowplot",
+  # "rgdal",
+  # "RColorBrewer",
+  # "knitr",
+  # "kableExtra",
+  # "ggrepel",
+  # "gridExtra",
+  # "ggmap",
+  # "rgeos",
   # "stringr",
   # "stringer",
-  "spdep",
+  "spdep", # for poly2nb
   "sf", #Spatial analysis 
   "sp", #Spatial analysis 
-  "purrr",#Spatial analysis 
-  # "rgdal", #Spatial analysis 
-  "tools", #Spatial analysis 
-  "png", # For reading plots in chunk codes
-  "grid" # For reading plots in chunk codes
+  "purrr",#Spatial analysis
+  "rgdal", #Spatial analysis
+  "tools"#, #Spatial analysis 
+  # "png", # For reading plots in chunk codes
+  # "grid" # For reading plots in chunk codes
 )
 
 ipak(packages)
+
 
 ```
 
@@ -111,14 +112,22 @@ DBEM_Species_List <- DBEM_Species_List %>%
 #           "DBEM_Species_List.csv",
 #           row.names = F)
 
+### Check Gabs Data ####
 
+# Does all data have the same number of files?
+
+SAU <- length(list.files("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Distribution_Data/SAU_Distribution/"))
+ENM <- length(list.files("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Distribution_Data/ENM/"))
+Occ <- length(list.files("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Distribution_Data/Occurence/"))
+
+####### Yes they do! ####
 
 
 ```
 
 
 
-```{r Spatial_Data, eval=T, echo=T, results='hide'}
+```{r Spatial_Data, eval = T, echo = T, results='hide'}
 
 
 # Spatial analysis for Countries boundaries from marine regions ####
@@ -137,12 +146,11 @@ path_world <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Spatial_Data/SAU_Shapefi
 fnam_world <- "SAUEEZ_July2015.shp"
 #Load it!
 
-# World_EEZ <- readOGR(dsn = path_world,
-                     # layer =file_path_sans_ext(fnam_world))
+World_EEZs <- readOGR(dsn = path_world,
+                      layer =file_path_sans_ext(fnam_world))
 
-
-World_EEZs <- st_read(dsn = path_world,
-                      layer = file_path_sans_ext(fnam_world))
+# World_EEZs_sf <- st_read(dsn = path_world,
+#                       layer = file_path_sans_ext(fnam_world))
 
 # head(World_EEZs)
 
@@ -160,174 +168,358 @@ colnames(EEZ_CellID) <- c("EEZID","INDEX")
 Coor <- fread("~/Documents/UBC/Oceans_Project/Distribution/DBEM/Data/Lon_Lat_DBEM.txt",header = FALSE)
 colnames(Coor) <- c("INDEX","Longitude","Latitude")
 
-# Species list
 
-# DBEM exploited species list 
-# exploited_species_list <- fread("/Volumes/DATA/PROJECTION exploited species ENM/exploited_species_list.csv")
+#### Estimate the number of grid-cells that each EEZ as
 
-# Use thisone for testing 
-Selected_Species <- fread("~/Documents/UBC/Oceans_Project/Distribution/By Cell/Cell_Data/List_Species.csv") %>% 
-  select(1:2)
-
+EEZ_Size <- EEZ_CellID %>% 
+  group_by(EEZID) %>% 
+  summarise(n_grid = n()) %>% 
+  left_join(EEZIDs_List,
+            by = "EEZID")
 
 ```
 
+## Functions
 
-### Determine which countries are neighbors
+### Function `EstNeighbors`
 
-```{r Testing_Neighbors, eval=F, echo=T}
+This function determines what EEZs are neighbors and returns a data.frame of it
+
+```{r funEstNeighbors, eval = T, echo=T}
 # Determine which countries are neighbors
 
 # Method adopted from Adrew Heiss
 # https://gist.github.com/andrewheiss/926b9d60a26e29f6bf32
 
-# Subset data for testing
-South_America <-c("Mexico","Argentina","Chile","Peru","Ecuador","Colombia","Venezuela","Brazil")
+EstNeighbors <- function(Shapefile){
+  
+  # Get the list using the poly2nb function
+  Neighbor_List <- poly2nb(Shapefile)
+  
+  # Convert te nb data to a Matrix of crossing references
+  Neighbor_Matrix <- nb2mat(Neighbor_List,
+                            style="B", 
+                            zero.policy=TRUE)
+  
+  # Rename the matrix axis
+  colnames(Neighbor_Matrix) <- rownames(Neighbor_Matrix)
+  
+  
+  # Get the names of the countries for identifying them
+  Country_Names <- data_frame(id = row.names(Shapefile@data),
+                              Country_Territory = as.character(Shapefile@data$Name),
+                              Neighbor_Territory = Country_Territory,
+                              EEZID = Shapefile@data$EEZID
+                              )
+  
+  # Clean up and transform the neighbor matrix
+  Neighbors <- as.data.frame(Neighbor_Matrix) %>%
+    mutate(country = row.names(.)) %>%  # Convert row names to actual column
+    gather(neighbor, present, -country) %>%  # Convert to long
+    filter(present == 1) %>%  # Only look at cells with a match
+    # Add country names
+    left_join(select(Country_Names,
+                     -Neighbor_Territory), by=c("country" = "id")) %>%
+    left_join(select(Country_Names, 
+                     -Country_Territory), by=c("neighbor" = "id")) %>% 
+    select(EEZID = EEZID.x,Country_Territory,Neighbor_Territory) # select final column
+ 
+  
+    # Merge them with SAU data
+  
+  DBEM_Neighbors_Data <- EEZIDs_List %>% 
+  left_join(EEZ_CellID, 
+            by = "EEZID") %>% # Asign EEZ id to each country
+  left_join(Neighbors, 
+            by = "EEZID") %>% # Include all neighboring countries 
+  filter(Neighbor_Territory != "NA") %>% 
+  left_join(Coor,
+            by = "INDEX") # Inclu
+  
+  return(DBEM_Neighbors_Data)
+   
+}
 
-South_Americasp <- World_EEZ[World_EEZ@data$Name %in% South_America, ]
 
-#Look for comments in previous chunk
+### Test function
 
-# Get the list using the poly2nb function
-Neighbor_List <- poly2nb(South_Americasp)
+# Subset data for testing function
+# SAU_Regions <- as.data.frame(unique(World_EEZs$Name))
 
-# Convert te nb data to a Matrix of crossing references
-Neighbor_Matrix <- nb2mat(Neighbor_List,
-                          style="B", 
-                          zero.policy=TRUE)
+# Test_Countries <-c("Mexico (Atlantic)","Mexico (Pacific)","Guatemala (Caribbean)","Guatemala (Pacific)","Belize")
+# Test <- World_EEZs[World_EEZs@data$Name %in% Test_Countries, ]
 
-# Rename the matrix axis
-colnames(Neighbor_Matrix) <- rownames(Neighbor_Matrix)
-
-
-# Get the names of the countries for identifying them
-Country_Names <- data_frame(id = row.names(South_Americasp@data),
-                            Country_Territory = as.character(South_Americasp@data$Territory1),
-                            Neighbor_Territory = Country_Territory)
-
-# Clean up and transform the neighbor matrix
-SA_Neighbors <- as.data.frame(Neighbor_Matrix) %>%
-  mutate(country = row.names(.)) %>%  # Convert row names to actual column
-  gather(neighbor, present, -country) %>%  # Convert to long
-  filter(present == 1) %>%  # Only look at cells with a match
-  # Add country names
-  left_join(select(Country_Names,
-                   -Neighbor_Territory), by=c("country" = "id")) %>%
-  left_join(select(Country_Names, 
-                   -Country_Territory), by=c("neighbor" = "id")) %>% 
-  select(4,5) # select final column
-
-head(SA_Neighbors)
-
-# Remove duplicates (e.g. Country A - Country B and Country B - Country A)
-### NOTE, I'm going to use the already created one. Load it fiz it and save it with the same name.
-
-SA_Neighbors_Clear <- SA_Neighbors[!duplicated(SA_Neighbors[1:length(SA_Neighbors)]), ] 
-
+# Running function
+# getNeighbors(Test)
 
 #### Works beautifully! 
-```
-
-
-```{r Determine_neighbors_Test, eval = F, echo=T}
-
-#### SF package 
-
-SAU_Regions <- as.data.frame(unique(World_EEZs$Name))
-
-Test_Countries <-c("Mexico (Atlantic)","Mexico (Pacific)","Guatemala (Caribbean)","Guatemala (Pacific)","Belize")
-
-# Test_sp <- World_EEZ[World_EEZ@data$Name %in% Test_Countries, ]
-
-Test_sf <- filter(World_EEZs, Name %in% Test_Countries)
-
-# ggplot(Test_sf) +
-#   geom_sf() # 5 min 
-
-# Adds to the shapefile a column with the neighbourds 
-Neighbours_sf <- Test_sf %>%
-  mutate(Neighbours = map(.x = geometry, 
-                          .f = st_intersects, 
-                          y = st_geometry(Test_sf))
-         ) %>% 
-  st_transform(3832) %>% 
-  st_simplify(10000)
-
-head(Neighbours_sf)
 
 ```
 
-### Merge Neighbors with DBEM data
+### Function `GetSppDist`
 
-```{r Data_Wrangling, eval=T, echo=T, results='hide'}
+This function Read in species distribution from the observation data, ESM models and SAU data, still missing DBEM
 
-### Match DBEM list of countries wth Neighbors
-Matching_Names <- Neighbours_sf %>% 
-  semi_join(EEZIDs_List,
-            by ="EEZID") # Only half of them match
+```{r GetSppDist, eval = T, echo = T}
 
-head(Matching_Names)
+### Notes
+# Function originally created by William (#WC)
+# Juliano modifications (#JC)
+# This funtion is used in estAbdBinTemp.R
+# We are using only summer distribution
+
+### Variables used
+# spplisttemp <- Species list template. Information of the species used in the DBEM under TaxaDataC. 
+# Distpath <- Path to where the initial distribution of the species is. AKA. Files that start with "S"
+
+#### The function
+
+GetSppDist=function(Spp,Model){
+  
+  Distpath <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Distribution_Data/"
+  INDEX <- seq(1,259200,1)
+  
+  # SAU Distributions
+  if(Model == "SAU"){
+    File_Name <- paste("SAU_Distribution/DIST_GOOD_SP_")
+  }
+  
+  # Occurence
+  if(Model == "Occurence"){
+    File_Name <- paste("Occurence/OCCURENCE_JULIANO_")
+  }
+  
+  # ENM Model
+  if(Model == "ENM"){
+    File_Name <- paste("ENM/ENM_JULIANO_")
+  }
+  
+  # DBEM Data
+  # if(Model == "DBEM"){
+  #   Distpath <- "/Volumes/DATA/JULIANO_NEYMAR/PristineSeasData
+  #   Final_Path <- "ENM"
+  #   File_Name <- paste("ENM_JULIANO",Spp,".mat",sep="")
+  # }
+  
+  if(Model == "All"){
+    
+    Models_List <- c(paste(Distpath,"SAU_Distribution/DIST_GOOD_SP_",Spp,".mat",sep =""),
+                     paste(Distpath,"Occurence/OCCURENCE_JULIANO_",Spp,".mat",sep=""),
+                     paste(Distpath,"ENM/ENM_JULIANO_",Spp,".mat",sep="")
+    )
+    
+    # Jumps species not modeled. NOTE: We only need one as ENM, Occ and SAU Dis have all the same 939 spp
+    if(file.exists(Models_List[1])){
+    
+    Load <- lapply(Models_List, FUN=R.matlab::readMat, na.strings=0)
+    sppdist <- as.data.frame(bind_cols(Load))
+    sppdist$INDEX <- INDEX
+    colnames(sppdist) <- c("SAU","Occ","ENM","INDEX")
+    
+    getSppDist = sppdist
+    
+    }else{
+      
+      # print(paste("No info for this species"))
+    }
+    
+  }else{  
+    
+    # Merge paths
+    SppPath <- paste(Distpath,File_Name,Spp,".mat",sep="")
+    
+    if(file.exists(SppPath) == TRUE){
+      
+    #Install (if needed) R.matlab package
+    if(!require(R.matlab)){
+      install.packages("R.matlab")
+    }
+    
+    # Read Files
+    
+    sppdist <- as.data.frame(R.matlab::readMat(SppPath))
+    colnames(sppdist) <- Model
+    
+    # Return 
+    getSppDist=sppdist
+    
+    }else{
+    print(paste("No info for this species",Spp, "in",Model))
+  }
+  
+  }
+}
+
+#______ Test ______#
+
+# Variables outside function
+# head(getSppDist(600004,"SAU")) # Works
+# head(getSppDist(600004,"Occurence")) # Works
+# head(getSppDist(600004,"ENM")) # Works
+# head(getSppDist(600004,"All")) # Works
+
 
 ```
 
-
+### Function `EstTransIndex`
 
 ```{r Trans_Spp_Function, eval=T,echo=T,warning=F,message=F}
 
 # Function to determine whether or not a species is transboundary
 
 # Varibales needed
-# Spp: Species to be abalized, data with presence/absence per gridcell
+# Spp: Species to be analized, data with presence/absence per gridcell
 # Index_EEZ: Reference list of all INDEX that fall within EEZs
-# Neighbors: Reference list of all the neighboring EEZs that each country has
+# EEZ_Size: Number of grid-cells that each EEZ has
+# Neighbors: Reference list of neighbouring countries
+
+# Needs getSppDist
 
 # The function
-Trans_Spp_Fun <- function(Spp,Index_EEZ,Neighbors){
+EstTransIndex <- function(SppDist,EEZ_Size,Neighbors){
   
-  Trans_Spp <- Spp %>%
-    filter(V1 >= 1) %>% # Filter only presence
-    left_join(Index_EEZ,
+  Index_EEZ <- Neighbors %>% 
+    select(INDEX)
+      # Result 1. Number of Countries that share the species
+  # Trans_Index
+  
+  Trans_Spp <- SppDist %>%
+    # gather("Model","Value",1:3) %>% 
+    filter(
+      INDEX %in% Index_EEZ$INDEX,
+      # Value != 0
+      SAU != 0
+      ) %>%
+    left_join(Neighbors,
               by = "INDEX") %>% # Match the species distribution to the Countries EEZs
-    group_by(Country_Territory=Name,
-             Neighbor_Territory) %>% 
-    summarise(N_INDEX = n()) %>% # The number of cells present within each country's EEZ
-    mutate(Trans = 1) # Include one transboundary species
-  
-  
-  # Result 1. Number of Countries that share the species
-  Trans_Spp <- Neighbors %>% 
-    left_join(Trans_Spp,
-              by = c("Country_Territory","Neighbor_Territory")) %>% 
-    mutate_if(is.numeric, funs(replace(., is.na(.),0))) #%>% # Replaces NAs for 0's to sum
-    # mutate(Species = ifelse(Trans > 0,paste(Spp[1,2]),NA)) # Includes the species in question
+    group_by(Name = Country_Territory,
+             Neighbor_Territory#,
+             # Model
+             ) %>% 
+    summarise(n_spp = n()) %>% # The number of cells present within each country's EEZ
+    left_join(EEZ_Size,
+              by = "Name") %>% 
+    mutate(Trans_Index = n_spp/n_grid) %>%  # Include one transboundary species
+    select(EEZID,everything())  # For the sake of my brain
+    
   
   # Result 2. List of Countries that share the Species ####
   
   Countries_with_Specie <- Trans_Spp %>% 
-    filter(Trans == 1) %>% 
+    filter(Trans_Index == 1) %>% 
     group_by(Neighbor_Territory) %>% 
     summarise()
   
-# Function Results  
+  # Function Results  
   
-  # print(Countries_with_Specie) # Prints the countries that share such species
-  return(Trans_Spp) # A dataframe with each country and neighbouring states sharing the species
+  EstTransIndex=Trans_Spp # A dataframe with each country and neighbouring states sharing the species
+  
 } # End function
 
 
 ### Testing Function ####
-# WORKS!!!!
+# SppDist <- Spp_Dist
+# EEZ_Size <- EEZ_Size
+# 
+# Neighbors <- Neighbor_List
 
-# Load Species data
-# D_Path <- paste("./Data/123",".csv",sep="")
 
-# Reads file
-# Species <- read.csv(D_Path)
-
-# Call the function (Works)
-# Function_Test <- Trans_Spp_Fun(Species,DBEM_Neighbors_Data,Neighbors);View(Function_Test)
 
 ```
+
+# Routine
+
+```{r Control_Pannel, eval = T, echo = F}
+
+#### TESTING PERIOD ####
+# I'm substetting central america to do the whole analysis (smaller EEZs = faster computation) once I have figure out things I'll run for all
+
+### Data 
+# For now using only the subdata 
+
+## Spatial Test Data
+# SAU_Regions <- as.data.frame(unique(World_EEZs$Name))
+
+Test_Countries <-c("Guatemala (Caribbean)","Guatemala (Pacific)","Belize","Honduras","El Salvador","Costa Rica (Pacific)","Costa Rica (Caribbean)", "Panama (Caribbean)", "Panama (Pacific)")
+
+Test <- World_EEZs[World_EEZs@data$Name %in% Test_Countries, ]
+
+## Species Test Data
+
+# Species list
+
+# DBEM exploited species list 
+exploited_species_list <- fread("/Volumes/DATA/PROJECTION exploited species ENM/exploited_species_list.csv")
+
+SAU_Data <- read.csv("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Distribution_Data/SAU_Catch_Data_Test/SAU_Catch_Data_Test.csv")
+
+#### Species per country
+
+Spps <- SAU_Data %>% 
+  filter(data_layer == "Reconstructed domestic catch") %>% 
+  group_by(area_name,TaxonName = scientific_name) %>% 
+  summarise(n()) %>% 
+  left_join(exploited_species_list,
+            by = "TaxonName")
+
+
+# TakonKey <- Spps$TaxonKey[1:2]
+TakonKey <- c("600004","600006",600107)
+# Spp = 600988
+TaxonKey <- unique(Spps$TaxonKey)
+
+```
+
+
+
+NOTA: Explorando resultados y hay que arrelgar la cuestion de los tres modelos
+
+
+```{Routine, eval = T, echo = F}
+
+# Step 1; EstNeighbordList 
+Neighbor_List <- EstNeighbors(Test)
+# head(Neighbor_List)
+
+# Step 2; GetSppDist
+# Spp_Dist <- GetSppDist(TakonKey[1],"All")
+# head(Spp_Dist)
+
+# Multiple TaxonKeys
+Spp_Dist <- NULL
+Spp_Dist <- lapply(TaxonKey, FUN = GetSppDist, "All")
+
+Spp_Dist <- Spp_Dist[!sapply(Spp_Dist, is.null)]
+# Step 3; EstTransIndex
+# Spp_Trans <- EstTransIndex(Spp_Dist,EEZ_Size,Neighbor_List)
+# Spp_Trans
+
+# Multiple TaxonKeys
+Spp_Trans <- NULL
+Spp_Trans <- bind_rows(lapply(Spp_Dist, FUN=EstTransIndex, EEZ_Size = EEZ_Size, Neighbors = Neighbor_List))
+
+Spp_Trans %>% 
+  mutate(Uncert = ifelse(Trans_Index >= 0.10 & Trans_Index <= 0.25,"10 %",
+                         ifelse(Trans_Index >= 0.25 & Trans_Index <= 0.50,"25 %",
+                                ifelse(Trans_Index >= 0.50,">50 %","No Trans")))
+         ) %>% 
+  group_by(Name,Uncert) %>% 
+    summarise(nspp=n()) %>% 
+  ggplot(.,
+         aes(
+           x = Name,
+           y = nspp
+         )
+         )+
+  geom_bar(stat ="identity") +
+  facet_wrap(~Uncert)
+
+
+
+```
+
+
+
 
 ```{r World_Trans_Spp, eval=T,echo=T,warning=F,message=F}
 
