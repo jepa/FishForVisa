@@ -271,17 +271,9 @@ This function Read in species distribution from the observation data, ESM models
 
 ```{r GetSppDist, eval = T, echo = T}
 
-### Notes
-# Function originally created by William (#WC)
-# Juliano modifications (#JC)
-# This funtion is used in estAbdBinTemp.R
-# We are using only summer distribution
-
-### Variables used
-# spplisttemp <- Species list template. Information of the species used in the DBEM under TaxaDataC. 
-# Distpath <- Path to where the initial distribution of the species is. AKA. Files that start with "S"
-
 #### The function
+# NOTES
+# For now we're using only the last 10 years average, basicaaly if the species has been fished in any of these years, its considered present
 
 GetSppDist=function(Spp,Model){
   
@@ -416,12 +408,44 @@ GetSppDist=function(Spp,Model){
 EstTransIndex <- function(Spp,Model,EEZ_Size,Neighbors){
   
   # Get model data from spps
-  SppDist <- GetSppDist(600004,"All")
+  SppDist <- GetSppDist(Spp,Model)
+  # suppressWarnings(
   
+  # Estimate total spp distribution within neighbours
+  Spp_Total_Dist <- SppDist %>%
+    gather("Model","Value",3:6) %>%
+    filter(
+      INDEX %in% Index_EEZ$INDEX,
+      Value != 0
+    ) %>% 
+    # group_by(INDEX) %>% 
+    # summarise(n()) %>% 
+    left_join(Neighbors,
+              by = "INDEX") %>% 
+    group_by(Name = Country_Territory,
+             Neighbor_Territory,
+             Model) %>% 
+    summarise(n_cells_spp = n()) %>% 
+    ungroup()
   
+  # Split dataframes to merge latter
+  Tone <- select(Spp_Total_Dist,1,3,4)
+  Ttwo <- select(Spp_Total_Dist,Name=2,3,4) # Change column name
+  
+  # Merge dataframes
+  Merged_data <- merge(Tone,Ttwo, by = c("Name","Model")) %>% 
+    rowwise() %>% 
+    mutate(Total = sum(n_cells_spp.x,n_cells_spp.y)) %>% 
+    select(Name,Model,Total) %>% 
+    left_join(Spp_Total_Dist,
+              by = c("Name","Model")) %>% 
+    select(Name,Model,Total)
+  
+  # Get the index for testing
   Index_EEZ <- Neighbors %>% 
     select(INDEX)
-      # Result 1. Number of Countries that share the species
+      
+  # Result 1. Number of Countries that share the species
   # Trans_Index
   
   Trans_Spp <- suppressWarnings(SppDist %>%
@@ -438,11 +462,16 @@ EstTransIndex <- function(Spp,Model,EEZ_Size,Neighbors){
              Model
              ) %>% 
     summarise(n_cells_spp = n()) %>% # The number of cells present within each country's EEZ
-    left_join(EEZ_Size,
-              by = "Name") %>% 
-    mutate(Trans_Index = n_cells_spp/n_tot_grid) %>%  # Include one transboundary species
-    select(EEZID,everything())
-    ) # For the sake of my brain
+    # Commented out because EEZ size might not be the best
+      # left_join(EEZ_Size,
+    #           by = "Name") %>% 
+      # Trying with the distribution of the speices
+      left_join(Merged_data,
+              by = c("Name","Model")) %>% 
+    mutate(Trans_Index = n_cells_spp/Total) %>%  # Include one transboundary species
+    group_by(Name,Neighbor_Territory,TaxonKey) %>% 
+      summarise(Mean_Trans = mean(Trans_Index))
+    )# Mean of all data
     
   EstTransIndex=Trans_Spp # A dataframe with each country and neighbouring states sharing the species
   
@@ -450,10 +479,10 @@ EstTransIndex <- function(Spp,Model,EEZ_Size,Neighbors){
 
 
 ### Testing Function ####
-# Spp <- 600006
-# Model <- "All"
-# EEZ_Size <- EEZ_Size
-# Neighbors <- Neighbor_List
+Spp <- 600006
+Model <- "All"
+EEZ_Size <- EEZ_Size
+Neighbors <- Neighbor_List
 
 
 
@@ -486,7 +515,7 @@ Exploited_Species_List <- Exploited_Species$TaxonKey
 ## Spatial Test Data
 # SAU_Regions <- as.data.frame(unique(World_EEZs$Name))
 
-Test_Countries <-c("Guatemala (Caribbean)","Guatemala (Pacific)","Belize","Honduras","El Salvador","Costa Rica (Pacific)","Costa Rica (Caribbean)", "Panama (Caribbean)", "Panama (Pacific)")
+Test_Countries <-c("Guatemala (Caribbean)","Guatemala (Pacific)","Belize","Honduras (Pacific)","El Salvador","Costa Rica (Pacific)","Costa Rica (Caribbean)", "Panama (Caribbean)", "Panama (Pacific)")
 
 Test <- World_EEZs[World_EEZs@data$Name %in% Test_Countries, ]
 
