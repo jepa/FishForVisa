@@ -378,12 +378,12 @@ EstTransIndex <- function(Spp,Model,Neighbors){
   SppDist <- GetSppDist(Spp,Model)
   
   # Get the index for testing
-  Index_EEZ <- Neighbors %>% 
-    select(INDEX)
+  # Index_EEZ <- Neighbors %>% 
+  #   select(INDEX)
   
   # Estimate total spp distribution within neighbours
   Trans_Spp <- SppDist %>%
-    filter(INDEX %in% Index_EEZ$INDEX) %>% 
+    # filter(INDEX %in% Index_EEZ$INDEX) %>% # For testing
     mutate(Value = ifelse(Value > 0, 1,0)) %>%  # For now using SAU_C as presence absence
     group_by(TaxonKey,
              INDEX
