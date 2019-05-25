@@ -576,21 +576,33 @@ Exploited_Species_List <- Exploited_Species$TaxonKey
 ```
 
 
-```{r Routine, eval = F, echo = F}
+```{r Routine_parallel_Windows, eval = F, echo = F}
 
-# Step 1; EstNeighbordList 
-Neighbor_List <- EstNeighbors(Test)
-# Neighbor_List <- EstNeighbors(World_EEZs)
-# head(Neighbor_List)
+## Step 1: Create a cluster of child processes 
+# Check number of cores
+n_Cores <- detectCores()
+n_Cores 
+cl <- makeCluster(n_Cores)
 
-# Step 2; EstTransIndex 
-system.time(
-  Spp_Trans <- bind_rows(
-    lapply(
-      Exploited_Species_List, FUN=EstTransIndex, EEZ_Size = EEZ_Size, Model = "All", Neighbors = Neighbor_List
-    )
-  )
-)
+## Step 2: Load the necessary R package(s)
+## N.B. length(cl) is the number of child processes
+##      in the cluster 
+par.setup <- parLapply( cl, 1:length(cl),
+    function(xx) {
+        require(packages) 
+    })
+
+## Step 3: Distribute the necessary R objects 
+clusterExport( cl, c('Neighbor_List') )
+
+## Step 4: Do the computation
+par.output <- parLapply(cl, 1:4,
+    function(xx) {
+       return( EstTransIndex(xx) + Neighbor_List )
+    })
+
+## Step 5: Remember to stop the cluster!
+stopCluster(cl)
 
 ```
 
