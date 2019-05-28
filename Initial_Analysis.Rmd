@@ -662,8 +662,16 @@ Species_List <- gsub("\\..*","",Step_One)
 Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep="")) %>% 
   filter(TaxonKey %in% Species_List)
 
+# Step to run function for species not computed
+Computed_Spp <- as.integer(gsub("\\_.*","",list.files(Results_Path)))
+
+Exploited_Species <- Exploited_Species %>%
+  filter(!TaxonKey %in% Computed_Spp)
+
 # For Function
 Exploited_Species_List <- Exploited_Species$TaxonKey
+
+
 
 # Load neighbours data from previouse routine
 Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""))
@@ -697,14 +705,14 @@ CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>
 ```
 
 
-```{r Routine_parallel, eval = T, echo = F}
+```{r Routine_parallel, eval = F, echo = F}
 
 # Spp_Trans <- NULL
 
 system.time(
   Spp_Trans <- bind_rows(
     mclapply(
-      Exploited_Species_List[1:3], FUN =EstTransIndex, Model = "All", Neighbors = Neighbor_List,Coord = CoorG
+      Exploited_Species_List, FUN =EstTransIndex, Model = "All", Neighbors = Neighbor_List,Coord = CoorG
     )
   )
 )
@@ -827,7 +835,7 @@ Anchoveta_NA <-  Anchoveta_Dist%>%
 
 # Results
 
-```{r Fun_GetTransResults, eval = T}
+```{r Fun_GetTransResults, eval = F}
 
 GetTransResults=function(Spp){
   
@@ -846,7 +854,7 @@ GetTransResults=function(Spp){
 ## Number of transboundary species per country
 
 
-```{r Load_Data, eval = T}
+```{r Load_Data, eval = F}
 
 # Transboundary data
 Spp <- list.files(Results_Path)
