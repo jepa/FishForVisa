@@ -827,147 +827,76 @@ Anchoveta_NA <-  Anchoveta_Dist%>%
 
 # Results
 
+```{r Fun_GetTransResults, eval = T}
 
-```{r, Trans_Results, eval = F, echo = F}
-
-# Result 1. Number of tran spp per EEZ
-
-Spp_Trans %>% 
-  group_by(Name,TaxonKey) %>% 
-  summarise(Mean_Index = mean(Trans_Index)) %>%  # The higher the less uncertain
-  mutate(Uncert = ifelse(Mean_Index >= 0.50 ,"50 %",
-                         ifelse(Mean_Index >= 0.25 ,"25 %",
-                                ifelse(Mean_Index >= 0.10,">10 %","No Trans")))
-         ) %>% 
-  group_by(Name,Uncert) %>%
-    summarise(nspp=n()) %>%
-  ggplot(.,
-         aes(
-           x = Name,
-           y = nspp#,
-           # fill = Model
-         )
-         )+
-  geom_bar(stat ="identity") +
-  facet_wrap(~Uncert)
-
-
-
-# Result 2. List of Countries that share the Species ####
+GetTransResults=function(Spp){
   
-Spp_Trans %>% 
-  group_by(Name,TaxonKey,Neighbor_Territory) %>% 
-  summarise(Mean_Index = mean(Trans_Index)) %>%  # The higher the less uncertain
-  mutate(Uncert = ifelse(Mean_Index >= 0.10 & Mean_Index <= 0.25,"10 %",
-                         ifelse(Mean_Index >= 0.25 & Mean_Index <= 0.50,"25 %",
-                                ifelse(Mean_Index >= 0.50,">50 %","No Trans")))
-         ) %>% 
-    group_by(Name,Neighbor_Territory,Uncert) %>% 
-    summarise(nspp=n())
-
-```
-
-```{r World_Trans_Spp, eval = F,echo = T,warning = F,message = F}
-
-World_Trans_Spp <- function(Species_List,Data_Path,Result){
+  # Set the path for each file
+  Distpath <- paste(Results_Path,Spp,sep="")
   
-  # Repeat for each species
-  for (s in 1:nrow(Species_List)){ # Original code
-    
-    # Load species distribution data
-    Species_Distribution_Path <- paste(Data_Path,Species_List[s,2],".csv",sep="")
-    
-    # Reads file
-    Species_Distribution_Data <- read.csv(Species_Distribution_Path)
-    
-    # Pastes species name
-    Species_Name = Species_List[s,1]
-    
-    # Call function to determine transboundary species
-    Partial <- Trans_Spp_Fun(Species_Distribution_Data,
-                             DBEM_Neighbors_Data,
-                             Neighbors) %>% 
-      mutate(Species = ifelse(Trans > 0,paste(Species_Name),NA)) # Include species name
-    
-    ### Result 1. Numnber of transboundary species by Country ####
-    if(s == 1){
-      Trans_Country = Partial
-    }else{
-      Trans_Country[,3] <- Trans_Country[,3] + Partial [,3] # Sum transboundary species
-      Trans_Country[,4] <- Trans_Country[,4] + Partial [,4] # Sum Indexes within eez with TS
-      Trans_Country[,5] <- ifelse(Trans_Country[,4] >= 0, paste(Trans_Country[,5],Partial[,5], sep=";"),Trans_Country[,5]) # Paste the species that are transboundary
-    }
-    
-    # Result 2. Number of Countries per Transboundary Species ####
-    
-    Countries_with_Specie <- Partial %>% 
-      filter(Trans == 1) %>% 
-      group_by(Neighbor_Territory) %>% 
-      summarise() %>% 
-      summarise(Number_EEZ = n(),
-                Countries = paste(Neighbor_Territory,
-                                  collapse = ";")
-      ) %>% # Number of territories in this species
-      mutate(Species = Species_Name)
-    
-    
-    if(s == 1){
-      All_Countries_with_Specie <- Countries_with_Specie
-    }else{
-      All_Countries_with_Specie <- All_Countries_with_Specie %>% 
-        bind_rows(Countries_with_Specie)
-    }
-    
-  }# Closes species list
+  # Loads all files in a df
+  Load_Data <- bind_rows(lapply(Distpath, FUN=fread))
   
-  # Function return
-  if(Result =="Country"){ # returns results based on countries 
-    return(Trans_Country)
-  }
-  if(Result == "Species"){ # returns results based on species 
-    return(All_Countries_with_Specie)
-  }
+  return(Load_Data)
+  
 }
 
-### Testing Function ####
-# (Works!!!!!!!!)
+```
 
-### Dummy data ###
-# SppA <- Julianus_Coor %>% 
-#   filter(V1 >= 100000)
-# 
-# SppB <- Julianus_Coor %>% 
-#   filter(V1 <= 100000)
+## Number of transboundary species per country
 
-# write.csv(SppB,
-#           "456.csv",
-#           row.names = F)
 
-Dummy_Species <- data.frame(
-  Species = c("SpeciesA","SpeciesB"),
-  TaxonKey = c(123,456)
-  )
+```{r Load_Data, eval = T}
 
-D_Path <- "./Data/"
+# Transboundary data
+Spp <- list.files(Results_Path)
+Results_Data <- GetTransResults(Spp)
 
-Function_Test <- World_Trans_Spp(Dummy_Species,D_Path, Result = "Country")
+
+# TI of 10% and MI > 50
+
+TenFifty <- Results_Data %>% 
+  filter(Model_Index >= 50,
+         Trans_Index >= 0.10) %>% 
+  group_by(Name,Model_Index) %>% 
+  summarise(n_Trans_Spp = n()) %>% 
+  filter(Model_Index == 50)
+  head(Results_Data)
+
+
+# SAU shapefile
+
+# The path
+path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile",sep="")
+#The File
+fnam_world <- "SAUEEZ_July2015.shp"
+#Load it!
+
+World_EEZs <- st_read(dsn = path_world,
+                      layer =file_path_sans_ext(fnam_world))
+
+head(World_EEZs)
+
+
+World_EEZs_simple <- World_EEZs %>% 
+  st_transform(crs = 3832) %>% # 4326
+  st_simplify(preserveTopology = TRUE, dTolerance = 10000) %>% 
+  left_join(TenFifty, by ="Name") %>% 
+  filter(!is.na(n_Trans_Spp)) %>% 
+  st_transform(crs = 4326)
+
+head(World_EEZs_simple)
+
+
+ggplot(World_EEZs_simple) +
+  geom_sf(aes(fill = n_Trans_Spp))
+ 
+
 
 ```
 
-```{r Final_Analysis, eval = F, echo=F}
-
-# Varibales needed
-# Species_List
-# Data_Path
-
-# Data_Path <- Drobo... Gabs... Distributions...
-# DBEM_Species <- Selected_Species
-  
-  
-# World_Trans_Spp(DBEM_Species,Data_Path)
 
 
+
+```{r, Trans_Results, eval = F, echo = F}
 ```
-
-
-
