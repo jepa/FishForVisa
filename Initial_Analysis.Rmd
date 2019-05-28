@@ -290,10 +290,11 @@ This function Read in species distribution from the observation data, ESM models
 # NOTES
 # For now we're using only the last 10 years average, basicaaly if the species has been fished in any of these years, its considered present
 
-GetSppDist=function(Spp,Model){
+GetSppDist=function(Spp,Model,Coord){
   
   Distpath <- paste(Data_Path,"Distribution_Data/",sep="")
-  INDEX <- seq(1,259200,1)
+  INDEX = seq(1,259200,1)
+  # INDEX <- Coordinates$INDEX
   
   # SAU Distributions
   if(Model == "SAU_D"){
@@ -306,7 +307,7 @@ GetSppDist=function(Spp,Model){
   }
   
   # Occurence
-  if(Model == "Occurence"){
+  if(Model == "Occ"){
     File_Name <- paste("Occurence/OCCURENCE_JULIANO_")
   }
   
@@ -358,8 +359,15 @@ GetSppDist=function(Spp,Model){
       left_join(SAU_C_data,
                 by = "INDEX") %>% 
       select(TaxonKey,INDEX,everything()) %>% 
+      left_join(CoorG,
+                by = "INDEX")
+    
+    # Fix coordinate system incompatibility between Gab and DBEM
+    sppdist <- suppressWarnings(sppdist[order(sppdist$Latitude, rev(sppdist$Longitude),decreasing=TRUE), ] %>% 
+      mutate(INDEX = seq(1,259200,1)) %>% 
       gather("Model","Value",3:6) %>%
-      mutate(Value = ifelse(is.na(Value), 0, Value))# Converting NA's to ceros
+      mutate(Value = ifelse(is.na(Value), 0, Value)) # Converting NA's to ceros
+    )
     
     getSppDist = sppdist
     
@@ -382,10 +390,16 @@ GetSppDist=function(Spp,Model){
     
     # Read Files
     
-    sppdist <- as.data.frame(R.matlab::readMat(SppPath))
-    colnames(sppdist) <- Model
+    sppdist <- as.data.frame(R.matlab::readMat(SppPath)) %>% 
+      mutate(INDEX = INDEX,
+             Species = Spp) %>% 
+      left_join(Coord) 
     
-    # Return 
+    # Fix coordinate system incompatibility between Gab and DBEM
+    sppdist <- sppdist[order(sppdist$Latitude, rev(sppdist$Longitude),decreasing=TRUE), ] %>% 
+      mutate(INDEX = seq(1,259200,1))
+   
+   # Return 
     getSppDist=sppdist
     
     }else{
@@ -440,24 +454,33 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 
 # Needs getSppDist
 
+#### For testing ###
+# Spp <- 600004
+# Model <- "All"
+# Neighbors <- Neighbor_List
+# Coord = CoorG
+# __________________________________
+
 # The function
-EstTransIndex <- function(Spp,Model,Neighbors){
+EstTransIndex <- function(Spp,Model,Neighbors,Coord){
   
   # Get model data from spps
-  SppDist <- GetSppDist(Spp,Model)
+  SppDist <- GetSppDist(Spp,Model,Coord)
   
-    # Estimate total spp distribution within neighbours
+  # Estimate total spp distribution within neighbours
+  
   Trans_Spp <- SppDist %>%
     filter(INDEX %in% Neighbors$INDEX) %>% # Filter data only located within EEZs
     mutate(Value = ifelse(Value > 0, 1,0)) %>%  # For now using SAU_C as presence absence
     group_by(TaxonKey,
              INDEX
     ) %>%
-    summarise(Model_Index = mean(Value,na.rm=T)) %>% 
-    filter(Model_Index > 0) %>% 
-    mutate(Model_Index = Model_Index*100) %>% 
+    summarise(Model_Index = mean(Value,na.rm=T)
+              ) %>%
+    filter(Model_Index > 0) %>%
+    mutate(Model_Index = Model_Index*100) %>%
     left_join(Neighbors,
-              by = "INDEX") 
+              by = "INDEX")
   
   # Estimating total grids per country
   Spp_Grid <- Trans_Spp %>% 
@@ -500,10 +523,10 @@ EstTransIndex <- function(Spp,Model,Neighbors){
   ### Save spp dataframe
   
   if(nrow(Indexes) > 0){
-  
+    
     File_Name <- paste(Spp,"_Transboundary.csv",sep = "")
     Save_Path <- paste(Results_Path,File_Name,sep="")
-      
+    
     write.csv(Indexes,
               Save_Path,
               row.names = F)
@@ -645,6 +668,9 @@ Exploited_Species_List <- Exploited_Species$TaxonKey
 # Load neighbours data from previouse routine
 Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""))
 
+# Gabriel's coordinate system
+CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>% 
+  mutate(INDEX = seq(1,259200,1))
 
 ####_________________________________________ TESTING PERIOD_________________________________________####
 ## Species Test Data Just to know what's captured in these countries
@@ -673,20 +699,18 @@ Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""
 
 ```{r Routine_parallel, eval = T, echo = F}
 
-
 # Spp_Trans <- NULL
 
 system.time(
   Spp_Trans <- bind_rows(
     mclapply(
-      Exploited_Species_List[1], fun =EstTransIndex, Model = "All", Neighbors = Neighbor_List
+      Exploited_Species_List[1:3], FUN =EstTransIndex, Model = "All", Neighbors = Neighbor_List,Coord = CoorG
     )
   )
 )
     
-# u ser  system elapsed 
-# 72.20    9.33   91.30 
-
+   # user  system elapsed (For three spp in Hall1000)
+ # 13.430   5.126  35.059 
 ### Save Test 
 
 # write.csv(Spp_Trans,
@@ -695,6 +719,110 @@ system.time(
 # 
 ```
 
+# Details
+
+## First world Anchovies
+
+In a first run the model suggests anchovies "Engraulis ringens" (600004) is transboundary between US-Mex-Can. I'm exploring this since all four models agree...
+
+Found the probelm, Gab's coordinate system, hecne the data, are in different system than DBEM and SAU data...
+
+
+```{r Trans_Spp_Function, eval= F ,echo = T,warning = F,message = F}
+
+### DATA EXTRA NEEDED 
+
+# DBEM Coordinate system
+Coor <- fread(paste(Data_Path,"Spatial_Data/Lon_Lat_DBEM.txt",sep=""),header = FALSE)
+colnames(Coor) <- c("INDEX","Longitude","Latitude")
+EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
+EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
+colnames(EEZ_CellID) <- c("EEZID","INDEX")
+
+CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>% 
+  mutate(INDEX = seq(1,259200,1))
+
+# colnames(CoorG) <- c("INDEX","Longitude","Latitude")
+coords <- CoorG[order(CoorG$Latitude, rev(CoorG$Longitude),decreasing=TRUE), ] 
+
+# Explore model step by step
+
+# Get Catch Data
+Anchoveta_Dist <- GetSppDist(600004,"All",CoorG)
+
+
+Anchoveta_Dist_Coor <- Anchoveta_Dist %>% 
+  left_join(CoorG)
+
+# Swap coordinate system to match DBEM and SAU
+Anchoveta_Dist_Coor_Fix <- Anchoveta_Dist_Coor[order(Anchoveta_Dist_Coor$Latitude, rev(Anchoveta_Dist_Coor$Longitude),decreasing=TRUE), ] 
+
+
+x <- Anchoveta_Dist %>% 
+  left_join(EEZ_CellID) %>% 
+  left_join(EEZIDs_List) %>% 
+  filter(
+    # Model == "Occ",
+    Value >0)
+
+
+# head(x)
+# Exploring using Vicky's data
+
+ggplot(x) +
+  geom_tile(aes(
+    x = Longitude,
+    y = Latitude,
+    fill = Name,
+    color = Name
+  )
+  ) +
+  facet_wrap(~Model)
+
+
+Spp_Trans <- bind_rows(
+    mclapply(
+      600004, FUN =EstTransIndex, Model = "All", Neighbors = Neighbor_List, Coord = CoorG
+    )
+  )
+
+
+  # Estimate total spp distribution within neighbours
+  
+  Trans_Spp <- SppDist %>%
+    filter(INDEX %in% Neighbors$INDEX) %>% # Filter data only located within EEZs
+    mutate(Value = ifelse(Value > 0, 1,0)) %>%  # For now using SAU_C as presence absence
+    group_by(TaxonKey,
+             INDEX
+    ) %>%
+    summarise(Model_Index = mean(Value,na.rm=T)) %>%
+    filter(Model_Index > 0) %>%
+    mutate(Model_Index = Model_Index*100) %>%
+    left_join(Neighbors,
+              by = "INDEX")
+    
+    Test <- Trans_Spp %>% 
+      filter(Name == "USA (West Coast)" & Model_Index ==100)
+
+
+ # Explore only SAU catch data
+
+# Get Catch Data
+Anchoveta_Dist <- GetSppDist(Spp,"SAU_C")
+    
+# Get Mex, Can and USA W coast Grid
+Anchoveta_Dist_EEZ <- Anchoveta_Dist %>% 
+  
+
+Anchoveta_NA <-  Anchoveta_Dist%>% 
+  filter(INDEX %in% North_America$INDEX) %>% 
+  gather("Year","Tonnes",CATCH.1:CATCH.65) %>% 
+  group_by(Year) %>% 
+  summarise(Sum_T = sum(Tonnes, na.rm =T))
+
+
+
+```
 
 
 # Results
@@ -840,3 +968,6 @@ Function_Test <- World_Trans_Spp(Dummy_Species,D_Path, Result = "Country")
 
 
 ```
+
+
+
