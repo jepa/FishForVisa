@@ -28,6 +28,7 @@ packages <- c(
   "dplyr", # Data manipulation
   "tidyr", # Data manipulation
   "ggplot2", #Nice grpahs and spatial analysis
+  "wesanderson",
   # "cowplot",
   # "rgdal",
   # "RColorBrewer",
@@ -51,6 +52,27 @@ packages <- c(
 )
 
 ipak(packages)
+
+ggtheme_map <- function(base_size = 9, Region = "NA") {
+  
+  theme(text             = element_text(#family = "Helvetica",
+    color = "gray30", size = base_size),
+    plot.title       = element_text(size = rel(1.25), hjust = 0, face = "bold"),
+    panel.background = element_blank(),
+    panel.border     = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "transparent"),
+    strip.background =element_rect(fill = "transparent"),
+    strip.text.x = element_text(size = 18, colour = "black",face= "bold.italic", angle = 0),
+    axis.line        = element_blank(), # element_line(colour = "grey30", size = .5))
+    axis.ticks       = element_blank(),
+    axis.text        = element_blank(),
+    axis.title       = element_blank(),
+    legend.key       = element_rect(colour = NA, fill = NA, size = 4),
+    legend.position = "bottom",
+    legend.key.width =unit(6,"line")
+  )
+}
 
 
 ```
@@ -864,41 +886,83 @@ Results_Data <- GetTransResults(Spp)
 # TI of 10% and MI > 50
 
 TenFifty <- Results_Data %>% 
-  filter(Model_Index >= 50,
-         Trans_Index >= 0.10) %>% 
+  filter(Model_Index >= 50#,
+         # Trans_Index >= 0.10
+         ) %>% 
   group_by(Name,Model_Index) %>% 
   summarise(n_Trans_Spp = n()) %>% 
-  filter(Model_Index == 50)
-  head(Results_Data)
+  filter(Model_Index == 100)
+  # head(Results_Data)
 
 
 # SAU shapefile
 
 # The path
 path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile",sep="")
-#The File
+# #The File
 fnam_world <- "SAUEEZ_July2015.shp"
-#Load it!
-
+# #Load it!
+# 
 World_EEZs <- st_read(dsn = path_world,
                       layer =file_path_sans_ext(fnam_world))
-
-head(World_EEZs)
+# 
+# head(World_EEZs)
 
 
 World_EEZs_simple <- World_EEZs %>% 
-  st_transform(crs = 3832) %>% # 4326
-  st_simplify(preserveTopology = TRUE, dTolerance = 10000) %>% 
-  left_join(TenFifty, by ="Name") %>% 
-  filter(!is.na(n_Trans_Spp)) %>% 
-  st_transform(crs = 4326)
+  st_transform(crs = 4326) %>% # 4326
+  st_simplify(preserveTopology = TRUE, dTolerance = 1) %>%
+  left_join(TenFifty, by ="Name") %>%
+  filter(!is.na(n_Trans_Spp)) #%>%
+  # st_transform(crs = 3832)
 
-head(World_EEZs_simple)
+# head(World_EEZs_simple)
 
+pal <- wes_palette("Zissou1", 100, type = "continuous")
 
-ggplot(World_EEZs_simple) +
-  geom_sf(aes(fill = n_Trans_Spp))
+Plot <- ggplot(World_EEZs_simple) +
+  geom_sf(aes(fill = n_Trans_Spp)) +
+  scale_fill_gradientn(colours = pal) +
+  ggtheme_map()
+
+ggsave("MI_100_TI_all_plot.png",
+       plot = Plot,
+       width = 16,
+       height = 8,
+       units = "in",
+       path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
+)
  
+### Map exploration
+
+# Salvador <- Results_Data %>% 
+#   filter(Name == "El Salvador",
+#          Model_Index >= 50)
+# 
+# Guat_Pac <- Results_Data %>% 
+#   filter(Name == "Guatemala (Pacific)",
+#          Model_Index >= 50)
+
+
+Spp_Results <- Results_Data %>% 
+  filter(Model_Index >= 50#,
+         # Trans_Index >= 0.10
+         ) %>% 
+  group_by(TaxonKey,Model_Index) %>% 
+  summarise(n_Trans_Spp = n()/2) 
+
+
+ggplot(Spp_Results) +
+  geom_bar(
+    aes(
+      x = as.character(TaxonKey),
+      y = n_Trans_Spp
+    ),
+    stat = "identity"
+  ) +
+  facet_wrap(~Model_Index,
+             scales = "free")
+
 
 
 ```
