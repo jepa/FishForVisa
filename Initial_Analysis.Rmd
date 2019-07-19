@@ -74,6 +74,29 @@ ggtheme_map <- function(base_size = 9, Region = "NA") {
   )
 }
 
+#### Set paths for computer ####
+
+
+# Set paths depending on machine Beas or Hall1000
+if(Sys.info()[7] == "jepa88"){
+  Data_Path <- "Z:/JULIANO_NEYMAR/FishForVisa/"
+  Path <- paste(Data_Path,"Results/",sep = "")
+}else{
+  Data_Path <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/"
+  Path <- paste(Data_Path,"Results/",sep = "")
+}
+
+# Path for saving Results
+
+# If path exists overrite it, otherwise creats a new path for that year
+if(file.exists(Path) == TRUE){
+  Results_Path = Path
+}else{
+  dir.create(Path)
+  Results_Path = Path
+}
+
+
 
 ```
 
@@ -484,67 +507,101 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 # __________________________________
 
 # The function
-EstTransIndex <- function(Spp,Model,Neighbors,Coord){
+EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   
   # Get model data from spps
   SppDist <- GetSppDist(Spp,Model,Coord)
   
-  # Estimate total spp distribution within neighbours
+  # Result 1. Number of Countries that share the species
   
+  #____________ ESTIMATING MODEL INDEX (TRESHOLD 1)_________ #
   Trans_Spp <- SppDist %>%
-    filter(INDEX %in% Neighbors$INDEX) %>% # Filter data only located within EEZs
-    mutate(Value = ifelse(Value > 0, 1,0)) %>%  # For now using SAU_C as presence absence
+    filter(INDEX %in% Neighbors$INDEX,# Filter data only located within EEZs
+           Model != "SAU_C") %>% # Only using observational and modelled data
+    mutate(Value = ifelse(Value > 0, 1,0)) %>%  
     group_by(TaxonKey,
              INDEX
     ) %>%
     summarise(Model_Index = mean(Value,na.rm=T)
               ) %>%
     filter(Model_Index > 0) %>%
-    mutate(Model_Index = Model_Index*100) %>%
-    left_join(Neighbors,
-              by = "INDEX")
+    #____________ ESTIMATING FUNDAMENTAL NICHE (TRESHOLD 2)_________ #
+    left_join(SppDist,
+              by = c("TaxonKey","INDEX")) %>% 
+    filter(Model == "SAU_C", # Only keeping cells where SAU catch exists
+           Value > 0) %>% 
+    mutate(Model_Index = Model_Index*100) %>% 
+    select(-Model, -Value, -Latitude,-Longitude) %>% 
+    left_join(EEZ_CellID,
+              by = "INDEX") %>% 
+    left_join(EEZIDs_List,
+              by = "EEZID")
   
-  # Estimating total grids per country
-  Spp_Grid <- Trans_Spp %>% 
-    group_by(Name = Country_Territory,
-             Neighbor_Territory,
-             Model_Index) %>% 
-    summarise(n_cells_spp = n()) %>% 
-    ungroup()
-  
-  # Split dataframes to merge latter
-  Tone <- select(Spp_Grid,1,3,4)
-  Ttwo <- select(Spp_Grid,Name=2,3,4) # Change column name
-  
-  # Merge dataframes
-  Merged_data <- full_join(Tone,Ttwo, by = c("Name","Model_Index")) %>% 
-    rowwise() %>% 
-    mutate(Spp_Total = sum(n_cells_spp.x,n_cells_spp.y,na.rm=T)) %>% 
-    select(Name,Model_Index,Spp_Total) %>% 
-    left_join(Spp_Grid,
-              by = c("Name","Model_Index")) %>% 
-    ungroup() %>% 
-    group_by(Name,Model_Index) %>% 
-    summarise(Spp_Total = sum(Spp_Total))
-  
-  # Result 1. Number of Countries that share the species
-  
-  #____________ ESTIMATING MODEL INDEX (TRESHOLD 1)_________ #
-  Indexes <- Trans_Spp %>% 
+  # MODEL INDEX (TRESHOLDS 1 & 2) #
+  Model_Index_D <- Trans_Spp %>% 
     group_by(Name,
-             Neighbor_Territory,
              TaxonKey,
              Model_Index
     ) %>% 
-    summarise(n_cells_spp = n()) %>% # The number of cells present within each country's EEZ
-    #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 2)_________ #
-    left_join(Merged_data,
-              by = c("Name","Model_Index")) %>% 
-    mutate(Trans_Index = n_cells_spp/Spp_Total)
+    summarise(n_cells_spp = n()) %>% 
+    select(-n_cells_spp)
   
+    #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 3)_________ #
+   # The number of species' cells present within each country's EEZ
+  
+  #Step 1.  Get EEZ id and neighbor
+  Neighbors_EEZ <- Neighbors %>% 
+  group_by(EEZID,Country_Territory,Neighbor_Territory) %>% 
+  summarise(n=n()) %>% 
+  ungroup() %>% 
+  select(-n)
+
+  # Step 2. Determines the amount of grids present in each country
+  Spp_Grid <- Trans_Spp %>% 
+    group_by(TaxonKey,Model_Index,EEZID) %>% 
+    summarise(n_spp_eez = length(unique(INDEX))) %>% 
+    left_join(Neighbors_EEZ,
+              by = "EEZID") %>% 
+    filter(Country_Territory %in% Trans_Spp$Name, #Filter out unwanted neighbors (those who don't have grids within but get included because they are neighbors)
+           Neighbor_Territory %in% Trans_Spp$Name)
+  
+  # Step 3. Sum total grids per neighbors
+  
+  # Split dataframes to merge latter
+  Country_Territory_T <- Spp_Grid %>% 
+    ungroup() %>% 
+    select(Model_Index,TaxonKey,Name=Country_Territory,n_spp_eez)
+  
+  Neighbor_Territory_T <- Spp_Grid %>% 
+    ungroup() %>% 
+    select(Model_Index,TaxonKey,n_spp_eez,Name=Neighbor_Territory, Country_Territory)
+
+  # Merge dataframes to get totals per neighbords
+  Area_Index_D <- full_join(Country_Territory_T,
+                           Neighbor_Territory_T, by = c("Model_Index","Name","TaxonKey")) %>% 
+    rowwise() %>%
+    mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per neighbors
+    distinct() %>% # Removes false duplicates from `full_join()`
+    rename(Neighbor_Territory = Name,
+           n_spp_Country = n_spp_eez.x,
+           n_spp_Neighbor = n_spp_eez.y) %>% 
+    mutate(Area_Index = n_spp_Country/Spp_Total) %>%  #Estimates the proportion of grids per country
+    select(1:3,6,8)
+
+  #____________ FINAL INDEX TABLE_________ #
+  Indexes <- Model_Index_D %>% 
+  rename(Country_Territory = Name) %>% 
+  full_join(Area_Index_D,
+            by = c("TaxonKey","Country_Territory","Model_Index")
+  ) %>% 
+    filter(!is.na(Area_Index),
+           !is.na(Model_Index)
+           )%>%  # Remove cases where the country does not pass the area_index and viceversa
+    select(TaxonKey,Country_Territory,Neighbor_Territory,everything())
+
   ### Save spp dataframe
   
-  if(nrow(Indexes) > 0){
+  if(nrow(Indexes) > 0 & Save == "Y"){
     
     File_Name <- paste(Spp,"_Transboundary.csv",sep = "")
     Save_Path <- paste(Results_Path,File_Name,sep="")
@@ -566,7 +623,13 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord){
 # Spp <- 600006
 # Model <- "All"
 # Neighbors <- Neighbor_List
-
+# 
+# Tryout <- EstTransIndex(Spp,Model,Neighbors,CoorG,Save="N")
+# 
+# Over_20 <-Tryout %>% 
+#     filter(Area_Index > 0.20,
+#            Area_Index < 0.80)
+  
 # Spp <- NULL
 # Model <- NULL
 
@@ -651,29 +714,6 @@ mclapply <- switch( Sys.info()[['sysname']],
 
 ```{r Control_Pannel, eval = T, echo = F}
 
-#### Set paths for computer ####
-
-
-# Set paths depending on machine Beas or Hall1000
-if(Sys.info()[7] == "jepa88"){
-  Data_Path <- "Z:/JULIANO_NEYMAR/FishForVisa/"
-  Path <- paste(Data_Path,"Results/",sep = "")
-}else{
-  Data_Path <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/"
-  Path <- paste(Data_Path,"Results/",sep = "")
-}
-
-# Path for saving Results
-
-# If path exists overrite it, otherwise creats a new path for that year
-if(file.exists(Path) == TRUE){
-  Results_Path = Path
-}else{
-  dir.create(Path)
-  Results_Path = Path
-}
-
-
 # Removes everything before the number
 Step_One <- gsub(".*_","",list.files(paste(Data_Path,"/Distribution_Data/SAU_Distribution/",sep="")))
 
@@ -701,6 +741,11 @@ Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""
 # Gabriel's coordinate system
 CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>% 
   mutate(INDEX = seq(1,259200,1))
+
+# SAU relations between INDEX and Country's EEZs
+EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
+EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
+colnames(EEZ_CellID) <- c("EEZID","INDEX")
 
 ####_________________________________________ TESTING PERIOD_________________________________________####
 ## Species Test Data Just to know what's captured in these countries
@@ -873,16 +918,121 @@ GetTransResults=function(Spp){
 
 ```
 
-## Number of transboundary species per country
-
-
 ```{r Load_Data, eval = F}
 
 # Transboundary data
 Spp <- list.files(Results_Path)
 Results_Data <- GetTransResults(Spp)
 
+```
 
+
+
+### Problem solving
+
+#### Overcounting transboundary stocks
+
+In a first run, Australia results in many transboundary stocks, I believe this is because it is counting the number of countries that that the species share (e.g. one species 6 countries = 6 transboundary spp) rather than 1 speces 6 countries = 1 trans spp.
+
+
+**Problem fixed.** Now we can estimate the number of transboundary species as well as the number of countries/regions that each country shares per species.
+
+```{Australia_case, eval =F, echo = F}
+
+Australia <- Results_Data %>% 
+  filter(Name == "Australia")
+
+Original_Australia <-Australia %>% 
+  filter(Model_Index >= 50#,
+         # Trans_Index >= 0.10
+         ) %>% 
+  group_by(Name,Model_Index) %>% 
+  summarise(n_Trans_Spp = n()) %>% 
+  filter(Model_Index == 100)
+
+## Testing the waters
+
+Explore_Australia <- Australia %>% 
+  filter(Model_Index >= 50#,
+         # Trans_Index >= 0.10
+         ) %>% 
+  slice(1:20) %>% 
+  group_by(Name,Model_Index) %>% 
+  summarise(
+    n_trans = length(unique(TaxonKey)),
+    n_countries = length(unique(Neighbor_Territory)),
+    )
+
+```
+
+#### Fixing counts within EEZs
+
+In the first run. Countries where EEZs are devided but touching (e.g. South Africa inidan and atlantic coasts) are double counted.
+
+This might be fixed with Tayler's data of EEZs to ISOs
+
+```{South_Africa_case, eval =F, echo = F}
+
+# Tyler E.'s' data
+EEZ_ISO <- read.csv("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Spatial_Data/EEZID_ISO_TylEd.csv", comment.char="#")
+
+#SAU / Vicky's data
+EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
+
+EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
+colnames(EEZ_CellID) <- c("EEZID","INDEX")
+
+# Worlds adata
+
+# The path
+path_world <- paste(Data_Path,"Spatial_Data/World_EEZ_v10_2018",sep="")
+# #The File
+fnam_world <- "eez_v10.shp"
+# #Load it!
+# 
+World_EEZs <- st_read(dsn = path_world,
+                      layer =file_path_sans_ext(fnam_world))
+
+head(World_EEZs)
+
+World_EEZs %>% 
+  filter(
+    # Territory1 == "South Africa",
+    ISO_Ter1 == "ZAF") %>% 
+  head()
+
+# Get ISO and territory names from world map
+ISO_Ter <- World_EEZs %>%
+  select(ISO_Ter1,Territory1) %>% 
+  as.data.frame() %>% 
+  select(ISO_Ter1,Territory1)
+
+head(ISO_Ter)
+
+# I think EEZID equals ISO when not devided... 
+
+EZZID_Yes_ISO <- ISO_Ter %>% 
+  semi_join(ISO_Ter,
+            by ="ISO_Ter1") %>% 
+  rename(Name = Territory1) %>% 
+  # head() %>% 
+  left_join(EEZIDs_List,
+            by = "Name")
+
+
+EEZ_ISO_Clean <- ISO_Ter %>% 
+  left_join(EEZ_ISO,
+            by = "ISO_Ter1")
+
+SA <- Results_Data %>% 
+  filter(stringr::str_detect(Name,"South Africa"))
+
+
+```
+
+## Number of transboundary species per country
+
+```{Number_Tran_country, eval =T, echo =F}
 # TI of 10% and MI > 50
 
 TenFifty <- Results_Data %>% 
@@ -890,7 +1040,10 @@ TenFifty <- Results_Data %>%
          # Trans_Index >= 0.10
          ) %>% 
   group_by(Name,Model_Index) %>% 
-  summarise(n_Trans_Spp = n()) %>% 
+  summarise(
+    n_trans = length(unique(TaxonKey)),
+    n_countries = length(unique(Neighbor_Territory))
+    ) 
   filter(Model_Index == 100)
   # head(Results_Data)
 
@@ -943,6 +1096,10 @@ ggsave("MI_100_TI_all_plot.png",
 #   filter(Name == "Guatemala (Pacific)",
 #          Model_Index >= 50)
 
+
+  Area_Index_D <- Merged_data %>% 
+    filter(Area_Index > 0.10,
+           Area_Index < 0.90)
 
 Spp_Results <- Results_Data %>% 
   filter(Model_Index >= 50#,
