@@ -81,6 +81,10 @@ ggtheme_map <- function(base_size = 9, Region = "NA") {
 if(Sys.info()[7] == "jepa88"){
   Data_Path <- "Z:/JULIANO_NEYMAR/FishForVisa/"
   Path <- paste(Data_Path,"Results/",sep = "")
+  }
+if(Sys.info()[7] == "carmelia"){
+  Data_Path <- "~/GitHub/FishForVisa/Temporal_Data/"
+  Path <- paste(Data_Path,sep = "")
 }else{
   Data_Path <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/"
   Path <- paste(Data_Path,"Results/",sep = "")
@@ -1049,6 +1053,7 @@ write.csv(SubsetData,
 ```{Number_Tran_country, eval =F, echo =F}
 # TI of 10% and MI > 50
 
+
 TenTwenyfive <- Clean_Results %>% 
   filter(Model_Index == 100,
          Area_Index >= 0.25,
@@ -1059,7 +1064,7 @@ TenTwenyfive <- Clean_Results %>%
     n_trans = length(unique(TaxonKey)),
     n_countries = length(unique(Neighbor_Territory)),
     Trans_Rate = n_trans/n_countries
-    ) 
+    ) %>% 
   filter(Model_Index == 100)
   # head(Results_Data)
 
@@ -1067,15 +1072,15 @@ TenTwenyfive <- Clean_Results %>%
 # SAU shapefile
 
 # The path
-path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile",sep="")
+path_world <- paste("~/Documents/UBC/Oceans_Project/Distribution/Data/Spatial/World_EEZ_v9_20161021",sep="")
 # #The File
-fnam_world <- "SAUEEZ_July2015.shp"
+fnam_world <- "eez_boundaries.shp"
 # #Load it!
 # 
 World_EEZs <- st_read(dsn = path_world,
                       layer =file_path_sans_ext(fnam_world))
 # 
-# head(World_EEZs)
+head(World_EEZs)
 
 
 World_EEZs_simple <- World_EEZs %>%
@@ -1101,5 +1106,58 @@ ggsave("R4_100_25.png",
        units = "in",
        path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
 )
+
+```
+
+
+
+```{r, SOM_Trans_Results, eval = F, echo = F}
+
+Clean_Results <- read.csv("~/GitHub/FishForVisa/Temporal_Data/Clean_Results.csv") %>% 
+  filter(!is.na(Country_Territory))
+
+sau_eez_fes <- read.csv("~/Desktop/sau_eez_fes.csv")
+  
+EEZID_D <- readxl::read_excel("~/Documents/UBC/Oceans_Project/Distribution/By Cell/Cell_Data/Updated_EEZList_17June2016.xlsx")
+
+
+# Trying to fix EEZ problem... 
+
+sau_eez_fes <-sau_eez_fes %>% 
+rename(EEZID = eez_id)
+
+eez_list <- EEZID_D %>% 
+  rename(Country_Territory=Name)
+
+xx <- Clean_Results %>% 
+  left_join(eez_list,
+            by = "Country_Territory") %>% 
+  left_join(sau_eez_fes,
+            by = "EEZID")
+  
+Neighbord_Territory_T <- Clean_Results %>% 
+  group_by(Neighbor_Territory) %>% 
+  summarise() %>% 
+  left_join(eez_list_n,
+            by = "Neighbor_Territory") %>% 
+  left_join(sau_eez_fes,
+            by = "EEZID") %>% 
+  select(Neighbor_Territory,neighbor_entity = fishing_entity)
+
+Non_duplicate_Data <- xx %>%   
+  left_join(Neighbord_Territory_T,
+              by ="Neighbor_Territory") %>% 
+  mutate(
+    fishing_entity = ifelse(is.na(fishing_entity),paste(Country_Territory),paste(fishing_entity)),
+    Same_Nation = ifelse(fishing_entity==neighbor_entity,paste("Yes"),"No")
+  ) %>% 
+  filter(Same_Nation == "No")
+
+write.csv(Non_duplicate_Data,
+          "New_Clean_Results.csv")
+
+
+
+
 
 ```
