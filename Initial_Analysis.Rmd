@@ -1040,12 +1040,12 @@ SA <- Results_Data %>%
 
 ## Creating a subset dataset so i can work on my laptop and not remoteley
 
-SubsetData <- TenTwenyfive %>% 
-  filter(Name=="USA (East Coast)")
+SubsetData <- Clean_Results %>% 
+  filter(Country_Territory=="USA (East Coast)")
 
 write.csv(SubsetData,
           "SubsetData.csv",
-          row.names = F)
+          row.names = F) # Using the US east coast
 ```
 
 ## Number of transboundary species per country
