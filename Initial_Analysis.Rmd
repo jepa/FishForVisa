@@ -924,6 +924,13 @@ GetTransResults=function(Spp){
 Spp <- list.files(Results_Path)
 Results_Data <- GetTransResults(Spp)
 
+Clean_Results <- Results_Data %>% 
+  filter(is.na(Trans_Index)) %>% 
+  select(1:5)
+
+length(unique(Clean_Results$TaxonKey))
+
+head(Clean_Results)
 ```
 
 
@@ -1035,11 +1042,12 @@ SA <- Results_Data %>%
 ```{Number_Tran_country, eval =T, echo =F}
 # TI of 10% and MI > 50
 
-TenFifty <- Results_Data %>% 
-  filter(Model_Index >= 50#,
-         # Trans_Index >= 0.10
+TenFifty <- Clean_Results %>% 
+  filter(Model_Index == 100,
+         Area_Index >= 0.25,
+         Area_Index <= 0.75
          ) %>% 
-  group_by(Name,Model_Index) %>% 
+  group_by(Name=Country_Territory,Model_Index) %>% 
   summarise(
     n_trans = length(unique(TaxonKey)),
     n_countries = length(unique(Neighbor_Territory))
@@ -1064,9 +1072,9 @@ World_EEZs <- st_read(dsn = path_world,
 
 World_EEZs_simple <- World_EEZs %>% 
   st_transform(crs = 4326) %>% # 4326
-  st_simplify(preserveTopology = TRUE, dTolerance = 1) %>%
-  left_join(TenFifty, by ="Name") %>%
-  filter(!is.na(n_Trans_Spp)) #%>%
+  st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
+  left_join(TenFifty, by ="Name") #%>%
+  # filter(!is.na(n_trans)) #%>%
   # st_transform(crs = 3832)
 
 # head(World_EEZs_simple)
@@ -1074,11 +1082,11 @@ World_EEZs_simple <- World_EEZs %>%
 pal <- wes_palette("Zissou1", 100, type = "continuous")
 
 Plot <- ggplot(World_EEZs_simple) +
-  geom_sf(aes(fill = n_Trans_Spp)) +
+  geom_sf(aes(fill = n_trans)) +
   scale_fill_gradientn(colours = pal) +
   ggtheme_map()
 
-ggsave("MI_100_TI_all_plot.png",
+ggsave("R2_100_25_Fine_plot.png",
        plot = Plot,
        width = 16,
        height = 8,
