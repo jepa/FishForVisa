@@ -1046,6 +1046,59 @@ SubsetData <- TenTwenyfive %>%
 write.csv(SubsetData,
           "SubsetData.csv",
           row.names = F)
+
+###_____________________________ ###
+
+# Loading subsetted data
+
+Clean_Results <- read.csv("~/GitHub/FishForVisa/Temporal_Data/SubsetData.csv")
+
+sau_eez_fes <- read.csv("~/Desktop/sau_eez_fes.csv")
+  
+EEZID_D <- readxl::read_excel("~/Documents/UBC/Oceans_Project/Distribution/By Cell/Cell_Data/Updated_EEZList_17June2016.xlsx")
+
+
+# Trying to fix EEZ problem... 
+
+sau_eez_fes <-sau_eez_fes %>% 
+rename(EEZID = eez_id)
+
+eez_list <- EEZID_D %>% 
+  rename(Country_Territory=Name)
+
+xx <- Clean_Results %>% 
+  left_join(eez_list,
+            by = "Country_Territory") %>% 
+  left_join(sau_eez_fes,
+            by = "EEZID")
+  
+Neighbord_Territory_T <- Clean_Results %>% 
+  group_by(Neighbor_Territory) %>% 
+  summarise() %>% 
+  left_join(eez_list_n,
+            by = "Neighbor_Territory") %>% 
+  left_join(sau_eez_fes,
+            by = "EEZID") %>% 
+  select(Neighbor_Territory,neighbor_entity = fishing_entity)
+
+Non_duplicate_Data <- xx %>%   
+  left_join(Neighbord_Territory_T,
+              by ="Neighbor_Territory") %>% 
+  mutate(
+    fishing_entity = ifelse(is.na(fishing_entity),paste(Country_Territory),paste(fishing_entity)),
+    Same_Nation = ifelse(fishing_entity==neighbor_entity,paste("Yes"),"No")
+  ) %>% 
+  filter(Same_Nation == "No")
+
+write.csv(Non_duplicate_Data,
+          "New_Clean_Results.csv")
+
+
+
+
+
+```
+
 ```
 
 ## Number of transboundary species per country
@@ -1106,58 +1159,5 @@ ggsave("R4_100_25.png",
        units = "in",
        path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
 )
-
-```
-
-
-
-```{r, SOM_Trans_Results, eval = F, echo = F}
-
-Clean_Results <- read.csv("~/GitHub/FishForVisa/Temporal_Data/Clean_Results.csv") %>% 
-  filter(!is.na(Country_Territory))
-
-sau_eez_fes <- read.csv("~/Desktop/sau_eez_fes.csv")
-  
-EEZID_D <- readxl::read_excel("~/Documents/UBC/Oceans_Project/Distribution/By Cell/Cell_Data/Updated_EEZList_17June2016.xlsx")
-
-
-# Trying to fix EEZ problem... 
-
-sau_eez_fes <-sau_eez_fes %>% 
-rename(EEZID = eez_id)
-
-eez_list <- EEZID_D %>% 
-  rename(Country_Territory=Name)
-
-xx <- Clean_Results %>% 
-  left_join(eez_list,
-            by = "Country_Territory") %>% 
-  left_join(sau_eez_fes,
-            by = "EEZID")
-  
-Neighbord_Territory_T <- Clean_Results %>% 
-  group_by(Neighbor_Territory) %>% 
-  summarise() %>% 
-  left_join(eez_list_n,
-            by = "Neighbor_Territory") %>% 
-  left_join(sau_eez_fes,
-            by = "EEZID") %>% 
-  select(Neighbor_Territory,neighbor_entity = fishing_entity)
-
-Non_duplicate_Data <- xx %>%   
-  left_join(Neighbord_Territory_T,
-              by ="Neighbor_Territory") %>% 
-  mutate(
-    fishing_entity = ifelse(is.na(fishing_entity),paste(Country_Territory),paste(fishing_entity)),
-    Same_Nation = ifelse(fishing_entity==neighbor_entity,paste("Yes"),"No")
-  ) %>% 
-  filter(Same_Nation == "No")
-
-write.csv(Non_duplicate_Data,
-          "New_Clean_Results.csv")
-
-
-
-
 
 ```
