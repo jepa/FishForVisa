@@ -679,7 +679,7 @@ Mclapply_Hack <- function(...){
        ## Stop the cluster
        stopCluster(cl)
     })
-}
+
 
 ## Warn the user if they are using Windows
 if( Sys.info()[['sysname']] == 'Windows' ){
@@ -705,6 +705,7 @@ mclapply <- switch( Sys.info()[['sysname']],
    Linux   = {mclapply},
    Darwin  = {mclapply})
 
+}
 ## end mclapply.hack.R
 
 ```
@@ -923,14 +924,13 @@ GetTransResults=function(Spp){
 # Transboundary data
 Spp <- list.files(Results_Path)
 Results_Data <- GetTransResults(Spp)
+head(Results_Data)
+unique(Results_Data$Model_Index)
+length(unique(Results_Data$TaxonKey)) #672 spp
 
-Clean_Results <- Results_Data %>% 
-  filter(is.na(Trans_Index)) %>% 
-  select(1:5)
+Clean_Results <- Results_Data
 
-length(unique(Clean_Results$TaxonKey))
 
-head(Clean_Results)
 ```
 
 
@@ -940,7 +940,6 @@ head(Clean_Results)
 #### Overcounting transboundary stocks
 
 In a first run, Australia results in many transboundary stocks, I believe this is because it is counting the number of countries that that the species share (e.g. one species 6 countries = 6 transboundary spp) rather than 1 speces 6 countries = 1 trans spp.
-
 
 **Problem fixed.** Now we can estimate the number of transboundary species as well as the number of countries/regions that each country shares per species.
 
@@ -976,7 +975,7 @@ Explore_Australia <- Australia %>%
 
 In the first run. Countries where EEZs are devided but touching (e.g. South Africa inidan and atlantic coasts) are double counted.
 
-This might be fixed with Tayler's data of EEZs to ISOs
+This might be fixed with Tayler's data of EEZs to ISOs... He did it manually so it does not work! 
 
 ```{South_Africa_case, eval =F, echo = F}
 
@@ -1035,14 +1034,21 @@ SA <- Results_Data %>%
   filter(stringr::str_detect(Name,"South Africa"))
 
 
+## Creating a subset dataset so i can work on my laptop and not remoteley
+SubsetData <- TenTwenyfive %>% 
+  filter(Name=="USA (East Coast)")
+
+write.csv(SubsetData,
+          "SubsetData.csv",
+          row.names = F)
 ```
 
 ## Number of transboundary species per country
 
-```{Number_Tran_country, eval =T, echo =F}
+```{Number_Tran_country, eval =F, echo =F}
 # TI of 10% and MI > 50
 
-TenFifty <- Clean_Results %>% 
+TenTwenyfive <- Clean_Results %>% 
   filter(Model_Index == 100,
          Area_Index >= 0.25,
          Area_Index <= 0.75
@@ -1050,7 +1056,8 @@ TenFifty <- Clean_Results %>%
   group_by(Name=Country_Territory,Model_Index) %>% 
   summarise(
     n_trans = length(unique(TaxonKey)),
-    n_countries = length(unique(Neighbor_Territory))
+    n_countries = length(unique(Neighbor_Territory)),
+    Trans_Rate = n_trans/n_countries
     ) 
   filter(Model_Index == 100)
   # head(Results_Data)
@@ -1070,10 +1077,10 @@ World_EEZs <- st_read(dsn = path_world,
 # head(World_EEZs)
 
 
-World_EEZs_simple <- World_EEZs %>% 
+World_EEZs_simple <- World_EEZs %>%
   st_transform(crs = 4326) %>% # 4326
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
-  left_join(TenFifty, by ="Name") #%>%
+  left_join(TenTwenyfive, by ="Name") #%>%
   # filter(!is.na(n_trans)) #%>%
   # st_transform(crs = 3832)
 
@@ -1086,54 +1093,12 @@ Plot <- ggplot(World_EEZs_simple) +
   scale_fill_gradientn(colours = pal) +
   ggtheme_map()
 
-ggsave("R2_100_25_Fine_plot.png",
+ggsave("R4_100_25.png",
        plot = Plot,
        width = 16,
        height = 8,
        units = "in",
        path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
 )
- 
-### Map exploration
 
-# Salvador <- Results_Data %>% 
-#   filter(Name == "El Salvador",
-#          Model_Index >= 50)
-# 
-# Guat_Pac <- Results_Data %>% 
-#   filter(Name == "Guatemala (Pacific)",
-#          Model_Index >= 50)
-
-
-  Area_Index_D <- Merged_data %>% 
-    filter(Area_Index > 0.10,
-           Area_Index < 0.90)
-
-Spp_Results <- Results_Data %>% 
-  filter(Model_Index >= 50#,
-         # Trans_Index >= 0.10
-         ) %>% 
-  group_by(TaxonKey,Model_Index) %>% 
-  summarise(n_Trans_Spp = n()/2) 
-
-
-ggplot(Spp_Results) +
-  geom_bar(
-    aes(
-      x = as.character(TaxonKey),
-      y = n_Trans_Spp
-    ),
-    stat = "identity"
-  ) +
-  facet_wrap(~Model_Index,
-             scales = "free")
-
-
-
-```
-
-
-
-
-```{r, Trans_Results, eval = F, echo = F}
 ```
