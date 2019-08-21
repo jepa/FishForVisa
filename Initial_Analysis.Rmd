@@ -758,10 +758,10 @@ Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_
   filter(TaxonKey %in% Species_List)
 
 # Step to run function for species not computed
-# Computed_Spp <- as.integer(gsub("\\_.*","",list.files(Results_Path)))
+Computed_Spp <- as.integer(gsub("\\_.*","",list.files(Results_Path)))
 
-# Exploited_Species <- Exploited_Species %>%
-  #filter(!TaxonKey %in% Computed_Spp)
+Exploited_Species <- Exploited_Species %>%
+  filter(!TaxonKey %in% Computed_Spp)
 
 # For Function
 Exploited_Species_List <- Exploited_Species$TaxonKey
@@ -782,7 +782,7 @@ colnames(EEZ_CellID) <- c("EEZID","INDEX")
 write.csv(tibble(TaxonKey = "NA"), paste(Results_Path,"Non_Transboundary_Data.csv",sep=""), row.names = F)
 
 # Number of cores to us 
-n_cores <- detectCores()-8
+n_cores <- detectCores()
 
 
 ####_________________________________________ TESTING PERIOD_________________________________________####
@@ -862,7 +862,7 @@ Clean_sau_eez_fes <- sau_eez_fes %>%
   summarise(n())
 
 # Transboundary Results
-Spp <- list.files(Results_Path)[1:675]
+Spp <- list.files(Results_Path)[1:672]
 
 
 Results_Trans <- GetTransResults(Spp)
@@ -873,20 +873,19 @@ Clean_Results_Trans <- Results_Trans %>%
   rename(FishingRegion=Country_Territory) %>% 
   left_join(Clean_sau_eez_fes,
             by = "FishingRegion") %>% 
-  select(Model,
-         TaxonKey,
+  select(TaxonKey,
          Country_Territory= FishingRegion,
          FishingRegion=Neighbor_Territory,
+         Model_Index,
          Area_Index,
          CT_fishing_entity= fishing_entity) %>% 
   left_join(Clean_sau_eez_fes,
             by = "FishingRegion") %>% 
-  select(#1,2, 
+  select(1,2, 
     Neighbor_Territory = FishingRegion,
-    #Model_Index:CT_fishing_entity,
+    Model_Index:CT_fishing_entity,
     NT_fishing_entity= fishing_entity,
-    everything()
-  ) %>% 
+    everything()) %>% 
   mutate(
     CT_fishing_entity = ifelse(is.na(CT_fishing_entity),paste(Country_Territory),paste(CT_fishing_entity)),
     NT_fishing_entity = ifelse(is.na(NT_fishing_entity),paste(Neighbor_Territory),paste(NT_fishing_entity)),
@@ -894,7 +893,7 @@ Clean_Results_Trans <- Results_Trans %>%
   )
 
 # For Carmelia
-Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep=""))
+#Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep=""))
 
 # Load results for non transboundary (discrete) stocks
 Results_Discrete <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
