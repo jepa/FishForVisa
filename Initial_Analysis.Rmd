@@ -81,7 +81,7 @@ ggtheme_map <- function(base_size = 9, Region = "NA") {
 # Set paths depending on machine Beast (jepa88), "carmelia" or Hall1000
 if(Sys.info()[7] == "jepa88"){
   Data_Path <- "Z:/JULIANO_NEYMAR/FishForVisa/"
-  Path <- paste(Data_Path,"Results/All_Models/",sep = "")
+  Path <- paste(Data_Path,"Results/",sep = "")
   }
 if(Sys.info()[7] == "carmelia"){
   Data_Path <- "~/GitHub/FishForVisa/Temporal_Data/"
@@ -515,13 +515,13 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 
 #### For testing 
 # Spp <- 600059
-# Model <- "All"
-# Neighbors <- Neighbor_List
-# Coord = CoorG
+ #Model <- "All"
+ #Neighbors <- Neighbor_List
+ #Coord = CoorG
 # __________________________________
 
 # The function
-EstTransIndex_All <- function(Spp,Model,Neighbors,Coord,Save="Y"){
+EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   
   # Get model data from spps
   SppDist <- GetSppDist(Spp,Model,Coord)
@@ -538,7 +538,7 @@ EstTransIndex_All <- function(Spp,Model,Neighbors,Coord,Save="Y"){
              INDEX
     ) %>%
     summarise(Model_Index = mean(Value,na.rm=T)
-              ) %>%
+    ) %>%
     filter(Model_Index > 0) %>%
     # ____________ ESTIMATING FUNDAMENTAL NICHE (TRESHOLD 2)_________ #
     left_join(SppDist,
@@ -556,21 +556,21 @@ EstTransIndex_All <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   Model_Index_D <- Trans_Spp %>% 
     group_by(Name,
              TaxonKey,
-             Model
-             ) %>% 
+             Model_Index
+    ) %>% 
     summarise(n_cells_spp = n()) %>% 
     select(-n_cells_spp)
   
-    #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 3)_________ #
-   # The number of species' cells present within each country's EEZ
+  #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 3)_________ #
+  # The number of species' cells present within each country's EEZ
   
   #Step 1.  Get EEZ id and neighbor
   Neighbors_EEZ <- Neighbors %>% 
-  group_by(EEZID,Country_Territory,Neighbor_Territory) %>% 
-  summarise(n=n()) %>% 
-  ungroup() %>% 
-  select(-n)
-
+    group_by(EEZID,Country_Territory,Neighbor_Territory) %>% 
+    summarise(n=n()) %>% 
+    ungroup() %>% 
+    select(-n)
+  
   # Step 2. Determines the amount of grids present in each country
   Spp_Grid <- Trans_Spp %>% 
     group_by(TaxonKey,
@@ -602,12 +602,12 @@ EstTransIndex_All <- function(Spp,Model,Neighbors,Coord,Save="Y"){
       Name=Neighbor_Territory, 
       Country_Territory
     )
-
+  
   # Merge dataframes to get totals per neighbords
   Area_Index_D <- full_join(Country_Territory_T,
-                           Neighbor_Territory_T, 
-                           by = c("Model_Index","Name","TaxonKey")
-                           ) %>%
+                            Neighbor_Territory_T, 
+                            by = c("Model_Index","Name","TaxonKey")
+  ) %>%
     rowwise() %>%
     mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per neighbors
     distinct() %>% # Removes false duplicates from `full_join()`
@@ -616,18 +616,18 @@ EstTransIndex_All <- function(Spp,Model,Neighbors,Coord,Save="Y"){
            n_spp_Neighbor = n_spp_eez.y) %>% 
     mutate(Area_Index = n_spp_Country/Spp_Total) %>%  #Estimates the proportion of grids per country
     select(1:3,6,8)
-
+  
   #____________ FINAL INDEX TABLE_________ #
   Indexes <- Model_Index_D %>% 
-  rename(Country_Territory = Name) %>% 
-  full_join(Area_Index_D,
-            by = c("TaxonKey","Country_Territory","Model_Index")
-            ) %>% 
+    rename(Country_Territory = Name) %>% 
+    full_join(Area_Index_D,
+              by = c("TaxonKey","Country_Territory","Model_Index")
+    ) %>% 
     filter(!is.na(Area_Index),
            !is.na(Model_Index) # Uncomment after producing Models x datasets
-           )%>%  # Remove cases where the country does not pass the area_index and viceversa
+    )%>%  # Remove cases where the country does not pass the area_index and viceversa
     select(TaxonKey,Country_Territory,Neighbor_Territory,everything())
-
+  
   ### Save spp dataframe
   
   if(nrow(Indexes) > 0 & Save == "Y"){
@@ -643,7 +643,7 @@ EstTransIndex_All <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   
   if(nrow(Indexes) == 0 & Save == "Y"){
     
-# Reads dataset of Non transboundary species
+    # Reads dataset of Non transboundary species
     Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
     
     # Get current Spp that is not transboundary 
@@ -755,16 +755,16 @@ Species_List <- gsub("\\..*","",Step_One)
 
 # Set Spceies list
 Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep="")) %>%
-  filter(!TaxonKey %in% Species_List)
+  filter(TaxonKey %in% Species_List)
 
 # Step to run function for species not computed
-Computed_Spp <- as.integer(gsub("\\_.*","",list.files(Results_Path)))
+# Computed_Spp <- as.integer(gsub("\\_.*","",list.files(Results_Path)))
 
-Exploited_Species <- Exploited_Species %>%
-  filter(!TaxonKey %in% Computed_Spp)
+# Exploited_Species <- Exploited_Species %>%
+  #filter(!TaxonKey %in% Computed_Spp)
 
 # For Function
-Exploited_Species_List <- Exploited_Species$TaxonKey[1:3]
+Exploited_Species_List <- Exploited_Species$TaxonKey
 
 # Load neighbours data from previouse routine
 Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""))
@@ -781,8 +781,8 @@ colnames(EEZ_CellID) <- c("EEZID","INDEX")
 # Creates dummy dataset for Non transboundary species
 write.csv(tibble(TaxonKey = "NA"), paste(Results_Path,"Non_Transboundary_Data.csv",sep=""), row.names = F)
 
-# NUmber of cores to us 
-# n_cores <- detectCores()
+# Number of cores to us 
+n_cores <- detectCores()-8
 
 
 ####_________________________________________ TESTING PERIOD_________________________________________####
@@ -817,7 +817,7 @@ write.csv(tibble(TaxonKey = "NA"), paste(Results_Path,"Non_Transboundary_Data.cs
 system.time(
   Spp_Trans <- bind_rows(
     mclapply(
-      Exploited_Species_List, FUN =EstTransIndex, Model = "All", Neighbors = Neighbor_List, Coord = CoorG
+      Exploited_Species_List, FUN = EstTransIndex, Model = "All", Neighbors = Neighbor_List, Coord = CoorG
     )
   )
 )
