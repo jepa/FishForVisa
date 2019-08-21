@@ -77,10 +77,10 @@ ggtheme_map <- function(base_size = 9, Region = "NA") {
 #### Set paths for computer ####
 
 
-# Set paths depending on machine Beas or Hall1000
+# Set paths depending on machine Beast (jepa88), "carmelia" or Hall1000
 if(Sys.info()[7] == "jepa88"){
   Data_Path <- "Z:/JULIANO_NEYMAR/FishForVisa/"
-  Path <- paste(Data_Path,"Results/",sep = "")
+  Path <- paste(Data_Path,"Results/All_Models/",sep = "")
   }
 if(Sys.info()[7] == "carmelia"){
   Data_Path <- "~/GitHub/FishForVisa/Temporal_Data/"
@@ -491,6 +491,8 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 - 0.25; Only one model flags a speices presence
 - 0; All models agree there is no species there
 
+** NOTE THAT THE FUNCTION IS SETTED TO OUTPUT RESULTS FOR LL MODELS **
+
 ##### Distribution Index, line ~482
 
 ```{r Trans_Spp_Function, eval= T ,echo = T,warning = F,message = F}
@@ -505,8 +507,8 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 
 # Needs getSppDist
 
-#### For testing ###
-# Spp <- 600004
+#### For testing 
+# Spp <- 600059
 # Model <- "All"
 # Neighbors <- Neighbor_List
 # Coord = CoorG
@@ -525,19 +527,21 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
     filter(INDEX %in% Neighbors$INDEX,# Filter data only located within EEZs
            Model != "SAU_C") %>% # Only using observational and modelled data
     mutate(Value = ifelse(Value > 0, 1,0)) %>%  
-    group_by(TaxonKey,
-             INDEX
-    ) %>%
-    summarise(Model_Index = mean(Value,na.rm=T)
-              ) %>%
-    filter(Model_Index > 0) %>%
+    filter(Value > 0) %>%  # Remove latter, just keeps places with 1
+    # Commented out to produce a map for each dataset
+    # group_by(TaxonKey,
+    #          INDEX
+    # ) %>%
+    # summarise(Model_Index = mean(Value,na.rm=T)
+    #           ) %>%
+    # filter(Model_Index > 0) %>%
     #____________ ESTIMATING FUNDAMENTAL NICHE (TRESHOLD 2)_________ #
-    left_join(SppDist,
-              by = c("TaxonKey","INDEX")) %>% 
-    filter(Model == "SAU_C", # Only keeping cells where SAU catch exists
-           Value > 0) %>% 
-    mutate(Model_Index = Model_Index*100) %>% 
-    select(-Model, -Value, -Latitude,-Longitude) %>% 
+    # left_join(SppDist,
+    #           by = c("TaxonKey","INDEX")) %>% 
+    # filter(Model == "SAU_C", # Only keeping cells where SAU catch exists
+    #        Value > 0) %>%
+    # mutate(Model_Index = Model_Index*100) %>% 
+    # select(-Model, -Value, -Latitude,-Longitude) %>% 
     left_join(EEZ_CellID,
               by = "INDEX") %>% 
     left_join(EEZIDs_List,
@@ -547,7 +551,8 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   Model_Index_D <- Trans_Spp %>% 
     group_by(Name,
              TaxonKey,
-             Model_Index
+             # Model_Index, # Un-comment after producing models x datasets
+             Model # Remove after producing models x datasets
     ) %>% 
     summarise(n_cells_spp = n()) %>% 
     select(-n_cells_spp)
@@ -564,7 +569,10 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
 
   # Step 2. Determines the amount of grids present in each country
   Spp_Grid <- Trans_Spp %>% 
-    group_by(TaxonKey,Model_Index,EEZID) %>% 
+    group_by(TaxonKey,
+             # Model_Index, # Un-comment after producing models x datasets
+             Model, # Remove after producing models x datasets
+             EEZID) %>% 
     summarise(n_spp_eez = length(unique(INDEX))) %>% 
     left_join(Neighbors_EEZ,
               by = "EEZID") %>% 
@@ -576,15 +584,24 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   # Split dataframes to merge latter
   Country_Territory_T <- Spp_Grid %>% 
     ungroup() %>% 
-    select(Model_Index,TaxonKey,Name=Country_Territory,n_spp_eez)
+    select(
+      # Model_Index, # Un-comment after producing models x datasets
+      Model, # Remove after producing models x datasets
+      TaxonKey,Name=Country_Territory,n_spp_eez
+    )
   
   Neighbor_Territory_T <- Spp_Grid %>% 
     ungroup() %>% 
-    select(Model_Index,TaxonKey,n_spp_eez,Name=Neighbor_Territory, Country_Territory)
+    select(
+      # Model_Index,
+      Model, # Remove after producing models x datasets
+      TaxonKey,n_spp_eez,Name=Neighbor_Territory, Country_Territory
+    )
 
   # Merge dataframes to get totals per neighbords
   Area_Index_D <- full_join(Country_Territory_T,
-                           Neighbor_Territory_T, by = c("Model_Index","Name","TaxonKey")) %>% 
+                           Neighbor_Territory_T, by = c(#"Model_Index",
+                             "Name","TaxonKey","Model")) %>% # Remove Model abd undomment Model_Index after producing Models x datasets
     rowwise() %>%
     mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per neighbors
     distinct() %>% # Removes false duplicates from `full_join()`
@@ -592,18 +609,21 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
            n_spp_Country = n_spp_eez.x,
            n_spp_Neighbor = n_spp_eez.y) %>% 
     mutate(Area_Index = n_spp_Country/Spp_Total) %>%  #Estimates the proportion of grids per country
-    select(1:3,6,8)
+    # select(1:3,6,8) # Commented out for all models analysis
+    select(1:4,6,8)
 
   #____________ FINAL INDEX TABLE_________ #
   Indexes <- Model_Index_D %>% 
   rename(Country_Territory = Name) %>% 
   full_join(Area_Index_D,
-            by = c("TaxonKey","Country_Territory","Model_Index")
+            by = c("TaxonKey","Country_Territory",
+                   #"Model_Index"
+                   "Model") # Remove Model abd undomment Model_Index after producing Models x datasets
   ) %>% 
-    filter(!is.na(Area_Index),
-           !is.na(Model_Index)
+    filter(!is.na(Area_Index)#,
+           # !is.na(Model_Index) # Uncomment after producing Models x datasets
            )%>%  # Remove cases where the country does not pass the area_index and viceversa
-    select(TaxonKey,Country_Territory,Neighbor_Territory,everything())
+    select(Model,TaxonKey,Country_Territory,Neighbor_Territory,everything())
 
   ### Save spp dataframe
   
@@ -615,6 +635,24 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
     write.csv(Indexes,
               Save_Path,
               row.names = F)
+    
+  }
+  
+  if(nrow(Indexes) == 0 & Save == "Y"){
+    
+# Reads dataset of Non transboundary species
+    Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
+    
+    # Get current Spp that is not transboundary 
+    Current_Spp <- tibble(Non_trans = Spp)
+    
+    # Combine new spp with others
+    New_Non <- Non_Transboundary_Data %>% 
+      bind_rows(Current_Spp)
+    
+    # Set a name for file and saves data
+    New_Non_Name <- paste(Results_Path,"Non_Transboundary_Data.csv",sep="")
+    write.csv(New_Non, New_Non_Name, row.names = F)
     
   }
   
@@ -728,7 +766,7 @@ Step_One <- gsub(".*_","",list.files(paste(Data_Path,"/Distribution_Data/SAU_Dis
 Species_List <- gsub("\\..*","",Step_One)
 
 # Set Spceies list
-Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep="")) %>% 
+Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep="")) %>%
   filter(TaxonKey %in% Species_List)
 
 # Step to run function for species not computed
@@ -738,9 +776,7 @@ Exploited_Species <- Exploited_Species %>%
   filter(!TaxonKey %in% Computed_Spp)
 
 # For Function
-Exploited_Species_List <- Exploited_Species$TaxonKey
-
-
+Exploited_Species_List <- Exploited_Species$TaxonKey[1:3]
 
 # Load neighbours data from previouse routine
 Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""))
@@ -753,6 +789,10 @@ CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>
 EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
 EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
 colnames(EEZ_CellID) <- c("EEZID","INDEX")
+
+# Creates dummy dataset for Non transboundary species
+write.csv(tibble(Non_trans = "NA"), paste(Results_Path,"Non_Transboundary_Data.csv",sep=""), row.names = F)
+
 
 ####_________________________________________ TESTING PERIOD_________________________________________####
 ## Species Test Data Just to know what's captured in these countries
@@ -801,9 +841,157 @@ system.time(
 # 
 ```
 
-# Details
 
-## First world Anchovies
+# Results
+
+```{r Fun_GetTransResults, eval = F}
+
+GetTransResults=function(Spp){
+  
+  # Set the path for each file
+  Distpath <- paste(Results_Path,Spp,sep="")
+  
+  # Loads all files in a df
+  Load_Data <- bind_rows(lapply(Distpath, FUN=fread))
+  
+  return(Load_Data)
+  
+}
+
+```
+
+```{r Load_Data, eval = F}
+
+# Transboundary data
+Spp <- list.files(Results_Path)
+Results_Data <- GetTransResults(Spp)
+
+# Data needed to remove duplicates
+sau_eez_fes <- read.csv(paste(Data_Path,"Spatial_Data/sau_eez_fes.csv",sep=""))
+
+
+Clean_sau_eez_fes <- sau_eez_fes %>% 
+  gather("Type","FishingRegion",2,4) %>% 
+  left_join(sau_eez_fes,
+            by = ("fishing_entity_id")
+            ) %>% 
+  group_by(FishingRegion,fishing_entity) %>% 
+  summarise(n())
+
+# head(Results_Data)
+# unique(Results_Data$Model_Index)
+length(unique(Results_Data$TaxonKey)) #672 spp
+
+# Clean_Results <- Results_Data
+
+# SAU shapefile
+
+# The path
+path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile/",sep="")
+# #The File
+fnam_world <- "SAUEEZ_July2015.shp"
+# #Load it!
+# 
+World_EEZs <- st_read(dsn = path_world,
+                      layer =file_path_sans_ext(fnam_world))
+# 
+# head(World_EEZs)
+
+
+
+```
+
+
+## Number of transboundary species per country
+
+```{Number_Tran_country, eval =F, echo =F}
+
+# Clean out countries that share with their own borders
+
+Clean_Results <- Indexes %>%   
+  rename(FishingRegion=Country_Territory) %>% 
+  left_join(Clean_sau_eez_fes,
+            by = "FishingRegion") %>% 
+  select(Model,
+         TaxonKey,
+         Country_Territory= FishingRegion,
+         FishingRegion=Neighbor_Territory,
+         Area_Index,
+         CT_fishing_entity= fishing_entity) %>% 
+  left_join(Clean_sau_eez_fes,
+            by = "FishingRegion") %>% 
+  select(#1,2, 
+         Neighbor_Territory = FishingRegion,
+         #Model_Index:CT_fishing_entity,
+         NT_fishing_entity= fishing_entity,
+         everything()
+  ) %>% 
+  mutate(
+    CT_fishing_entity = ifelse(is.na(CT_fishing_entity),paste(Country_Territory),paste(CT_fishing_entity)),
+    NT_fishing_entity = ifelse(is.na(NT_fishing_entity),paste(Neighbor_Territory),paste(NT_fishing_entity)),
+    Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
+  )
+
+# Manually deal with NAs... Ughhhhh
+Results_NA <- Clean_Results %>% 
+  filter(is.na(Same_Nation)) %>% 
+  group_by(Country_Territory,Neighbor_Territory) %>% 
+  summarise(n())
+
+# TI of 10% and MI > 50
+
+TenTwenyfive <- Clean_Results %>% 
+  filter(#Model_Index == 100,
+         Area_Index >= 0.25,
+         Area_Index <= 0.75,
+         Same_Nation == "No"
+         ) %>% 
+  group_by(Name=Country_Territory,Model #,Model_Index
+           ) %>% 
+  summarise(
+    n_trans = length(unique(TaxonKey)),
+    n_countries = length(unique(Neighbor_Territory)),
+    Trans_Rate = n_trans/n_countries
+    ) #%>% 
+  # filter(Model_Index == 100)
+  # head(Results_Data)
+
+
+World_EEZs_simple <- World_EEZs %>%
+  st_transform(crs = 4326) %>% # 4326
+  st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
+  left_join(TenTwenyfive, by ="Name") #%>%
+  # filter(!is.na(n_trans)) #%>%
+  # st_transform(crs = 3832)
+
+# head(World_EEZs_simple)
+# World_EEZs_simple %>% 
+#   filter(Name == "Chile")
+
+pal <- wes_palette("Zissou1", 1000, type = "continuous")
+
+Plot <- ggplot(World_EEZs_simple) +
+  geom_sf(aes(fill = n_trans)) +
+  scale_fill_gradientn(colours = pal,
+                       na.value = "white") +
+  ggtheme_map() +
+  facet_wrap(~Model)
+
+ggsave("R4_100_25.png",
+       plot = Plot,
+       width = 16,
+       height = 8,
+       units = "in",
+       path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
+)
+
+```
+
+# Problem solving
+
+
+
+### First world Anchovies
 
 In a first run the model suggests anchovies "Engraulis ringens" (600004) is transboundary between US-Mex-Can. I'm exploring this since all four models agree...
 
@@ -906,43 +1094,6 @@ Anchoveta_NA <-  Anchoveta_Dist%>%
 
 ```
 
-
-# Results
-
-```{r Fun_GetTransResults, eval = F}
-
-GetTransResults=function(Spp){
-  
-  # Set the path for each file
-  Distpath <- paste(Results_Path,Spp,sep="")
-  
-  # Loads all files in a df
-  Load_Data <- bind_rows(lapply(Distpath, FUN=fread))
-  
-  return(Load_Data)
-  
-}
-
-```
-
-```{r Load_Data, eval = F}
-
-# Transboundary data
-Spp <- list.files(Results_Path)
-Results_Data <- GetTransResults(Spp)
-
-head(Results_Data)
-unique(Results_Data$Model_Index)
-length(unique(Results_Data$TaxonKey)) #672 spp
-
-Clean_Results <- Results_Data
-
-
-```
-
-
-
-### Problem solving
 
 #### Overcounting transboundary stocks
 
@@ -1093,94 +1244,84 @@ Non_duplicate_Data <- Clean_Results %>%
 
 - **Done debugging**
 
-## Number of transboundary species per country
+#### Missing stocks
 
-```{Number_Tran_country, eval =F, echo =F}
+There are places like Peru-Chile or Alaska-Canada that should have trans spp... In Alaska the issue is that Alaska doesn't actually exist as a separate shapefile...
 
-# Clean out countries that share with their own borders
+```{r Missing_stocks, eval =F}
 
-Neighbord_Territory_T <- Results_Data %>% 
-  group_by(eez_name=Neighbor_Territory) %>% 
-  summarise() %>%
+Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep=""))
+
+Clean_sau_eez_fes <- sau_eez_fes %>% 
+  gather("Type","FishingRegion",2,4) %>% 
   left_join(sau_eez_fes,
-            by = "eez_name") %>% 
-  select(Neighbor_Territory= eez_name,
-         NT_fishing_entity=fishing_entity
-         )
-
-Country_Territory_T <- Results_Data %>% 
-  group_by(eez_name=Country_Territory) %>% 
-  summarise() %>%
-  left_join(sau_eez_fes,
-            by = "eez_name")  %>% 
-  select(Country_Territory= eez_name,
-         CT_fishing_entity=fishing_entity)
-
-Clean_Results <- Results_Data %>%   
-  left_join(Neighbord_Territory_T,
-              by ="Neighbor_Territory") %>% 
-  left_join(Country_Territory_T,
-              by ="Country_Territory") %>% 
-  mutate(
-    Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
-  ) %>% 
-  filter(Same_Nation == "No")
+            by = ("fishing_entity_id")
+            ) %>% 
+  group_by(FishingRegion,fishing_entity) %>% 
+  summarise(n())
 
 
+# The Alaska paradox
+# It's a problem of the NAs, fixed.
 
-# TI of 10% and MI > 50
+USA_West <- Results_Data %>% 
+  filter(Country_Territory == "USA (West Coast)") %>% 
+  left_join(Exploited_Species,
+            by = "TaxonKey")
 
-TenTwenyfive <- Clean_Results %>% 
-  filter(Model_Index == 100,
-         Area_Index >= 0.25,
-         Area_Index <= 0.75
-         ) %>% 
-  group_by(Name=Country_Territory,Model_Index) %>% 
-  summarise(
-    n_trans = length(unique(TaxonKey)),
-    n_countries = length(unique(Neighbor_Territory)),
-    Trans_Rate = n_trans/n_countries
-    ) %>% 
-  filter(Model_Index == 100)
-  # head(Results_Data)
+# Northern sea Russia
+Russia_map <- World_EEZs %>% 
+  filter(stringr::str_detect(Name,"Russia")) %>% 
+  st_simplify(preserveTopology = TRUE, dTolerance = 100) 
 
+head(Russia_map)
 
-# SAU shapefile
+ggplot(Russia_map) +
+  geom_sf(aes(fill = Name)) 
+# Shapefiles not matching
+# Russia (Laptev to Chukchi Sea)
+# Russia (Kara Sea)
 
-# The path
-path_world <- paste("~/Documents/UBC/Oceans_Project/Distribution/Data/Spatial/World_EEZ_v9_20161021",sep="")
-# #The File
-fnam_world <- "eez_boundaries.shp"
-# #Load it!
-# 
-World_EEZs <- st_read(dsn = path_world,
-                      layer =file_path_sans_ext(fnam_world))
-# 
-head(World_EEZs)
+Russian_Regions <- c("Russia (Laptev to Chukchi Sea)","Russia (Kara Sea)")
 
+Russia_Results <- Results_Data %>% 
+  filter(stringr::str_detect(Country_Territory,"Russia"))
+  
+unique(Russia_Results$Country_Territory)
+# Missing Laptev to Chukchi sea
 
-World_EEZs_simple <- World_EEZs %>%
-  st_transform(crs = 4326) %>% # 4326
-  st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
-  left_join(TenTwenyfive, by ="Name") #%>%
-  # filter(!is.na(n_trans)) #%>%
-  # st_transform(crs = 3832)
+### What about Vicky's data
+#SAU / Vicky's data
+EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
 
-# head(World_EEZs_simple)
+Russia_EEZlist <- EEZIDs_List %>% 
+  filter(stringr::str_detect(Name,"Russia"))
+  
+unique(Russia_EEZlist$Name)
 
-pal <- wes_palette("Zissou1", 100, type = "continuous")
+### So maybe there are no neighbors?
+Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""))
 
-Plot <- ggplot(World_EEZs_simple) +
-  geom_sf(aes(fill = n_trans)) +
-  scale_fill_gradientn(colours = pal) +
-  ggtheme_map()
+Russia_Neighbor <- Neighbor_List %>% 
+  filter(stringr::str_detect(Name,"Russia"))
+  
+unique(Russia_Neighbor$Country_Territory)
 
-ggsave("R4_100_25.png",
-       plot = Plot,
-       width = 16,
-       height = 8,
-       units = "in",
-       path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
-)
+# OK So Kara Sea has no borders outside Russia, hence white. Now Laptev does have borders but No species... which is weird... Paific Halibut?
+
+# I manually ran the function to see what's going on
+
+# ggplot() +
+#   geom_sf(data = Russia_map, aes(colour = Name)) +
+#   geom_tile(data = subset(SppDist, Value !=0),
+#             aes(
+#     x = Longitude,
+#     y = Latitude,
+#     fill = log10(Value)
+#   ) 
+#   ) +
+#   facet_wrap(~Model)
+
+# The main issue is that there is no catch data there...
 
 ```
