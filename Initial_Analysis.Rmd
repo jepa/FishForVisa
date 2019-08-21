@@ -85,9 +85,10 @@ if(Sys.info()[7] == "jepa88"){
 if(Sys.info()[7] == "carmelia"){
   Data_Path <- "~/GitHub/FishForVisa/Temporal_Data/"
   Path <- paste(Data_Path,sep = "")
-}else{
+}
+if(Sys.info()[7] == "hall1000"){
   Data_Path <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/"
-  Path <- paste(Data_Path,"Results/All_Models/",sep = "")
+  Path <- paste(Data_Path,"Results/",sep = "")
 }
 
 # Path for saving Results
@@ -130,7 +131,7 @@ Alternatively, we could create a "confidence level" based on a ratio, i.e;
 
 ## Data
 
-```{r Speceis_Models, eval = F, echo = T}
+```{r Speceis_List_For_Data, eval = F, echo = T}
 
 # Get the DBEM list of species to extract from other modesl
 #GFDL
@@ -181,6 +182,10 @@ Step_One <- gsub(".*_","",list.files("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/D
 
 # Species List
 Species_List <- gsub("\\..*","",Step_One)
+
+
+# Get All SAU species for the final analysis
+
 
 
 ```
@@ -687,7 +692,7 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
 Mclapply_Hack <- function(...){
     ## Create a cluster
     size.of.list <- length(list(...)[[1]])
-    n_cores <- detectCores()-6
+
     cl <- makeCluster(min(size.of.list, n_cores))
     
   ## Find out the names of the loaded packages 
@@ -768,7 +773,7 @@ Species_List <- gsub("\\..*","",Step_One)
 
 # Set Spceies list
 Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep="")) %>%
-  filter(TaxonKey %in% Species_List)
+  filter(!TaxonKey %in% Species_List)
 
 # Step to run function for species not computed
 Computed_Spp <- as.integer(gsub("\\_.*","",list.files(Results_Path)))
@@ -777,7 +782,7 @@ Exploited_Species <- Exploited_Species %>%
   filter(!TaxonKey %in% Computed_Spp)
 
 # For Function
-Exploited_Species_List <- Exploited_Species$TaxonKey
+Exploited_Species_List <- Exploited_Species$TaxonKey[1:3]
 
 # Load neighbours data from previouse routine
 Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""))
@@ -793,6 +798,9 @@ colnames(EEZ_CellID) <- c("EEZID","INDEX")
 
 # Creates dummy dataset for Non transboundary species
 write.csv(tibble(Non_trans = "NA"), paste(Results_Path,"Non_Transboundary_Data.csv",sep=""), row.names = F)
+
+# NUmber of cores to us 
+# n_cores <- detectCores()
 
 
 ####_________________________________________ TESTING PERIOD_________________________________________####
@@ -827,19 +835,12 @@ write.csv(tibble(Non_trans = "NA"), paste(Results_Path,"Non_Transboundary_Data.c
 system.time(
   Spp_Trans <- bind_rows(
     mclapply(
-      Exploited_Species_List, FUN =EstTransIndex, Model = "All", Neighbors = Neighbor_List,Coord = CoorG
+      Exploited_Species_List, FUN =EstTransIndex, Model = "All", Neighbors = Neighbor_List, Coord = CoorG
     )
   )
 )
     
-   # user  system elapsed (For three spp in Hall1000)
- # 13.430   5.126  35.059 
-### Save Test 
-
-# write.csv(Spp_Trans,
-#           "central_america_trans.csv",
-#           row.names = F)
-# 
+   
 ```
 
 
@@ -848,7 +849,7 @@ system.time(
 ```{r Fun_GetTransResults, eval = F}
 
 GetTransResults=function(Spp){
-  
+
   # Set the path for each file
   Distpath <- paste(Results_Path,Spp,sep="")
   
@@ -856,20 +857,15 @@ GetTransResults=function(Spp){
   Load_Data <- bind_rows(lapply(Distpath, FUN=fread))
   
   return(Load_Data)
-  
+
 }
 
 ```
 
-```{r Load_Data, eval = F}
+```{r Load_Results_Data, eval = F}
 
-# Transboundary data
-Spp <- list.files(Results_Path)
-Results_Data <- GetTransResults(Spp)
-
-# Data needed to remove duplicates
+# Spatial Data needed to remove duplicates
 sau_eez_fes <- read.csv(paste(Data_Path,"Spatial_Data/sau_eez_fes.csv",sep=""))
-
 
 Clean_sau_eez_fes <- sau_eez_fes %>% 
   gather("Type","FishingRegion",2,4) %>% 
@@ -879,11 +875,39 @@ Clean_sau_eez_fes <- sau_eez_fes %>%
   group_by(FishingRegion,fishing_entity) %>% 
   summarise(n())
 
-# head(Results_Data)
-# unique(Results_Data$Model_Index)
-length(unique(Results_Data$TaxonKey)) #672 spp
+# Transboundary Results
+Spp <- list.files(Results_Path)[1:675]
 
-# Clean_Results <- Results_Data
+Results_Trans <- GetTransResults(Spp)
+
+# Clean out countries that share with their own borders
+
+Clean_Results_Trans <- Results_Trans %>%   
+  rename(FishingRegion=Country_Territory) %>% 
+  left_join(Clean_sau_eez_fes,
+            by = "FishingRegion") %>% 
+  select(Model,
+         TaxonKey,
+         Country_Territory= FishingRegion,
+         FishingRegion=Neighbor_Territory,
+         Area_Index,
+         CT_fishing_entity= fishing_entity) %>% 
+  left_join(Clean_sau_eez_fes,
+            by = "FishingRegion") %>% 
+  select(#1,2, 
+    Neighbor_Territory = FishingRegion,
+    #Model_Index:CT_fishing_entity,
+    NT_fishing_entity= fishing_entity,
+    everything()
+  ) %>% 
+  mutate(
+    CT_fishing_entity = ifelse(is.na(CT_fishing_entity),paste(Country_Territory),paste(CT_fishing_entity)),
+    NT_fishing_entity = ifelse(is.na(NT_fishing_entity),paste(Neighbor_Territory),paste(NT_fishing_entity)),
+    Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
+  )
+
+# Load results for non transboundary (discrete) stocks
+Results_Discrete <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
 
 # SAU shapefile
 
@@ -899,47 +923,10 @@ World_EEZs <- st_read(dsn = path_world,
 # head(World_EEZs)
 
 
-
 ```
 
 
-## Number of transboundary species per country
-
-```{Number_Tran_country, eval =F, echo =F}
-
-# Clean out countries that share with their own borders
-
-Clean_Results <- Indexes %>%   
-  rename(FishingRegion=Country_Territory) %>% 
-  left_join(Clean_sau_eez_fes,
-            by = "FishingRegion") %>% 
-  select(Model,
-         TaxonKey,
-         Country_Territory= FishingRegion,
-         FishingRegion=Neighbor_Territory,
-         Area_Index,
-         CT_fishing_entity= fishing_entity) %>% 
-  left_join(Clean_sau_eez_fes,
-            by = "FishingRegion") %>% 
-  select(#1,2, 
-         Neighbor_Territory = FishingRegion,
-         #Model_Index:CT_fishing_entity,
-         NT_fishing_entity= fishing_entity,
-         everything()
-  ) %>% 
-  mutate(
-    CT_fishing_entity = ifelse(is.na(CT_fishing_entity),paste(Country_Territory),paste(CT_fishing_entity)),
-    NT_fishing_entity = ifelse(is.na(NT_fishing_entity),paste(Neighbor_Territory),paste(NT_fishing_entity)),
-    Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
-  )
-
-# Manually deal with NAs... Ughhhhh
-Results_NA <- Clean_Results %>% 
-  filter(is.na(Same_Nation)) %>% 
-  group_by(Country_Territory,Neighbor_Territory) %>% 
-  summarise(n())
-
-# TI of 10% and MI > 50
+```{r Results_Tresholds, eval =F, echo = F}
 
 TenTwenyfive <- Clean_Results %>% 
   filter(#Model_Index == 100,
@@ -956,6 +943,28 @@ TenTwenyfive <- Clean_Results %>%
     ) #%>% 
   # filter(Model_Index == 100)
   # head(Results_Data)
+
+```
+
+
+## Number of transboundary species per country
+
+```{Tran_country, eval =F, echo =F}
+
+# Number of Transboundary Species
+length(unique(Results_Trans$TaxonKey)) #675 spp
+
+
+# Number of Discret EEZ species
+length(unique(Results_Discrete$TaxonKey))
+
+
+```
+
+
+```{Tran_country_Map, eval =F, echo =F}
+
+
 
 
 World_EEZs_simple <- World_EEZs %>%
