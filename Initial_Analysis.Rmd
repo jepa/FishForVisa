@@ -87,7 +87,7 @@ if(Sys.info()[7] == "carmelia"){
   Path <- paste(Data_Path,sep = "")
 }else{
   Data_Path <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/"
-  Path <- paste(Data_Path,"Results/",sep = "")
+  Path <- paste(Data_Path,"Results/All_Models/",sep = "")
 }
 
 # Path for saving Results
@@ -687,7 +687,8 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
 Mclapply_Hack <- function(...){
     ## Create a cluster
     size.of.list <- length(list(...)[[1]])
-    cl <- makeCluster(min(size.of.list, detectCores()))
+    n_cores <- detectCores()-6
+    cl <- makeCluster(min(size.of.list, n_cores))
     
   ## Find out the names of the loaded packages 
     loaded.package.names <- c(
@@ -776,7 +777,7 @@ Exploited_Species <- Exploited_Species %>%
   filter(!TaxonKey %in% Computed_Spp)
 
 # For Function
-Exploited_Species_List <- Exploited_Species$TaxonKey[1:3]
+Exploited_Species_List <- Exploited_Species$TaxonKey
 
 # Load neighbours data from previouse routine
 Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""))
