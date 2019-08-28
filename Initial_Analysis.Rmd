@@ -49,7 +49,9 @@ packages <- c(
   "tools", #Spatial analysis 
   # "png", # For reading plots in chunk codes
   # "grid" # For reading plots in chunk codes
-  "parallel" # for parallelization
+  "parallel", # for parallelization
+  "taxize", # For getting species names
+  "rfishbase" # for species ecosystem affinity
 )
 
 ipak(packages)
@@ -850,8 +852,13 @@ GetTransResults=function(Spp){
 
 ```{r Load_Results_Data, eval = F}
 
+# Species list to get species names
+Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep=""))
+Spp_Clasification <- fread(paste(Data_Path,"Distribution_Data/SppTaxonName.csv",sep=""))
+
+
 # Spatial Data needed to remove duplicates
-sau_eez_fes <- read.csv(paste(Data_Path,"Spatial_Data/sau_eez_fes.csv",sep=""))
+sau_eez_fes <- fread(paste(Data_Path,"Spatial_Data/sau_eez_fes.csv",sep=""))
 
 Clean_sau_eez_fes <- sau_eez_fes %>% 
   gather("Type","FishingRegion",2,4) %>% 
@@ -869,7 +876,7 @@ Results_Trans <- GetTransResults(Spp)
 
 # Clean out countries that share with their own borders
 
-Clean_Results_Trans <- Results_Trans %>%   
+Auto_Remove_Territories <- Results_Trans %>%   
   rename(FishingRegion=Country_Territory) %>% 
   left_join(Clean_sau_eez_fes,
             by = "FishingRegion") %>% 
@@ -892,11 +899,73 @@ Clean_Results_Trans <- Results_Trans %>%
     Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
   )
 
+#### Manual removal of those left... 
+
+# List of territories to eliminate (No other neighobors but mainland)
+Islands_to_Remove <- c(
+  "Brazil (Fernando de Noronha)",
+  "Brazil (St Paul and St. Peter Archipelago)",
+  "Hawaii Main Islands (USA)",
+  "Hawaii Northwest Islands (USA)",
+  "Juan Fernandez Islands (Chile)",
+  "Kermadec Isl. (New Zealand)"
+)
+
+# Complete list of territories to remove from dataset (Including islands)
+
+Territories_to_Remove <- Results_Trans %>% 
+  filter(
+    Country_Territory %in% Islands_to_Remove |
+      Neighbor_Territory %in% Islands_to_Remove |
+      Country_Territory == "Balearic Island (Spain)" & Neighbor_Territory == "Spain (Mediterranean and Gulf of Cadiz)" |
+      Country_Territory == "British Virgin Isl. (UK)" & Neighbor_Territory == "Anguilla" |
+      Neighbor_Territory == "British Virgin Isl. (UK)" & Country_Territory == "Anguilla" |
+      Country_Territory == "Corsica (France)" & Neighbor_Territory == "France (Mediterranean)" |
+      Neighbor_Territory == "Corsica (France)" & Country_Territory == "France (Mediterranean)" |
+      Country_Territory == "Crete (Greece)" & Neighbor_Territory == "Grece" |
+      Neighbor_Territory == "Crete (Greece)" & Country_Territory == "Grece" |
+      Country_Territory == "Cyprus (North)" & Neighbor_Territory == "Cyprus (South)" |
+      Neighbor_Territory == "Cyprus (North)" & Country_Territory == "Cyprus (South)" |
+      Country_Territory == "Channel Isl. (UK)" & Neighbor_Territory == "United Kingdom" |
+      Neighbor_Territory == "Channel Isl. (UK)" & Country_Territory == "United Kingdom" |
+      Country_Territory == "Glorieuse Islands (France)" & Neighbor_Territory == "Mayotte (France)" |
+      Neighbor_Territory == "Glorieuse Islands (France)" & Country_Territory == "Mayotte (France)" |
+      Country_Territory == "Guam (USA)" & Neighbor_Territory == "Northern Marianas (USA)" |
+      Neighbor_Territory == "Guam (USA)" & Country_Territory == "Northern Marianas (USA)" |
+      Country_Territory == "Italy" & Neighbor_Territory == "Sardinia (Italy)" |
+      Neighbor_Territory == "Italy" & Country_Territory == "Sardinia (Italy)" |
+      Country_Territory == "Italy" & Neighbor_Territory == "Sicily (Italy)" |
+      Neighbor_Territory == "Italy" & Country_Territory == "Sicily (Italy)" |
+      Country_Territory == "Japan (Daito Islands)" & Neighbor_Territory == "Japan (main islands)"|
+      Neighbor_Territory == "Japan (Daito Islands)" & Country_Territory == "Japan (main islands)"|
+      Country_Territory == "Japan (Daito Islands)" & Neighbor_Territory == "Japan (Ogasawara Islands)"|
+      Neighbor_Territory == "Japan (Daito Islands)" & Country_Territory == "Japan (Ogasawara Islands)"|
+      Country_Territory == "Norway" & Neighbor_Territory == "Svalbard Isl. (Norway)" |
+      Neighbor_Territory == "Norway" & Country_Territory == "Svalbard Isl. (Norway)" |
+      Country_Territory == "Sicily (Italy)" & Neighbor_Territory == "Sardinia (Italy)" |
+      Neighbor_Territory == "Sicily (Italy)" & Country_Territory == "Sardinia (Italy)" |
+      Country_Territory == "South Africa (Atlantic Coast)" & Neighbor_Territory == "South Africa (Indian Ocean Coast)" |
+      Neighbor_Territory == "South Africa (Atlantic Coast)" & Country_Territory == "South Africa (Indian Ocean Coast)" |
+      Country_Territory == "USA (Alaska, Arctic)" & Neighbor_Territory == "USA (Alaska, Subarctic)" |
+      Neighbor_Territory == "USA (Alaska, Arctic)" & Country_Territory == "USA (Alaska, Subarctic)"
+  ) %>%
+  group_by(Country_Territory,Neighbor_Territory) %>% 
+  summarise(n())
+
+# Cleaned results 
+Clean_Results_Trans <- Auto_Remove_Territories %>% 
+  anti_join(Territories_to_Remove,
+            by = c("Country_Territory","Neighbor_Territory")
+  ) %>% 
+  filter(Same_Nation == "No")
+
+
 # For Carmelia
-#Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep=""))
+# Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep=""))
 
 # Load results for non transboundary (discrete) stocks
-Results_Discrete <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
+# Results_Discrete <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
+
 
 # SAU shapefile
 
@@ -917,43 +986,61 @@ World_EEZs <- st_read(dsn = path_world,
 
 ```{r Results_Tresholds, eval =F, echo = F}
 
-TenTwenyfive <- Clean_Results %>% 
-  filter(#Model_Index == 100,
-         Area_Index >= 0.25,
-         Area_Index <= 0.75,
+#### Determine transboundary stocks and countries based on selected trsholds ####
+
+#### Select Tresholds ###
+
+# Area Index
+Min_AI <- 0.25 # Min area index
+Max_AI <- 1-Min_AI # Max Area Index
+
+# Model Index
+MI <- 100 # Model Index
+
+####_____End Select Tresholds_______ ###
+
+
+#### Determine transboundary and non-transboundary species and nations
+
+TenTwenyfive <- Clean_Results_Trans %>% 
+  filter(
+         Area_Index >= Min_AI,
+         Area_Index <= Max_AI,
+         Model_Index == MI,
          Same_Nation == "No"
          ) %>% 
-  group_by(Name=Country_Territory,Model #,Model_Index
-           ) %>% 
+  group_by(Name=Country_Territory) %>% 
   summarise(
     n_trans = length(unique(TaxonKey)),
     n_countries = length(unique(Neighbor_Territory)),
     Trans_Rate = n_trans/n_countries
-    ) #%>% 
+    )
   # filter(Model_Index == 100)
   # head(Results_Data)
 
+### Non-transboundary
+
+Non_trans_Area_TenTwenyfive <- Clean_Results_Trans %>% 
+  filter(
+         Area_Index < Min_AI |
+         Area_Index > Max_AI,
+         Model_Index == MI,
+         Same_Nation == "No"
+         ) %>% 
+  group_by(Name=Country_Territory) %>% 
+  summarise(
+    n_no_trans = length(unique(TaxonKey)),
+    n_countries = length(unique(Neighbor_Territory))
+  )
+
+
 ```
 
 
-## Number of transboundary species per country
-
-```{Tran_country, eval =F, echo =F}
-
-# Number of Transboundary Species
-length(unique(Results_Trans$TaxonKey)) #675 spp
-
-
-# Number of Discret EEZ species
-length(unique(Results_Discrete$TaxonKey))
-
-
-```
+## Analysis per Country
 
 
 ```{Tran_country_Map, eval =F, echo =F}
-
-
 
 
 World_EEZs_simple <- World_EEZs %>%
@@ -962,10 +1049,6 @@ World_EEZs_simple <- World_EEZs %>%
   left_join(TenTwenyfive, by ="Name") #%>%
   # filter(!is.na(n_trans)) #%>%
   # st_transform(crs = 3832)
-
-# head(World_EEZs_simple)
-# World_EEZs_simple %>% 
-#   filter(Name == "Chile")
 
 pal <- wes_palette("Zissou1", 1000, type = "continuous")
 
@@ -1042,6 +1125,92 @@ circos.track(track.index = 1, panel.fun = function(x, y) {
 
 
 ```
+
+## Analysis per Species
+
+```{Tran_country, eval =F, echo =F}
+
+# Number of Transboundary Species
+length(unique(Clean_Results_Trans$TaxonKey)) #664 spp
+
+
+# Number of Discret EEZ species
+
+# Ge those stocks that are not trans due to Area_Index
+length(unique(Results_Discrete$TaxonKey))
+
+
+```
+
+
+```{n_species_country, eval =F, echo =F}
+
+# Number of countries shared by each Species
+Species_Trans <- Clean_Results_Trans %>% 
+  filter(
+         Area_Index < Min_AI |
+         Area_Index > Max_AI,
+         Model_Index == MI,
+         Same_Nation == "No"
+         ) %>% 
+  group_by(TaxonKey) %>% 
+  summarise(
+    n_countries = length(unique(Country_Territory))
+  ) %>% 
+  left_join(Exploited_Species) %>%
+  left_join(Spp_Clasification)
+
+hist(Species_Trans$n_countries)
+
+# use taxize to get species family name
+
+Species_family_list <- Species_Trans %>% 
+  mutate(scientific_name = paste(Genus,Species)) %>% 
+  pull(scientific_name) %>% 
+  tax_name(Species_list, get = "family", db = 'itis')
+
+# Use rfishbase to get species environment
+
+Species_list <- Species_Trans %>% 
+  mutate(scientific_name = paste(Genus,Species)) %>% 
+  pull(scientific_name)
+
+Species_environ_list <- rbind(species(Species_list, 
+                                      fields = species_fields$habitat[4])
+                              ) %>% 
+  mutate(scientific_name = Species_list)
+
+```
+
+```{n_species_barplot, eval =F, echo =F}
+
+Species_Trans %>% 
+  group_by(Genus,DemPel) %>% 
+  summarise(Countries_Genus = sum(n_countries,na.rm=T)) %>% 
+  mutate(Bins = cut(Countries_Genus, breaks = 5)) %>% 
+  filter(Countries_Genus < 200,
+         !is.na(DemPel)) %>%
+  ggplot(.,
+       aes(
+         x = reorder(Genus,Countries_Genus),
+         y = Countries_Genus,
+         fill = Countries_Genus,
+         colour = Countries_Genus
+       )
+       ) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme(axis.text.y = element_text(size = 5,
+                               angle = 0,
+                               face = "italic")
+        ) +
+  facet_wrap(~DemPel,
+             scales = "free")
+
+```
+
+
+
 
 
 
