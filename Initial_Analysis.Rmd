@@ -30,12 +30,13 @@ packages <- c(
   "ggplot2", #Nice grpahs and spatial analysis
   "wesanderson",
   "circlize", # For circular plot
+  "EBImage", #for reading images to the circular plot
   # "cowplot",
   # "rgdal",
   # "RColorBrewer",
   # "knitr",
   # "kableExtra",
-  # "ggrepel",
+  "ggrepel", # for nice plot labels
   # "gridExtra",
   # "ggmap",
   # "rgeos",
@@ -77,31 +78,64 @@ ggtheme_map <- function(base_size = 9, Region = "NA") {
   )
 }
 
+ggtheme_plot <- function() {
+  theme(
+    plot.title = element_text(size = rel(1), hjust = 0, face = "bold"),
+    panel.background = element_blank(),
+    strip.background = element_blank(),
+    # strip.text       = element_text(size = base_size, face = "italic"),
+    panel.border     = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text.x = element_text(size = 12,
+                               angle = 0,
+                               face = "plain"),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    legend.key = element_rect(colour = NA, fill = NA),
+    legend.position  = "right",
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12),
+    strip.text.x = element_text(size = 12, colour = "black"),
+    strip.text = element_text(size = 12)
+  )
+}
+
 #### Set paths for computer ####
 
 
 # Set paths depending on machine Beast (jepa88), "carmelia" or Hall1000
 if(Sys.info()[7] == "jepa88"){
   Data_Path <- "Z:/JULIANO_NEYMAR/FishForVisa/"
-  Path <- paste(Data_Path,"Results/",sep = "")
   }
 if(Sys.info()[7] == "carmelia"){
   Data_Path <- "~/GitHub/FishForVisa/Temporal_Data/"
-  Path <- paste(Data_Path,sep = "")
 }
 if(Sys.info()[7] == "hall1000"){
   Data_Path <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/"
-  Path <- paste(Data_Path,"Results/",sep = "")
 }
 
-# Path for saving Results
-
+# Setting up paths 
 # If path exists overrite it, otherwise creats a new path for that year
-if(file.exists(Path) == TRUE){
-  Results_Path = Path
+
+# Path for saving Results
+Results_Path = paste(Data_Path,"Results/",sep = "")
+if(file.exists(Results_Path) == TRUE){
+  Results_Path = paste(Data_Path,"Results/",sep = "")
 }else{
-  dir.create(Path)
-  Results_Path = Path
+  dir.create(paste(Data_Path,"Results/",sep = ""))
+  Results_Path = paste(Data_Path,"Results/",sep = "")
+}
+
+# Path for saving Figures
+Figures_Path = paste(Data_Path,"Figures/",sep = "")
+
+if(file.exists(Figures_Path) == TRUE){
+  Figures_Path = paste(Data_Path,"Figures/",sep = "")
+}else{
+  dir.create(paste(Data_Path,"Figures/",sep = ""))
+  Figures_Path = paste(Data_Path,"Figures/",sep = "")
 }
 
 ### Message for my brain
@@ -868,7 +902,15 @@ Clean_sau_eez_fes <- sau_eez_fes %>%
   group_by(FishingRegion,fishing_entity) %>% 
   summarise(n())
 
-# Transboundary Results
+# Transboundary Results ####
+
+
+# For Carmelia
+Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep=""))
+
+
+# For Hall and The Beast
+
 Spp <- list.files(Results_Path)[1:672]
 
 
@@ -960,9 +1002,6 @@ Clean_Results_Trans <- Auto_Remove_Territories %>%
   filter(Same_Nation == "No")
 
 
-# For Carmelia
-# Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep=""))
-
 # Load results for non transboundary (discrete) stocks
 # Results_Discrete <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
 
@@ -1039,7 +1078,6 @@ Non_trans_Area_TenTwenyfive <- Clean_Results_Trans %>%
 
 ## Analysis per Country
 
-
 ```{Tran_country_Map, eval =F, echo =F}
 
 
@@ -1069,59 +1107,89 @@ ggsave("R4_100_25.png",
 
 ```
 
+```{r Top_country_Circle_Diagram, eval =F, echo = F}
 
-```{r Circle_Diagram, eval =F, echo = F}
+# Top 10 species
 
-Test_Data <- Clean_Results_Trans %>% 
-  rename(FishingRegion=Country_Territory) %>% 
-  left_join(Clean_sau_eez_fes,
-            by = "FishingRegion") %>% 
-  select(TaxonKey,
-         Country_Territory= FishingRegion,
-         FishingRegion=Neighbor_Territory,
-         Model_Index,
-         Area_Index,
-         CT_fishing_entity= fishing_entity) %>% 
-  left_join(Clean_sau_eez_fes,
-            by = "FishingRegion") %>% 
-  select(1,2, 
-    Neighbor_Territory = FishingRegion,
-    Model_Index:CT_fishing_entity,
-    NT_fishing_entity = fishing_entity,
-    everything()
-  ) %>% 
-  mutate(
-    # CT_fishing_entity = ifelse(is.na(CT_fishing_entity),paste(Country_Territory),paste(CT_fishing_entity)),
-    # NT_fishing_entity = ifelse(is.na(NT_fishing_entity),paste(Neighbor_Territory),paste(NT_fishing_entity)),
-    Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
-  ) %>% 
-  filter(Model_Index == 100,
-         Area_Index >= 0.25,
-         Area_Index <= 0.75,
+# Number of countries shared by each Species
+Top_10_Countries <- Clean_Results_Trans %>% 
+  filter(
+         Area_Index < Min_AI |
+         Area_Index > Max_AI,
+         Model_Index == MI,
          Same_Nation == "No"
          ) %>% 
-  group_by(from=CT_fishing_entity,
-           to = NT_fishing_entity,
-           Model_Index
-           ) %>% 
-  summarise(value = length(unique(TaxonKey))) %>% 
-  # filter(from %in% c("Chile","Brazil","Argentina","Peru","Equator")) %>%
-  select(from,to,value)
+  group_by(Country_Territory) %>% 
+  summarise(
+    n_countries = length(unique(TaxonKey))
+  ) %>% 
+  top_n(10,n_countries)
 
+# Countries that share the top 10
+Top_Ten_Countries <- Clean_Results_Trans %>% 
+  filter(
+         Area_Index < Min_AI |
+         Area_Index > Max_AI,
+         Model_Index == MI,
+         Same_Nation == "No",
+         Country_Territory %in% Top_10_Countries$Country_Territory
+         ) %>% 
+  group_by(from=CT_fishing_entity,
+           to=NT_fishing_entity
+           ) %>% 
+  summarise(value=n()
+            ) %>% 
+  ungroup() %>% 
+  mutate(from = paste("F", from),
+         to = paste("T", to)
+         )
 
 ####________________###
 # Circulize package ####
+# https://jokergoo.github.io/circlize_book/book/
 ####________________###
   
-col_mat = rand_color(length(Test_Data), transparency = 0.5)
-col_mat[Test_Data < 10] = "#00000000"
 
-chordDiagram(Test_Data, annotationTrack = "grid")
+# To set links collor 
+Bins <- as.numeric(cut(Top_Ten_Countries$value,breaks = 5))
 
+# Basic plot
+circos.clear()
+chordDiagram(Top_Ten_Countries, 
+             annotationTrack = c("grid", "axis"), # keep grid and axis but not labels
+             annotationTrackHeight = c(0.001, 0.05), # set links close to the axis
+             directional = 1, # direction of arrows
+             direction.type = c("diffHeight", "arrows"), # use arrows
+             grid.col = "white",
+             col = ifelse(Bins == 1,"#046C9A", # deep blue
+                          ifelse(Bins == 2,"#78B7C5", #light blue
+                                 ifelse(Bins == 3,"#EBCC2A", #yellow
+                                        ifelse(Bins == 4, "#E1AF00", #cream
+                                               "#F21A00")))), #red
+             link.arr.col = wes_palette("Zissou1"),
+             link.arr.type = "big.arrow",# make links big arrows
+             diffHeight = uh(1, "mm"), # brings the arrow to the bottom of the source
+             # annotationTrack = "grid", # no labels
+             scale = FALSE, # fraction of total instead of absolute value
+             preAllocateTracks = list(track.height = max(strwidth(unlist(dimnames(Top_Ten_Countries))))) # I have no idea but helps with the labels
+    ) 
+#  Rest of eddits
 circos.track(track.index = 1, panel.fun = function(x, y) {
-    circos.text(CELL_META$xcenter, CELL_META$ylim[1], CELL_META$sector.index, 
-        facing = "clockwise", niceFacing = TRUE, adj = c(0, 0.5))
-}, bg.border = NA) # here set bg.border to NA is important
+    xlim = get.cell.meta.data("xlim")
+    xplot = get.cell.meta.data("xplot")
+    ylim = get.cell.meta.data("ylim")
+    sector.name = get.cell.meta.data("sector.index")
+    
+    circos.text(mean(xlim),
+                ylim[1], 
+                sector.name, 
+                facing = "clockwise",
+                niceFacing = TRUE,
+                adj = c(-0.2, 0.5),
+                col = "black")
+    
+}, bg.border = NA)
+
 
 
 ```
@@ -1160,14 +1228,7 @@ Species_Trans <- Clean_Results_Trans %>%
   left_join(Exploited_Species) %>%
   left_join(Spp_Clasification)
 
-hist(Species_Trans$n_countries)
-
-# use taxize to get species family name
-
-Species_family_list <- Species_Trans %>% 
-  mutate(scientific_name = paste(Genus,Species)) %>% 
-  pull(scientific_name) %>% 
-  tax_name(Species_list, get = "family", db = 'itis')
+# hist(Species_Trans$n_countries)
 
 # Use rfishbase to get species environment
 
@@ -1177,40 +1238,233 @@ Species_list <- Species_Trans %>%
 
 Species_environ_list <- rbind(species(Species_list, 
                                       fields = species_fields$habitat[4])
-                              ) %>% 
+) %>% 
   mutate(scientific_name = Species_list)
 
 ```
 
-```{n_species_barplot, eval =F, echo =F}
+```{habitat_barplot, eval =F, echo =F}
 
-Species_Trans %>% 
-  group_by(Genus,DemPel) %>% 
-  summarise(Countries_Genus = sum(n_countries,na.rm=T)) %>% 
-  mutate(Bins = cut(Countries_Genus, breaks = 5)) %>% 
-  filter(Countries_Genus < 200,
-         !is.na(DemPel)) %>%
-  ggplot(.,
+Species_data <- Species_Trans %>% 
+  mutate(scientific_name = paste(Genus,Species)) %>%
+  left_join(Species_environ_list) %>% 
+  mutate(DemersPelag = replace_na(DemersPelag, "Other")) %>% 
+  mutate(Distance = ifelse(DemersPelag == "reef-associated", 1,
+                           ifelse(DemersPelag =="pelagic-neritic",2,
+                                  ifelse(DemersPelag == "demersal",3,
+                                         ifelse(DemersPelag == "pelagic-oceanic",4,
+                                                ifelse(DemersPelag =="benthopelagic",5,
+                                                       ifelse(DemersPelag =="bathypelagic",6,
+                                                              ifelse(DemersPelag =="bathydemersal",7,
+                                                                     8)))))))
+  ) %>% 
+  group_by(DemersPelag,Distance) %>% 
+  summarise(Countries_Genus = sum(n_countries,na.rm=T),
+            Mean_Countries_Genus = mean(n_countries,na.rm=T),
+            sd_Countries_Genus = sd(n_countries,na.rm=T),
+            N_spp =length(unique(TaxonName))
+  )
+
+ggplot(Species_data,
        aes(
-         x = reorder(Genus,Countries_Genus),
-         y = Countries_Genus,
-         fill = Countries_Genus,
-         colour = Countries_Genus
+         x = reorder(DemersPelag,desc(Distance)),
+         y = Mean_Countries_Genus,
+         fill = Countries_Genus#,
+         # colour = Countries_Genus
        )
-       ) +
+) +
   geom_bar(stat = "identity") +
+  # geom_errorbar(data = Species_data,
+  #               aes(
+  #                 x = reorder(DemersPelag,desc(Distance)),
+  #                 ymin=Mean_Countries_Genus-sd_Countries_Genus, # mean +- 2*sd
+  #                 ymax=Mean_Countries_Genus+sd_Countries_Genus
+  #               ),
+  #               colour = "black",
+  #               width=.2,
+  #               linetype = 2,
+  #               size = 0.6,
+  #               alpha = 0.5
+  # ) +
+  geom_text(data = Species_data, 
+            aes(
+              x = reorder(DemersPelag,desc(Distance)),
+              y = 2,
+              label = paste(as.character(N_spp), "species"),
+            ),
+            colour = "black"
+  ) +
   coord_flip() +
-  theme(axis.text.y = element_text(size = 5,
-                               angle = 0,
-                               face = "italic")
-        ) +
-  facet_wrap(~DemPel,
-             scales = "free")
+  scale_fill_gradientn("Total number\nof countries",
+                       colours = wes_palette("Zissou1"),
+                       limits = c(0,1500),
+                       breaks = seq(0,1500,250)
+  ) +
+  scale_colour_gradientn("Total number\nof countries",
+                         colours = wes_palette("Zissou1"),
+                         limits = c(0,1500),
+                         breaks = seq(0,1500,250)
+  ) +
+  scale_y_continuous(breaks=seq(0, 40, 5), 
+                     limits=c(0, 40)
+                     )+
+  labs(
+    x = "Habitat type",
+    y = "Mean number of countries per habitat"
+  ) +
+  ggtheme_plot()
 
 ```
 
+```{r Top_spp_Circle_Diagram, eval =F, echo = F}
+
+# Top 5 shared species per marine environment (number of countries sharing the species)
+Top_Species <- Species_Trans %>% 
+  mutate(scientific_name = paste(Genus,Species)) %>%
+  left_join(Species_environ_list) %>% 
+  mutate(DemersPelag = replace_na(DemersPelag, "Other")) %>% 
+  # group_by(TaxonKey,TaxonName,CommonName,DemersPelag) %>% 
+  # summarise(Sum_Countries =sum(n_countries,na.rm=T)) %>% 
+  group_by(DemersPelag) %>% 
+  top_n(5,n_countries)
+
+# Countries that share the top 10
+Top_Spp_Countries <- Clean_Results_Trans %>% 
+  filter(
+    Area_Index < Min_AI |
+      Area_Index > Max_AI,
+    Model_Index == MI,
+    Same_Nation == "No",
+    TaxonKey %in% Top_Species$TaxonKey
+  ) %>% 
+  left_join(Species_Trans) %>% 
+  rename(scientific_name =TaxonName) %>%
+  left_join(Species_environ_list) %>% 
+  mutate(from = paste(Genus,"\n",Species,sep=""),
+         DemersPelag = replace_na(DemersPelag, "Other")) %>%
+  group_by(
+    # from,
+    from = scientific_name,
+           to=CT_fishing_entity,
+           DemersPelag
+  ) %>% 
+  summarise(value=n()
+  ) #%>%
+  # filter(DemersPelag == "demersal") %>%
+  # select(-DemersPelag)
 
 
+####________________###
+# Circulize package ####
+# https://jokergoo.github.io/circlize_book/book/
+####________________###
+  
+# To set links color 
+Bins <- as.numeric(cut(Top_Spp_Countries$value,breaks = 5)) # By size of sharing
+
+# To get country's flags... https://flagpedia.net/download
+flags <- c(paste("Temporal_Data/flags-mini/",list.files("Temporal_Data/flags-mini/"),sep=""))
+
+# List of Ecosystems
+Classification <- Top_Species %>% group_by(DemersPelag) %>% summarise(n()) %>%  pull(DemersPelag)
+
+####________________ PLOT PER ECOSYSTEM _____________________ ###
+
+for(s in 1:2){ # sclae loop
+  for(i in 1:length(Classification)) {
+    # for(i in 1:2) { # for testing
+    
+    # Set scales to plott both absolut and proportional values
+    if(s == 1){
+      Scales <- "TRUE"
+    }else{
+      Scales <- "FALSE"
+    }
+    
+    # Saving the plot
+    Plot_name <- paste(Figures_Path,Classification[i],Scales,".tiff",sep="")
+    tiff(Plot_name, width = 5, height = 5, units = 'in', res = 500)
+    
+    # Subsetting the data for each plot
+    DemersPelag_i <- Classification[i]
+    
+    Data <- Top_Ten_Spp_Countries %>% 
+      filter(DemersPelag %in% DemersPelag_i) %>% 
+      select(-3)
+    
+    # Use to set links' colors to each species
+    Speceis_cols <- Data %>% group_by(from) %>% summarise(n()) %>% pull(from)
+    
+    # The base plot
+    circos.clear()
+    chordDiagram(Data, 
+                 annotationTrack = c("grid", "axis"), # keep grid and axis but not labels
+                 annotationTrackHeight = c(0.001, 0.1), # set links close to the axis
+                 directional = 1, # direction of arrows
+                 direction.type = c("diffHeight", "arrows"), # use arrows
+                 grid.col = "grey",
+                 # if col == Bins then colors will change depending of value
+                 # col = ifelse(Bins == 1,"#046C9A", # deep blue
+                 #              ifelse(Bins == 2,"#78B7C5", #light blue
+                 #                     ifelse(Bins == 3,"#EBCC2A", #yellow
+                 #                            ifelse(Bins == 4, "#E1AF00", #cream
+                 #                                   "#F21A00")))), #red
+                 # if col == Species_cols then colors will change depending of species
+                 col = ifelse(Data$from == Speceis_cols[1],"#FF0000", # deep blue
+                              ifelse(Data$from == Speceis_cols[2],"#00A08A", #light blue
+                                     ifelse(Data$from == Speceis_cols[3],"#F2AD00", #yellow
+                                            ifelse(Data$from == Speceis_cols[4], "#F98400", #cream
+                                                   "#5BBCD6")))), #red
+                 # link.arr.col = wes_palette("Zissou1"), 
+                 link.arr.type = "big.arrow",# make links big arrows
+                 diffHeight = uh(-0.5, "mm"), # brings the arrow to the bottom of the source
+                 scale = Scales, # fraction of each species to total share of each country instead of absolute value
+                 preAllocateTracks = list(track.height = max(strwidth(unlist(dimnames(Data))))) # I have no idea but helps with the labels
+    )
+    
+    #  Function to inlcude other layers
+    circos.track(track.index = 1, panel.fun = function(x, y) {
+      xlim = get.cell.meta.data("xlim")
+      xplot = get.cell.meta.data("xplot")
+      ylim = get.cell.meta.data("ylim")
+      sector.name = get.cell.meta.data("sector.index")
+      
+      # Add labels
+      circos.text(mean(xlim),
+                  ylim[1],
+                  sector.name,
+                  facing = "clockwise",
+                  niceFacing = TRUE,
+                  adj = c(-0.2, 0.5),
+                  col = "black",
+                  cex = 0.6) # size of labels
+      
+      # Add country's flags instead of names (still need to link names to falgs)
+      
+      # library(EBImage)
+      # pos = circlize:::polar2Cartesian(circlize(CELL_META$xcenter, CELL_META$ycenter))
+      # image = EBImage::readImage(flags[CELL_META$sector.numeric.index])
+      # 
+      # rasterImage(image,
+      #             xleft = pos[1, 1] - 0.006, 
+      #             ybottom = pos[1, 2] - 0.005,
+      #             xright = pos[1, 1] + 0.05,
+      #             ytop = pos[1, 2]+ 0.04
+      #             )
+      
+      # END FLAGS TRYOUT
+      
+      # Set plot Title
+      Title <- paste("Top",Classification[i], "Species",sep =" ")
+      title(Title)
+      
+    }, bg.border = NA) #end of circos.track
+    
+    dev.off()
+  } # close for loop
+} #close scale loop
+
+```
 
 
 
