@@ -236,7 +236,7 @@ This function determines what EEZs are neighbors and returns a data.frame of it
 ```{r funEstNeighbors, eval = F, echo=T}
 # Determine which countries are neighbors
 
-EstNeighbors <- function(Shapefile){
+EstNeighbors <- function(Shapefile, Partial = "NA"){
   
   # Get sparse matrix
   int = suppressMessages(st_intersects(Shapefile))
@@ -264,6 +264,11 @@ EstNeighbors <- function(Shapefile){
   # Remove duplicates... eg of course an object intersects with itself...
   Result_table = Result_table[Result_table$Name != Result_table$Neighbor_Territory,]
   
+  if(Partial == T){
+    # If only partial analysis just returns neighbor list
+    return(Result_table)
+    
+  }else{
   # Merge them with SAU data
   suppressWarnings(
     # warning for characters in name, no problem
@@ -280,14 +285,21 @@ EstNeighbors <- function(Shapefile){
   
   return(DBEM_Neighbors_Data)
   
-}
+  } # end ifelse
+} # end function
 
+
+# subset <- World_EEZs %>% filter(Name %in% c("Chile","Peru"))
+# EstNeighbors(subset)
+# EstNeighbors(subset,T)
 
 ```
 
-## Sub Routine
+### Sub Routine
 
-```{r Neighbords_Control_Pannel, eval = F, echo = F}
+#### EEZ
+
+```{r EEZ_Neighbords_Control_Pannel, eval = F, echo = F}
 
 #### Load Data Needed ####
 
@@ -312,25 +324,10 @@ fnam_world <- "SAUEEZ_July2015.shp"
 World_EEZs <- st_read(dsn = path_world,
                       layer =file_path_sans_ext(fnam_world))
 
-subset <- World_EEZs %>% filter(Name %in% c("Chile","Peru","Brazil"))
-#### Grid cell information ####
-
-# List of DBEM INDEX within the EEZ 
-#Data provided by Vicki Lam
-
-EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
-EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
-
-colnames(EEZ_CellID) <- c("EEZID","INDEX")
-
-# DBEM Coordinate system
-Coor <- fread(paste(Data_Path,"Spatial_Data/Lon_Lat_DBEM.txt",sep=""),header = FALSE)
-colnames(Coor) <- c("INDEX","Longitude","Latitude")
-
 
 # Run Function (Ran and saved May 27 2019 at 6pm)
  system.time(
-  Neighbor_List <- EstNeighbors(World_EEZs)
+  Neighbor_List <- EstNeighbors(World_EEZs, Partial = T)
  )
 # 8203.05    0.25 8204.51 (around 2 hours 30 min)
 
@@ -356,7 +353,62 @@ write.csv(Neighbor_List,
 
 ```
 
+#### RFMOs
 
+```{r RFMO_Neighbords_Control_Pannel, eval = F, echo = F}
+
+#### Load Data Needed ####
+
+# Spatial analysis for Countries boundaries from marine regions ####
+
+###_______________________________Read Me_____________________________________________#
+#### Data License and references ###
+# Marine Regions’ data is licensed under CC-By-NC-SA (https://creativecommons.org/licenses/by-nc-sa/4.0/).
+# Flanders Marine Institute (2018). Maritime Boundaries Geodatabase: Maritime Boundaries and Exclusive Economic Zones (200NM), version 10. Available online at http://www.marineregions.org/. https://doi.org/10.14284/312
+
+#### Using the SAU shapefile that contains EEZ per ocean (E.G. Mexico Pacific and Mexico Atlantic)
+###________________________________________________________________________________#
+
+# SAU shapefile
+
+# The path
+path_world <- paste(Data_Path,"Spatial_Data/SAU_RFMO/",sep="")
+# #The File
+fnam_world <- "SAU_RFMO_Sept_2015.shx"
+# #Load it!
+# 
+RFMOs_sf <- st_read(dsn = path_world,
+                      layer =file_path_sans_ext(fnam_world)) %>% 
+  rename(Name = RFMO_nm_s)
+
+
+# Run Function (Ran and saved May 27 2019 at 6pm)
+ system.time(
+  RFMO_Neighbor_List <- EstNeighbors(RFMOs_sf, Partial = T)
+ )
+# 8203.05    0.25 8204.51 (around 2 hours 30 min)
+
+write.csv(RFMO_Neighbor_List,
+          paste(Data_Path,"Spatial_Data/RFMO_Neighbor_List.csv", sep =""),
+          row.names = F)
+
+
+
+
+####_________________________________________ TESTING PERIOD_________________________________________####
+# I'm substetting central america to do the whole analysis (smaller EEZs = faster computation) once I have figure out things I'll run for all
+
+### Data
+# For now using only the subdata
+
+## Spatial Test Data
+# SAU_Regions <- as.data.frame(unique(World_EEZs$Name))
+
+# Test_Countries <-c("Guatemala (Caribbean)","Guatemala (Pacific)","Belize","Honduras (Pacific)","El Salvador","Costa Rica (Pacific)","Costa Rica (Caribbean)", "Panama (Caribbean)", "Panama (Pacific)")
+
+# Test <- World_EEZs[World_EEZs@data$Name %in% Test_Countries, ]
+
+```
 ### Function `GetSppDist`
 
 This function Read in species distribution from the observation data, ESM models and SAU data, still missing DBEM
@@ -2005,7 +2057,8 @@ for(v in 1:length(Mod)){
 
 ```
 
-### RFMO analysis
+
+
 
 # Old code
 ```{r OLD_funEstNeighbors, eval = F, echo=T}
