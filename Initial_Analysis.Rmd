@@ -1974,6 +1974,7 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
 
 ## Extra Analysis; Results
 
+### Maps for each model/dataset
 ```{Tran_country_Map_All, eval =F, echo =F}
 
 World_EEZs_simple <- World_EEZs %>%
@@ -2017,5 +2018,37 @@ for(v in 1:length(Mod)){
   )
     
   }
+
+```
+
+### RFMO analysis
+
+```{r Find_Neighbours_sf, eval = F, echo =F}
+
+#load North Carolia Data from sf
+nc <- st_read(system.file("shape/nc.shp", package="sf"), quiet = TRUE)
+
+# Get sparse matrix
+int = st_intersects(nc)
+
+# Intitalize new object
+mat = NULL
+
+# Fill
+for(i in 1:NROW(int)){
+  #Create matrix with ID and intersecting IDs
+  tmp = cbind(i, int[[i]])
+  # Join to Initalized object
+  mat  = rbind(mat, tmp)
+}
+
+# Build final data.frame substituting ID for name (in this case nc$name)
+matrix = data.frame(country = nc$NAME[mat[,1]], neighbor = nc$NAME[mat[,2]] )
+
+# Remove duplicates... eg of course an object intersects with itself...
+matrix = matrix[matrix$country != matrix$neighbor,]
+
+# Check it out, 
+head(matrix)
 
 ```
