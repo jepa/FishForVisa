@@ -324,15 +324,29 @@ fnam_world <- "SAUEEZ_July2015.shp"
 World_EEZs <- st_read(dsn = path_world,
                       layer =file_path_sans_ext(fnam_world))
 
+#### Grid cell information ####
+
+# List of DBEM INDEX within the EEZ 
+#Data provided by Vicki Lam
+
+EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
+EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
+
+colnames(EEZ_CellID) <- c("EEZID","INDEX")
+
+# DBEM Coordinate system
+Coor <- fread(paste(Data_Path,"Spatial_Data/Lon_Lat_DBEM.txt",sep=""),header = FALSE)
+colnames(Coor) <- c("INDEX","Longitude","Latitude")
+
 
 # Run Function (Ran and saved May 27 2019 at 6pm)
  system.time(
-  Neighbor_List <- EstNeighbors(World_EEZs, Partial = T)
+  EEZ_Neighbor_List <- EstNeighbors(World_EEZs, Partial = T)
  )
 # 8203.05    0.25 8204.51 (around 2 hours 30 min)
 
-write.csv(Neighbor_List,
-          paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""),
+write.csv(EEZ_Neighbor_List,
+          paste(Data_Path,"Spatial_Data/EEZ_Neighbor_List.csv", sep =""),
           row.names = F)
 
 
@@ -372,14 +386,14 @@ write.csv(Neighbor_List,
 # SAU shapefile
 
 # The path
-path_world <- paste(Data_Path,"Spatial_Data/SAU_RFMO/",sep="")
+path_world <- paste(Data_Path,"Spatial_Data/SAU_RFMO",sep="")
 # #The File
 fnam_world <- "SAU_RFMO_Sept_2015.shx"
 # #Load it!
 # 
 RFMOs_sf <- st_read(dsn = path_world,
                       layer =file_path_sans_ext(fnam_world)) %>% 
-  rename(Name = RFMO_nm_s)
+  dplyr::rename(Name = RFMO_nm_s)
 
 
 # Run Function (Ran and saved May 27 2019 at 6pm)
