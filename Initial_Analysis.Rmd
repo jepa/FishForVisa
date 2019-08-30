@@ -236,71 +236,52 @@ This function determines what EEZs are neighbors and returns a data.frame of it
 ```{r funEstNeighbors, eval = F, echo=T}
 # Determine which countries are neighbors
 
-# Method adopted from Adrew Heiss
-# https://gist.github.com/andrewheiss/926b9d60a26e29f6bf32
-
 EstNeighbors <- function(Shapefile){
   
-  # Get the list using the poly2nb function
+  # Get sparse matrix
+  int = suppressMessages(st_intersects(Shapefile))
+  # Warnning message
+  # although coordinates are longitude/latitude, st_intersects assumes that they are planar
+
   
-  Neighbor_List <- poly2nb(Shapefile)
+  # Intitalize new object
+  mat = NULL
   
-  # Convert te nb data to a Matrix of crossing references
-  Neighbor_Matrix <- nb2mat(Neighbor_List,
-                            style="B", 
-                            zero.policy=TRUE)
+  # Fill
+  for(i in 1:NROW(int)){
+    #Create matrix with ID and intersecting IDs
+    tmp = cbind(i, int[[i]])
+    
+    # Join to Initalized object
+    mat  = rbind(mat, tmp)
+  }
   
-  # Rename the matrix axis
-  colnames(Neighbor_Matrix) <- rownames(Neighbor_Matrix)
+  # Build final data.frame substituting ID for name (in this case nc$name)
+  Result_table = data.frame(Name = Shapefile$Name[mat[,1]], 
+                            Neighbor_Territory = Shapefile$Name[mat[,2]]
+  )
   
+  # Remove duplicates... eg of course an object intersects with itself...
+  Result_table = Result_table[Result_table$Name != Result_table$Neighbor_Territory,]
   
-  # Get the names of the countries for identifying them
-  Country_Names <- tibble(id = row.names(Shapefile@data),
-                              Country_Territory = as.character(Shapefile@data$Name),
-                              Neighbor_Territory = Country_Territory,
-                              EEZID = Shapefile@data$EEZID # specific of SAU sf
-                              )
+  # Merge them with SAU data
+  suppressWarnings(
+    # warning for characters in name, no problem
+  DBEM_Neighbors_Data <- Result_table %>% 
+     left_join(EEZIDs_List, 
+              by = "Name") %>% # Asign EEZ id to each country
+    left_join(EEZ_CellID, 
+              by = "EEZID") %>% # Asign EEZ id to each country
+    left_join(Coor,
+              by = "INDEX") %>%  # Inclu
+    rename(Country_Territory = Name)
   
-  # Clean up and transform the neighbor matrix
-  Neighbors <- as.data.frame(Neighbor_Matrix) %>%
-    mutate(country = row.names(.)) %>%  # Convert row names to actual column
-    gather(neighbor, present, -country) %>%  # Convert to long
-    filter(present == 1) %>%  # Only look at cells with a match
-    # Add country names
-    left_join(select(Country_Names,
-                     -Neighbor_Territory), by=c("country" = "id")) %>%
-    left_join(select(Country_Names, 
-                     -Country_Territory), by=c("neighbor" = "id")) %>% 
-    select(EEZID = EEZID.x,Country_Territory,Neighbor_Territory) # select final column
- 
-    # Merge them with SAU data
-  
-  DBEM_Neighbors_Data <- EEZIDs_List %>% 
-  left_join(EEZ_CellID, 
-            by = "EEZID") %>% # Asign EEZ id to each country
-  left_join(Neighbors, 
-            by = "EEZID") %>% # Include all neighboring countries 
-  filter(Neighbor_Territory != "NA") %>% 
-  left_join(Coor,
-            by = "INDEX") # Inclu
+  )
   
   return(DBEM_Neighbors_Data)
-   
+  
 }
 
-
-### Test function
-
-# Subset data for testing function
-# SAU_Regions <- as.data.frame(unique(World_EEZs$Name))
-
-# Test_Countries <-c("Mexico (Atlantic)","Mexico (Pacific)","Guatemala (Caribbean)","Guatemala (Pacific)","Belize")
-# Test <- World_EEZs[World_EEZs@data$Name %in% Test_Countries, ]
-
-# Running function
-# getNeighbors(Test)
-
-#### Works beautifully! 
 
 ```
 
@@ -320,15 +301,18 @@ EstNeighbors <- function(Shapefile){
 #### Using the SAU shapefile that contains EEZ per ocean (E.G. Mexico Pacific and Mexico Atlantic)
 ###________________________________________________________________________________#
 
-# The path
-path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile",sep="")
-#The File
-fnam_world <- "SAUEEZ_July2015.shp"
-#Load it!
+# SAU shapefile
 
-World_EEZs <- readOGR(dsn = path_world,
+# The path
+path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile/",sep="")
+# #The File
+fnam_world <- "SAUEEZ_July2015.shp"
+# #Load it!
+# 
+World_EEZs <- st_read(dsn = path_world,
                       layer =file_path_sans_ext(fnam_world))
 
+subset <- World_EEZs %>% filter(Name %in% c("Chile","Peru","Brazil"))
 #### Grid cell information ####
 
 # List of DBEM INDEX within the EEZ 
@@ -2023,32 +2007,74 @@ for(v in 1:length(Mod)){
 
 ### RFMO analysis
 
-```{r Find_Neighbours_sf, eval = F, echo =F}
+# Old code
+```{r OLD_funEstNeighbors, eval = F, echo=T}
+# Determine which countries are neighbors
 
-#load North Carolia Data from sf
-nc <- st_read(system.file("shape/nc.shp", package="sf"), quiet = TRUE)
+# Method adopted from Adrew Heiss
+# https://gist.github.com/andrewheiss/926b9d60a26e29f6bf32
 
-# Get sparse matrix
-int = st_intersects(nc)
-
-# Intitalize new object
-mat = NULL
-
-# Fill
-for(i in 1:NROW(int)){
-  #Create matrix with ID and intersecting IDs
-  tmp = cbind(i, int[[i]])
-  # Join to Initalized object
-  mat  = rbind(mat, tmp)
+EstNeighbors <- function(Shapefile){
+  
+  # Get the list using the poly2nb function
+  
+  Neighbor_List <- poly2nb(Shapefile)
+  
+  # Convert te nb data to a Matrix of crossing references
+  Neighbor_Matrix <- nb2mat(Neighbor_List,
+                            style="B", 
+                            zero.policy=TRUE)
+  
+  # Rename the matrix axis
+  colnames(Neighbor_Matrix) <- rownames(Neighbor_Matrix)
+  
+  
+  # Get the names of the countries for identifying them
+  Country_Names <- tibble(id = row.names(Shapefile@data),
+                              Country_Territory = as.character(Shapefile@data$Name),
+                              Neighbor_Territory = Country_Territory,
+                              EEZID = Shapefile@data$EEZID # specific of SAU sf
+                              )
+  
+  # Clean up and transform the neighbor matrix
+  Neighbors <- as.data.frame(Neighbor_Matrix) %>%
+    mutate(country = row.names(.)) %>%  # Convert row names to actual column
+    gather(neighbor, present, -country) %>%  # Convert to long
+    filter(present == 1) %>%  # Only look at cells with a match
+    # Add country names
+    left_join(select(Country_Names,
+                     -Neighbor_Territory), by=c("country" = "id")) %>%
+    left_join(select(Country_Names, 
+                     -Country_Territory), by=c("neighbor" = "id")) %>% 
+    select(EEZID = EEZID.x,Country_Territory,Neighbor_Territory) # select final column
+ 
+    # Merge them with SAU data
+  
+  DBEM_Neighbors_Data <- EEZIDs_List %>% 
+  left_join(EEZ_CellID, 
+            by = "EEZID") %>% # Asign EEZ id to each country
+  left_join(Neighbors, 
+            by = "EEZID") %>% # Include all neighboring countries 
+  filter(Neighbor_Territory != "NA") %>% 
+  left_join(Coor,
+            by = "INDEX") # Inclu
+  
+  return(DBEM_Neighbors_Data)
+   
 }
 
-# Build final data.frame substituting ID for name (in this case nc$name)
-matrix = data.frame(country = nc$NAME[mat[,1]], neighbor = nc$NAME[mat[,2]] )
 
-# Remove duplicates... eg of course an object intersects with itself...
-matrix = matrix[matrix$country != matrix$neighbor,]
+### Test function
 
-# Check it out, 
-head(matrix)
+# Subset data for testing function
+# SAU_Regions <- as.data.frame(unique(World_EEZs$Name))
+
+# Test_Countries <-c("Mexico (Atlantic)","Mexico (Pacific)","Guatemala (Caribbean)","Guatemala (Pacific)","Belize")
+# Test <- World_EEZs[World_EEZs@data$Name %in% Test_Countries, ]
+
+# Running function
+# getNeighbors(Test)
+
+#### Works beautifully! 
 
 ```
