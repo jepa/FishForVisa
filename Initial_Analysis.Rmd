@@ -149,13 +149,13 @@ print("_____________________ WARNING DO NOT FORGET TO PULL/PUSH BEFORE YOU START
 
 These are the methods to follow:
 
-1. Determine which countries have neighboring EEZs  
-  1.1. For this we used the Marine regions EEZ maps (We have to change this because it does not discriminate by oceans and we need this) and a routine to identify neighboring polygons,
-  1.2. Then we match the DBEM spatial information (e.g. INDEX within EEZ and coordinates) with the neighboring data
-2. Overlap distribution maps with neighbors data  
-  2.1. For each species we merged the DBEM_Neighbors data with their known distribution (Gab's data)  
+1. Determine which countries have Neighbouring EEZs  
+  1.1. For this we used the Marine regions EEZ maps (We have to change this because it does not discriminate by oceans and we need this) and a routine to identify Neighbouring polygons,
+  1.2. Then we match the DBEM spatial information (e.g. INDEX within EEZ and coordinates) with the Neighbouring data
+2. Overlap distribution maps with Neighbours data  
+  2.1. For each species we merged the DBEM_Neighbours data with their known distribution (Gab's data)  
 3. Determine transboundary if:  
-  3.1. Species is present in both neighboring EEZs by INDEX  
+  3.1. Species is present in both Neighbouring EEZs by INDEX  
 
 Alternatively, we could create a "confidence level" based on a ratio, i.e;
 - How many grid cells of both the EEZs is the species present on. A species that covers all cells would have 100% but a species that covers, lets say, all of EEZ1 but only half of EEZ2 would be 75%.  
@@ -227,16 +227,16 @@ Species_List <- gsub("\\..*","",Step_One)
 
 ```
 
-## Sub Routine Estimating Neighbords
+## Sub Routine Estimating Neighbourds
 
-### Functions `EstNeighbors`
+### Functions `EstNeighbours`
 
-This function determines what EEZs are neighbors and returns a data.frame of it
+This function determines what EEZs are Neighbours and returns a data.frame of it
 
-```{r funEstNeighbors, eval = F, echo=T}
-# Determine which countries are neighbors
+```{r funEstNeighbours, eval = F, echo=T}
+# Determine which countries are Neighbours
 
-EstNeighbors <- function(Shapefile, Partial = "NA"){
+EstNeighbours <- function(Shapefile, Partial = "NA"){
   
   # Get sparse matrix
   int = suppressMessages(st_intersects(Shapefile))
@@ -258,21 +258,21 @@ EstNeighbors <- function(Shapefile, Partial = "NA"){
   
   # Build final data.frame substituting ID for name (in this case nc$name)
   Result_table = data.frame(Name = Shapefile$Name[mat[,1]], 
-                            Neighbor_Territory = Shapefile$Name[mat[,2]]
+                            Neighbour_Territory = Shapefile$Name[mat[,2]]
   )
   
   # Remove duplicates... eg of course an object intersects with itself...
-  Result_table = Result_table[Result_table$Name != Result_table$Neighbor_Territory,]
+  Result_table = Result_table[Result_table$Name != Result_table$Neighbour_Territory,]
   
   if(Partial == T){
-    # If only partial analysis just returns neighbor list
+    # If only partial analysis just returns Neighbour list
     return(Result_table)
     
   }else{
   # Merge them with SAU data
   suppressWarnings(
     # warning for characters in name, no problem
-  DBEM_Neighbors_Data <- Result_table %>% 
+  DBEM_Neighbours_Data <- Result_table %>% 
      left_join(EEZIDs_List, 
               by = "Name") %>% # Asign EEZ id to each country
     left_join(EEZ_CellID, 
@@ -283,15 +283,15 @@ EstNeighbors <- function(Shapefile, Partial = "NA"){
   
   )
   
-  return(DBEM_Neighbors_Data)
+  return(DBEM_Neighbours_Data)
   
   } # end ifelse
 } # end function
 
 
 # subset <- World_EEZs %>% filter(Name %in% c("Chile","Peru"))
-# EstNeighbors(subset)
-# EstNeighbors(subset,T)
+# EstNeighbours(subset)
+# EstNeighbours(subset,T)
 
 ```
 
@@ -299,7 +299,7 @@ EstNeighbors <- function(Shapefile, Partial = "NA"){
 
 #### EEZ
 
-```{r EEZ_Neighbords_Control_Pannel, eval = F, echo = F}
+```{r EEZ_Neighbourds_Control_Pannel, eval = F, echo = F}
 
 #### Load Data Needed ####
 
@@ -341,12 +341,12 @@ colnames(Coor) <- c("INDEX","Longitude","Latitude")
 
 # Run Function (Ran and saved May 27 2019 at 6pm)
  system.time(
-  EEZ_Neighbor_List <- EstNeighbors(World_EEZs, Partial = T)
+  EEZ_Neighbour_List <- EstNeighbours(World_EEZs, Partial = T)
  )
 # 8203.05    0.25 8204.51 (around 2 hours 30 min)
 
-write.csv(EEZ_Neighbor_List,
-          paste(Data_Path,"Spatial_Data/EEZ_Neighbor_List.csv", sep =""),
+write.csv(EEZ_Neighbour_List,
+          paste(Data_Path,"Spatial_Data/EEZ_Neighbour_List.csv", sep =""),
           row.names = F)
 
 
@@ -367,23 +367,91 @@ write.csv(EEZ_Neighbor_List,
 
 ```
 
-#### RFMOs
+#### RFMO
 
-```{r RFMO_Neighbords_Control_Pannel, eval = F, echo = F}
+```{r RFMO_Index, eval = F, echo = F}
 
 #### Load Data Needed ####
 
-# Spatial analysis for Countries boundaries from marine regions ####
+# SAU RFMO shapefile
 
-###_______________________________Read Me_____________________________________________#
-#### Data License and references ###
-# Marine Regions’ data is licensed under CC-By-NC-SA (https://creativecommons.org/licenses/by-nc-sa/4.0/).
-# Flanders Marine Institute (2018). Maritime Boundaries Geodatabase: Maritime Boundaries and Exclusive Economic Zones (200NM), version 10. Available online at http://www.marineregions.org/. https://doi.org/10.14284/312
+# The path
+path_world <- paste(Data_Path,"Spatial_Data/RFMO/SAU_RFMO",sep="")
+# #The File
+fnam_world <- "SAU_RFMO_Sept_2015.shx"
+# #Load it!
+# 
+RFMOs_sf <- st_read(dsn = path_world,
+                      layer =file_path_sans_ext(fnam_world)) %>% 
+  dplyr::rename(Name = RFMO_nm_s) %>% 
+  st_set_crs(3832) %>% # Making sure is same proyection
+  st_transform(3832) # to match shapefiles
 
-#### Using the SAU shapefile that contains EEZ per ocean (E.G. Mexico Pacific and Mexico Atlantic)
-###________________________________________________________________________________#
+# Load coordinate system
 
-# SAU shapefile
+Coor <- fread(paste(Data_Path,"Spatial_Data/Lon_Lat_DBEM.txt",sep=""),header = FALSE)
+colnames(Coor) <- c("INDEX","Longitude","Latitude")
+
+# COnvert Coor system to sf
+Coor_sf = st_as_sf(Coor,
+                        coords = c("Longitude", "Latitude")) %>% 
+  st_set_crs(3832) %>% # to match shapefiles
+  st_transform(3832) # to match shapefiles
+
+# Merge RFMO and coor datasets
+RFMO_Coor <- st_join(RFMOs_sf,
+                         Coor_sf,
+                         join = st_contains) %>% 
+  filter(!is.na(INDEX)) # Remove regions beyond RFMOs
+  
+# head(RFMO_Coor)
+
+# Convert it back to a data frame and select only the two columns we want
+RFMO_INDEX <- as.data.frame(RFMO_Coor) %>% 
+  select(INDEX,Name) %>% 
+  arrange(INDEX)
+
+# head(RFMO_INDEX)
+
+# Save new data
+write.csv(RFMO_INDEX,
+          paste(Data_Path,"Spatial_Data/RFMO/RFMO_INDEX.csv",sep=""),
+          row.names = F
+          )
+
+# Map it (works!)
+
+# RFMO_INDEX %>%
+#   left_join(Coor,
+#             by = "INDEX") %>%
+#   ggplot(.,
+#             aes(x = Longitude,
+#                 y = Latitude,
+#                 color = Territory,
+#                 fill = Territory)
+#             ) +
+#   geom_tile() 
+# 
+# 
+# RFMO_INDEX %>%
+#   left_join(Coor,
+#             by = "INDEX") %>%
+#   ggplot(.,
+#             aes(x = Longitude,
+#                 y = Latitude,
+#                 color = INDEX,
+#                 fill = INDEX)
+#             ) +
+#   geom_tile() +
+#   facet_wrap(~Territory)
+
+```
+
+```{r RFMO_Neighbourds_Control_Pannel, eval = F, echo = F}
+
+#### Load Data Needed ####
+
+# SAU RFMO shapefile
 
 # The path
 path_world <- paste(Data_Path,"Spatial_Data/SAU_RFMO",sep="")
@@ -396,31 +464,28 @@ RFMOs_sf <- st_read(dsn = path_world,
   dplyr::rename(Name = RFMO_nm_s)
 
 
+
 # Run Function (Ran and saved May 27 2019 at 6pm)
  system.time(
-  RFMO_Neighbor_List <- EstNeighbors(RFMOs_sf, Partial = T)
+  RFMO_Neighbour_List <- EstNeighbours(RFMOs_sf, Partial = T)
  )
 # 8203.05    0.25 8204.51 (around 2 hours 30 min)
+ 
+ 
+ ## Include Index column
+ 
+RFMO_Neighbour_List <- fread(paste(Data_Path,"Spatial_Data/RFMO/RFMO_Neighbour_List.csv",sep=""),header = TRUE) %>% 
+  left_join(RFMO_INDEX,
+            by = "Name") %>% 
+  rename(Territory = Name,
+         Neighbour = Neighbour_Territory) 
 
-write.csv(RFMO_Neighbor_List,
-          paste(Data_Path,"Spatial_Data/RFMO_Neighbor_List.csv", sep =""),
+# head(RFMO_Neighbour_List)
+
+
+write.csv(RFMO_Neighbour_List,
+          paste(Data_Path,"Spatial_Data/RFMO_Neighbour_List.csv", sep =""),
           row.names = F)
-
-
-
-
-####_________________________________________ TESTING PERIOD_________________________________________####
-# I'm substetting central america to do the whole analysis (smaller EEZs = faster computation) once I have figure out things I'll run for all
-
-### Data
-# For now using only the subdata
-
-## Spatial Test Data
-# SAU_Regions <- as.data.frame(unique(World_EEZs$Name))
-
-# Test_Countries <-c("Guatemala (Caribbean)","Guatemala (Pacific)","Belize","Honduras (Pacific)","El Salvador","Costa Rica (Pacific)","Costa Rica (Caribbean)", "Panama (Caribbean)", "Panama (Pacific)")
-
-# Test <- World_EEZs[World_EEZs@data$Name %in% Test_Countries, ]
 
 ```
 ### Function `GetSppDist`
@@ -595,19 +660,32 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 # Spp: Species to be analized, data with presence/absence per gridcell
 # Index_EEZ: Reference list of all INDEX that fall within EEZs
 # EEZ_Size: Number of grid-cells that each EEZ has
-# Neighbors: Reference list of neighbouring countries
+# Neighbours: Reference list of neighbouring countries
 
 # Needs getSppDist
 
 #### For testing 
-# Spp <- 600059
- #Model <- "All"
- #Neighbors <- Neighbor_List
- #Coord = CoorG
+# Spp <- #600004  # Anchovie Equator, Chile and Peru
+# Spp <- 600107 # Tuna Many RFMOs
+# Model <- "All"
+# Coord = CoorG
+
+# For EEZ
+ # Neighbours <- Neighbours_EEZ
+ # Index_Code <- EEZ_Index_Code
+ 
+ # For RFMO 
+ # Index_Code <- RFMO_INDEX
+ # Neighbours <- RFMO_Neighbor_List %>% 
+ #   rename(Territory = Name,
+ #         Neighbour = Neighbor_Territory)
+ 
+ 
+# __________________________________
 # __________________________________
 
 # The function
-EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
+EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdiction_Type){
   
   # Get model data from spps
   SppDist <- GetSppDist(Spp,Model,Coord)
@@ -616,7 +694,7 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   
   #____________ ESTIMATING MODEL INDEX (TRESHOLD 1)_________ #
   Trans_Spp <- SppDist %>%
-    filter(INDEX %in% Neighbors$INDEX,# Filter data only located within EEZs
+    filter(INDEX %in% Neighbours$INDEX,# Filter data only located within EEZs
            Model != "SAU_C") %>% # Only using observational and modelled data
     mutate(Value = ifelse(Value > 0, 1,0)) %>%  
     filter(Value > 0) %>%
@@ -633,14 +711,12 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
            Value > 0) %>%
     mutate(Model_Index = Model_Index*100) %>%
     select(-Model, -Value, -Latitude,-Longitude) %>%
-    left_join(EEZ_CellID,
-              by = "INDEX") %>% 
-    left_join(EEZIDs_List,
-              by = "EEZID")
+    left_join(Index_Code,
+              by = "INDEX")
   
   # MODEL INDEX (TRESHOLDS 1 & 2) #
   Model_Index_D <- Trans_Spp %>% 
-    group_by(Name,
+    group_by(Territory,
              TaxonKey,
              Model_Index
     ) %>% 
@@ -650,9 +726,9 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 3)_________ #
   # The number of species' cells present within each country's EEZ
   
-  #Step 1.  Get EEZ id and neighbor
-  Neighbors_EEZ <- Neighbors %>% 
-    group_by(EEZID,Country_Territory,Neighbor_Territory) %>% 
+  #Step 1.  Get EEZ id and Neighbour
+  Neighbours_List <- Neighbours %>% 
+    group_by(Territory,Neighbour) %>% 
     summarise(n=n()) %>% 
     ungroup() %>% 
     select(-n)
@@ -661,58 +737,58 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   Spp_Grid <- Trans_Spp %>% 
     group_by(TaxonKey,
              Model_Index, # Un-comment after producing models x datasets
-             EEZID) %>% 
+             Territory) %>% 
     summarise(n_spp_eez = length(unique(INDEX))) %>% 
-    left_join(Neighbors_EEZ,
-              by = "EEZID") %>% 
-    filter(Country_Territory %in% Trans_Spp$Name, #Filter out unwanted neighbors (those who don't have grids within but get included because they are neighbors)
-           Neighbor_Territory %in% Trans_Spp$Name)
+    left_join(Neighbours_List,
+              by = "Territory") %>% 
+    filter(Territory %in% Trans_Spp$Territory, #Filter out unwanted Neighbours (those who don't have grids within but get included because they are Neighbours)
+           Neighbour %in% Trans_Spp$Territory)
   
-  # Step 3. Sum total grids per neighbors
+  # Step 3. Sum total grids per Neighbours
   
   # Split dataframes to merge latter
-  Country_Territory_T <- Spp_Grid %>% 
+  Territory_T <- Spp_Grid %>% 
     ungroup() %>% 
     select(
       Model_Index, # Un-comment after producing models x datasets
       TaxonKey,
-      Name=Country_Territory,
+      Name=Territory,
       n_spp_eez
     )
   
-  Neighbor_Territory_T <- Spp_Grid %>% 
+  Neighbour_T <- Spp_Grid %>% 
     ungroup() %>% 
     select(
       Model_Index,
       TaxonKey,n_spp_eez,
-      Name=Neighbor_Territory, 
-      Country_Territory
+      Name=Neighbour, 
+      Territory
     )
   
-  # Merge dataframes to get totals per neighbords
-  Area_Index_D <- full_join(Country_Territory_T,
-                            Neighbor_Territory_T, 
+  # Merge dataframes to get totals per Neighbourds
+  Area_Index_D <- full_join(Territory_T,
+                            Neighbour_T, 
                             by = c("Model_Index","Name","TaxonKey")
   ) %>%
     rowwise() %>%
-    mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per neighbors
+    mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per Neighbours
     distinct() %>% # Removes false duplicates from `full_join()`
-    rename(Neighbor_Territory = Name,
+    rename(Neighbour = Name,
            n_spp_Country = n_spp_eez.x,
-           n_spp_Neighbor = n_spp_eez.y) %>% 
+           n_spp_Neighbour = n_spp_eez.y) %>% 
     mutate(Area_Index = n_spp_Country/Spp_Total) %>%  #Estimates the proportion of grids per country
     select(1:3,6,8)
   
   #____________ FINAL INDEX TABLE_________ #
   Indexes <- Model_Index_D %>% 
-    rename(Country_Territory = Name) %>% 
+    # rename(Territory = Name) %>% 
     full_join(Area_Index_D,
-              by = c("TaxonKey","Country_Territory","Model_Index")
+              by = c("TaxonKey","Territory","Model_Index")
     ) %>% 
     filter(!is.na(Area_Index),
            !is.na(Model_Index) # Uncomment after producing Models x datasets
-    )%>%  # Remove cases where the country does not pass the area_index and viceversa
-    select(TaxonKey,Country_Territory,Neighbor_Territory,everything())
+    ) %>%  # Remove cases where the country does not pass the area_index and viceversa
+    select(TaxonKey,Territory,Neighbour,everything())
   
   ### Save spp dataframe
   
@@ -750,6 +826,29 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   EstTransIndex=Indexes # A dataframe with 
   
 }
+
+# __________________________________
+# Test function
+# __________________________________
+# EstTransIndex(Spp = 600107,
+#               Mode = "All",
+#               Neighbours = ,Coord,Index_Code,Save="Y")
+# 
+# Spp <-  # Tuna Many RFMOs
+# Model <- "All"
+# Coord = CoorG
+# 
+# # For EEZ
+#  # Neighbours <- Neighbours_EEZ
+#  # Index_Code <- EEZ_Index_Code
+#  
+#  # For RFMO 
+#  Index_Code <- RFMO_INDEX
+#  Neighbours <- RFMO_Neighbor_List %>% 
+#    rename(Territory = Name,
+#          Neighbour = Neighbor_Territory)
+
+
 ```
 
 ```{r Mclapply_Hack_Fun, eval= T , echo = T, warning = F, message = F}
@@ -829,9 +928,15 @@ mclapply <- switch( Sys.info()[['sysname']],
 ```
 
 
-## Routine
+## Routine for estimating transboundary species
 
-```{r Control_Pannel, eval = T, echo = F}
+```{r EEZ_Control_Pannel, eval = T, echo = F}
+
+# Set Jurisdiction to EEZ or RFMO
+Jurisdiction <- "EEZ"
+
+# Updates result's path for the jurisdiction
+Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
 
 # Removes everything before the number
 Step_One <- gsub(".*_","",list.files(paste(Data_Path,"/Distribution_Data/SAU_Distribution/",sep="")))
@@ -849,20 +954,35 @@ Computed_Spp <- as.integer(gsub("\\_.*","",list.files(Results_Path)))
 Exploited_Species <- Exploited_Species %>%
   filter(!TaxonKey %in% Computed_Spp)
 
+# Gabriel's coordinate system
+CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>%
+  mutate(INDEX = seq(1,259200,1))
+
 # For Function
 Exploited_Species_List <- Exploited_Species$TaxonKey
 
-# Load neighbours data from previouse routine
-Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""))
-
-# Gabriel's coordinate system
-CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>% 
-  mutate(INDEX = seq(1,259200,1))
-
-# SAU relations between INDEX and Country's EEZs
-EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
-EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
-colnames(EEZ_CellID) <- c("EEZID","INDEX")
+# Load Jursidiction-dependant data
+if(Jurisdiction == "EEZ"){
+  # Load neighbours data from previouse routine
+  Neighbours_Data <- fread(paste(Data_Path,"Spatial_Data/EEZ_Neighbours_List.csv", sep =""))
+  
+  # SAU relations between INDEX and Country's EEZs
+  EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
+  EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
+  colnames(EEZ_CellID) <- c("EEZID","INDEX")
+  
+  Index_Code <- EEZIDs_List %>% 
+    left_join(EEZ_CellID) %>% 
+    rename(Territory = Name)
+  
+}else{
+  
+  # Load neighbours data from previouse routine
+  Neighbours_Data <- fread(paste(Data_Path,"Spatial_Data/RFMO/RFMO_Neighbours_List.csv", sep =""))
+  
+  Index_Code <- fread(paste(Data_Path,"Spatial_Data/RFMO/RFMO_Index_Code.csv", sep =""))
+  
+}
 
 # Creates dummy dataset for Non transboundary species
 write.csv(tibble(TaxonKey = "NA"), paste(Results_Path,"Non_Transboundary_Data.csv",sep=""), row.names = F)
@@ -870,40 +990,25 @@ write.csv(tibble(TaxonKey = "NA"), paste(Results_Path,"Non_Transboundary_Data.cs
 # Number of cores to us 
 n_cores <- detectCores()
 
-
-####_________________________________________ TESTING PERIOD_________________________________________####
-## Species Test Data Just to know what's captured in these countries
-#
-# SAU_Data <- fread("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Distribution_Data/SAU_Catch_Data_Test/SAU_Catch_Data_Test.csv")
-# #
-# # #### Species per country
-# #
-# Spps <- SAU_Data %>%
-#   filter(data_layer == "Reconstructed domestic catch") %>%
-#   group_by(area_name,TaxonName = scientific_name) %>%
-#   summarise(n()) %>%
-#   left_join(Exploited_Species,
-#             by = "TaxonName") %>%
-#   filter(TaxonKey %in% Exploited_Species_List$TaxonKey)
-#
-# Exploited_Species_List <- Spps$TaxonKey
-
-# Exploited_Species_List <- c("600006",600107)
-# Exploited_Species_List = 600107
-# TaxonKey <- unique(Spps$TaxonKey)
-
-
+# Just a warning for me not to forget
+print(paste("You are running the model for",nrow(Exploited_Species),"Species at the",Jurisdiction,"level"))
 ```
-
 
 ```{r Routine_parallel, eval = F, echo = F}
 
-# Spp_Trans <- NULL
 
+# Run model in parallel
 system.time(
   Spp_Trans <- bind_rows(
     mclapply(
-      Exploited_Species_List, FUN = EstTransIndex, Model = "All", Neighbors = Neighbor_List, Coord = CoorG
+      Exploited_Species_List,
+      FUN = EstTransIndex,
+      Model = "All", # all data sources
+      Neighbours = Neighbours_Data,
+      Coord = CoorG,  # Gabriels coordinate system for read species dist
+      Index_Code = Index_Code, 
+      Save = "Y",  # For saving
+      Jurisdiction_Type = Jurisdiction # For saving in proper path
     )
   )
 )
@@ -915,8 +1020,9 @@ system.time(
    
 ```
 
-
 # Results
+
+## Function `GetTransResults`
 
 ```{r Fun_GetTransResults, eval = F}
 
@@ -956,102 +1062,105 @@ Clean_sau_eez_fes <- sau_eez_fes %>%
 
 
 # For Carmelia
-Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep=""))
-
-
-# For Hall and The Beast
-
-Spp <- list.files(Results_Path)[1:672]
-
-
-Results_Trans <- GetTransResults(Spp)
-
-# Clean out countries that share with their own borders
-
-Auto_Remove_Territories <- Results_Trans %>%   
-  rename(FishingRegion=Country_Territory) %>% 
-  left_join(Clean_sau_eez_fes,
-            by = "FishingRegion") %>% 
-  select(TaxonKey,
-         Country_Territory= FishingRegion,
-         FishingRegion=Neighbor_Territory,
-         Model_Index,
-         Area_Index,
-         CT_fishing_entity= fishing_entity) %>% 
-  left_join(Clean_sau_eez_fes,
-            by = "FishingRegion") %>% 
-  select(1,2, 
-    Neighbor_Territory = FishingRegion,
-    Model_Index:CT_fishing_entity,
-    NT_fishing_entity= fishing_entity,
-    everything()) %>% 
-  mutate(
-    CT_fishing_entity = ifelse(is.na(CT_fishing_entity),paste(Country_Territory),paste(CT_fishing_entity)),
-    NT_fishing_entity = ifelse(is.na(NT_fishing_entity),paste(Neighbor_Territory),paste(NT_fishing_entity)),
-    Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
+if(Sys.info()[7] == "carmelia"){
+  Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep=""))
+}else{
+  
+  
+  
+  # For Hall and The Beast
+  
+  Spp <- list.files(Results_Path)[1:672]
+  
+  
+  Results_Trans <- GetTransResults(Spp)
+  
+  # Clean out countries that share with their own borders
+  
+  Auto_Remove_Territories <- Results_Trans %>%   
+    rename(FishingRegion=Country_Territory) %>% 
+    left_join(Clean_sau_eez_fes,
+              by = "FishingRegion") %>% 
+    select(TaxonKey,
+           Country_Territory= FishingRegion,
+           FishingRegion=Neighbour_Territory,
+           Model_Index,
+           Area_Index,
+           CT_fishing_entity= fishing_entity) %>% 
+    left_join(Clean_sau_eez_fes,
+              by = "FishingRegion") %>% 
+    select(1,2, 
+           Neighbour_Territory = FishingRegion,
+           Model_Index:CT_fishing_entity,
+           NT_fishing_entity= fishing_entity,
+           everything()) %>% 
+    mutate(
+      CT_fishing_entity = ifelse(is.na(CT_fishing_entity),paste(Country_Territory),paste(CT_fishing_entity)),
+      NT_fishing_entity = ifelse(is.na(NT_fishing_entity),paste(Neighbour_Territory),paste(NT_fishing_entity)),
+      Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
+    )
+  
+  #### Manual removal of those left... 
+  
+  # List of territories to eliminate (No other neighobors but mainland)
+  Islands_to_Remove <- c(
+    "Brazil (Fernando de Noronha)",
+    "Brazil (St Paul and St. Peter Archipelago)",
+    "Hawaii Main Islands (USA)",
+    "Hawaii Northwest Islands (USA)",
+    "Juan Fernandez Islands (Chile)",
+    "Kermadec Isl. (New Zealand)"
   )
-
-#### Manual removal of those left... 
-
-# List of territories to eliminate (No other neighobors but mainland)
-Islands_to_Remove <- c(
-  "Brazil (Fernando de Noronha)",
-  "Brazil (St Paul and St. Peter Archipelago)",
-  "Hawaii Main Islands (USA)",
-  "Hawaii Northwest Islands (USA)",
-  "Juan Fernandez Islands (Chile)",
-  "Kermadec Isl. (New Zealand)"
-)
-
-# Complete list of territories to remove from dataset (Including islands)
-
-Territories_to_Remove <- Results_Trans %>% 
-  filter(
-    Country_Territory %in% Islands_to_Remove |
-      Neighbor_Territory %in% Islands_to_Remove |
-      Country_Territory == "Balearic Island (Spain)" & Neighbor_Territory == "Spain (Mediterranean and Gulf of Cadiz)" |
-      Country_Territory == "British Virgin Isl. (UK)" & Neighbor_Territory == "Anguilla" |
-      Neighbor_Territory == "British Virgin Isl. (UK)" & Country_Territory == "Anguilla" |
-      Country_Territory == "Corsica (France)" & Neighbor_Territory == "France (Mediterranean)" |
-      Neighbor_Territory == "Corsica (France)" & Country_Territory == "France (Mediterranean)" |
-      Country_Territory == "Crete (Greece)" & Neighbor_Territory == "Grece" |
-      Neighbor_Territory == "Crete (Greece)" & Country_Territory == "Grece" |
-      Country_Territory == "Cyprus (North)" & Neighbor_Territory == "Cyprus (South)" |
-      Neighbor_Territory == "Cyprus (North)" & Country_Territory == "Cyprus (South)" |
-      Country_Territory == "Channel Isl. (UK)" & Neighbor_Territory == "United Kingdom" |
-      Neighbor_Territory == "Channel Isl. (UK)" & Country_Territory == "United Kingdom" |
-      Country_Territory == "Glorieuse Islands (France)" & Neighbor_Territory == "Mayotte (France)" |
-      Neighbor_Territory == "Glorieuse Islands (France)" & Country_Territory == "Mayotte (France)" |
-      Country_Territory == "Guam (USA)" & Neighbor_Territory == "Northern Marianas (USA)" |
-      Neighbor_Territory == "Guam (USA)" & Country_Territory == "Northern Marianas (USA)" |
-      Country_Territory == "Italy" & Neighbor_Territory == "Sardinia (Italy)" |
-      Neighbor_Territory == "Italy" & Country_Territory == "Sardinia (Italy)" |
-      Country_Territory == "Italy" & Neighbor_Territory == "Sicily (Italy)" |
-      Neighbor_Territory == "Italy" & Country_Territory == "Sicily (Italy)" |
-      Country_Territory == "Japan (Daito Islands)" & Neighbor_Territory == "Japan (main islands)"|
-      Neighbor_Territory == "Japan (Daito Islands)" & Country_Territory == "Japan (main islands)"|
-      Country_Territory == "Japan (Daito Islands)" & Neighbor_Territory == "Japan (Ogasawara Islands)"|
-      Neighbor_Territory == "Japan (Daito Islands)" & Country_Territory == "Japan (Ogasawara Islands)"|
-      Country_Territory == "Norway" & Neighbor_Territory == "Svalbard Isl. (Norway)" |
-      Neighbor_Territory == "Norway" & Country_Territory == "Svalbard Isl. (Norway)" |
-      Country_Territory == "Sicily (Italy)" & Neighbor_Territory == "Sardinia (Italy)" |
-      Neighbor_Territory == "Sicily (Italy)" & Country_Territory == "Sardinia (Italy)" |
-      Country_Territory == "South Africa (Atlantic Coast)" & Neighbor_Territory == "South Africa (Indian Ocean Coast)" |
-      Neighbor_Territory == "South Africa (Atlantic Coast)" & Country_Territory == "South Africa (Indian Ocean Coast)" |
-      Country_Territory == "USA (Alaska, Arctic)" & Neighbor_Territory == "USA (Alaska, Subarctic)" |
-      Neighbor_Territory == "USA (Alaska, Arctic)" & Country_Territory == "USA (Alaska, Subarctic)"
-  ) %>%
-  group_by(Country_Territory,Neighbor_Territory) %>% 
-  summarise(n())
-
-# Cleaned results 
-Clean_Results_Trans <- Auto_Remove_Territories %>% 
-  anti_join(Territories_to_Remove,
-            by = c("Country_Territory","Neighbor_Territory")
-  ) %>% 
-  filter(Same_Nation == "No")
-
-
+  
+  # Complete list of territories to remove from dataset (Including islands)
+  
+  Territories_to_Remove <- Results_Trans %>% 
+    filter(
+      Country_Territory %in% Islands_to_Remove |
+        Neighbour_Territory %in% Islands_to_Remove |
+        Country_Territory == "Balearic Island (Spain)" & Neighbour_Territory == "Spain (Mediterranean and Gulf of Cadiz)" |
+        Country_Territory == "British Virgin Isl. (UK)" & Neighbour_Territory == "Anguilla" |
+        Neighbour_Territory == "British Virgin Isl. (UK)" & Country_Territory == "Anguilla" |
+        Country_Territory == "Corsica (France)" & Neighbour_Territory == "France (Mediterranean)" |
+        Neighbour_Territory == "Corsica (France)" & Country_Territory == "France (Mediterranean)" |
+        Country_Territory == "Crete (Greece)" & Neighbour_Territory == "Grece" |
+        Neighbour_Territory == "Crete (Greece)" & Country_Territory == "Grece" |
+        Country_Territory == "Cyprus (North)" & Neighbour_Territory == "Cyprus (South)" |
+        Neighbour_Territory == "Cyprus (North)" & Country_Territory == "Cyprus (South)" |
+        Country_Territory == "Channel Isl. (UK)" & Neighbour_Territory == "United Kingdom" |
+        Neighbour_Territory == "Channel Isl. (UK)" & Country_Territory == "United Kingdom" |
+        Country_Territory == "Glorieuse Islands (France)" & Neighbour_Territory == "Mayotte (France)" |
+        Neighbour_Territory == "Glorieuse Islands (France)" & Country_Territory == "Mayotte (France)" |
+        Country_Territory == "Guam (USA)" & Neighbour_Territory == "Northern Marianas (USA)" |
+        Neighbour_Territory == "Guam (USA)" & Country_Territory == "Northern Marianas (USA)" |
+        Country_Territory == "Italy" & Neighbour_Territory == "Sardinia (Italy)" |
+        Neighbour_Territory == "Italy" & Country_Territory == "Sardinia (Italy)" |
+        Country_Territory == "Italy" & Neighbour_Territory == "Sicily (Italy)" |
+        Neighbour_Territory == "Italy" & Country_Territory == "Sicily (Italy)" |
+        Country_Territory == "Japan (Daito Islands)" & Neighbour_Territory == "Japan (main islands)"|
+        Neighbour_Territory == "Japan (Daito Islands)" & Country_Territory == "Japan (main islands)"|
+        Country_Territory == "Japan (Daito Islands)" & Neighbour_Territory == "Japan (Ogasawara Islands)"|
+        Neighbour_Territory == "Japan (Daito Islands)" & Country_Territory == "Japan (Ogasawara Islands)"|
+        Country_Territory == "Norway" & Neighbour_Territory == "Svalbard Isl. (Norway)" |
+        Neighbour_Territory == "Norway" & Country_Territory == "Svalbard Isl. (Norway)" |
+        Country_Territory == "Sicily (Italy)" & Neighbour_Territory == "Sardinia (Italy)" |
+        Neighbour_Territory == "Sicily (Italy)" & Country_Territory == "Sardinia (Italy)" |
+        Country_Territory == "South Africa (Atlantic Coast)" & Neighbour_Territory == "South Africa (Indian Ocean Coast)" |
+        Neighbour_Territory == "South Africa (Atlantic Coast)" & Country_Territory == "South Africa (Indian Ocean Coast)" |
+        Country_Territory == "USA (Alaska, Arctic)" & Neighbour_Territory == "USA (Alaska, Subarctic)" |
+        Neighbour_Territory == "USA (Alaska, Arctic)" & Country_Territory == "USA (Alaska, Subarctic)"
+    ) %>%
+    group_by(Country_Territory,Neighbour_Territory) %>% 
+    summarise(n())
+  
+  # Cleaned results 
+  Clean_Results_Trans <- Auto_Remove_Territories %>% 
+    anti_join(Territories_to_Remove,
+              by = c("Country_Territory","Neighbour_Territory")
+    ) %>% 
+    filter(Same_Nation == "No")
+  
+} # closes ifstatement for carmelia temporal files
 # Load results for non transboundary (discrete) stocks
 # Results_Discrete <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
 
@@ -1091,7 +1200,7 @@ MI <- 100 # Model Index
 
 #### Determine transboundary and non-transboundary species and nations
 
-TenTwenyfive <- Clean_Results_Trans %>% 
+Transboundary_Spp <- Clean_Results_Trans %>% 
   filter(
          Area_Index >= Min_AI,
          Area_Index <= Max_AI,
@@ -1101,7 +1210,7 @@ TenTwenyfive <- Clean_Results_Trans %>%
   group_by(Name=Country_Territory) %>% 
   summarise(
     n_trans = length(unique(TaxonKey)),
-    n_countries = length(unique(Neighbor_Territory)),
+    n_countries = length(unique(Neighbour_Territory)),
     Trans_Rate = n_trans/n_countries
     )
   # filter(Model_Index == 100)
@@ -1109,7 +1218,7 @@ TenTwenyfive <- Clean_Results_Trans %>%
 
 ### Non-transboundary
 
-Non_trans_Area_TenTwenyfive <- Clean_Results_Trans %>% 
+Discrete_Spp <- Clean_Results_Trans %>% 
   filter(
          Area_Index < Min_AI |
          Area_Index > Max_AI,
@@ -1119,12 +1228,24 @@ Non_trans_Area_TenTwenyfive <- Clean_Results_Trans %>%
   group_by(Name=Country_Territory) %>% 
   summarise(
     n_no_trans = length(unique(TaxonKey)),
-    n_countries = length(unique(Neighbor_Territory))
+    n_countries = length(unique(Neighbour_Territory))
   )
 
 
 ```
 
+## Validate Results using RFMOs
+
+```{Validation_RFMOs}
+
+#### Load RFMO data provided by Vicky (SAU)
+
+RFMOs_sf <- fread(paste(Data_Path,"Spatial_Data/SAU_RFMO/SAU_RFMO_Sept_2015.shp",sep=""))
+
+
+
+
+```
 
 ## Analysis per Country
 
@@ -1584,7 +1705,7 @@ ggplot(x) +
 
 Spp_Trans <- bind_rows(
     mclapply(
-      600004, FUN =EstTransIndex, Model = "All", Neighbors = Neighbor_List, Coord = CoorG
+      600004, FUN =EstTransIndex, Model = "All", Neighbours = Neighbour_List, Coord = CoorG
     )
   )
 
@@ -1592,7 +1713,7 @@ Spp_Trans <- bind_rows(
   # Estimate total spp distribution within neighbours
   
   Trans_Spp <- SppDist %>%
-    filter(INDEX %in% Neighbors$INDEX) %>% # Filter data only located within EEZs
+    filter(INDEX %in% Neighbours$INDEX) %>% # Filter data only located within EEZs
     mutate(Value = ifelse(Value > 0, 1,0)) %>%  # For now using SAU_C as presence absence
     group_by(TaxonKey,
              INDEX
@@ -1600,7 +1721,7 @@ Spp_Trans <- bind_rows(
     summarise(Model_Index = mean(Value,na.rm=T)) %>%
     filter(Model_Index > 0) %>%
     mutate(Model_Index = Model_Index*100) %>%
-    left_join(Neighbors,
+    left_join(Neighbours,
               by = "INDEX")
     
     Test <- Trans_Spp %>% 
@@ -1656,7 +1777,7 @@ Explore_Australia <- Australia %>%
   group_by(Name,Model_Index) %>% 
   summarise(
     n_trans = length(unique(TaxonKey)),
-    n_countries = length(unique(Neighbor_Territory)),
+    n_countries = length(unique(Neighbour_Territory)),
     )
 
 ```
@@ -1742,12 +1863,12 @@ Clean_Results <- read.csv("~/GitHub/FishForVisa/Temporal_Data/SubsetData.csv")
 sau_eez_fes <- read.csv("~/GitHub/FishForVisa/Temporal_Data/sau_eez_fes.csv")
   
 
-Neighbord_Territory_T <- Clean_Results %>% 
-  group_by(eez_name=Neighbor_Territory) %>% 
+Neighbourd_Territory_T <- Clean_Results %>% 
+  group_by(eez_name=Neighbour_Territory) %>% 
   summarise() %>%
   left_join(sau_eez_fes,
             by = "eez_name") %>% 
-  select(Neighbor_Territory= eez_name,
+  select(Neighbour_Territory= eez_name,
          NT_fishing_entity=fishing_entity
          )
 
@@ -1760,8 +1881,8 @@ Country_Territory_T <- Clean_Results %>%
          CT_fishing_entity=fishing_entity)
 
 Non_duplicate_Data <- Clean_Results %>%   
-  left_join(Neighbord_Territory_T,
-              by ="Neighbor_Territory") %>% 
+  left_join(Neighbourd_Territory_T,
+              by ="Neighbour_Territory") %>% 
   left_join(Country_Territory_T,
               by ="Country_Territory") %>% 
   mutate(
@@ -1831,13 +1952,13 @@ Russia_EEZlist <- EEZIDs_List %>%
   
 unique(Russia_EEZlist$Name)
 
-### So maybe there are no neighbors?
-Neighbor_List <- fread(paste(Data_Path,"Spatial_Data/Neighbor_List.csv", sep =""))
+### So maybe there are no Neighbours?
+Neighbour_List <- fread(paste(Data_Path,"Spatial_Data/Neighbour_List.csv", sep =""))
 
-Russia_Neighbor <- Neighbor_List %>% 
+Russia_Neighbour <- Neighbour_List %>% 
   filter(stringr::str_detect(Name,"Russia"))
   
-unique(Russia_Neighbor$Country_Territory)
+unique(Russia_Neighbour$Country_Territory)
 
 # OK So Kara Sea has no borders outside Russia, hence white. Now Laptev does have borders but No species... which is weird... Paific Halibut?
 
@@ -1871,19 +1992,19 @@ unique(Russia_Neighbor$Country_Territory)
 # Spp: Species to be analized, data with presence/absence per gridcell
 # Index_EEZ: Reference list of all INDEX that fall within EEZs
 # EEZ_Size: Number of grid-cells that each EEZ has
-# Neighbors: Reference list of neighbouring countries
+# Neighbours: Reference list of neighbouring countries
 
 # Needs getSppDist
 
 #### For testing 
 # Spp <- 600059
 # Model <- "All"
-# Neighbors <- Neighbor_List
+# Neighbours <- Neighbour_List
 # Coord = CoorG
 # __________________________________
 
 # The function
-EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
+EstTransIndex <- function(Spp,Model,Neighbours,Coord,Save="Y"){
   
   # Get model data from spps
   SppDist <- GetSppDist(Spp,Model,Coord)
@@ -1892,7 +2013,7 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
   
   #____________ ESTIMATING MODEL INDEX (TRESHOLD 1)_________ #
   Trans_Spp <- SppDist %>%
-    filter(INDEX %in% Neighbors$INDEX,# Filter data only located within EEZs
+    filter(INDEX %in% Neighbours$INDEX,# Filter data only located within EEZs
            Model != "SAU_C") %>% # Only using observational and modelled data
     mutate(Value = ifelse(Value > 0, 1,0)) %>%
     left_join(EEZ_CellID,
@@ -1912,9 +2033,9 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
     #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 3)_________ #
    # The number of species' cells present within each country's EEZ
   
-  #Step 1.  Get EEZ id and neighbor
-  Neighbors_EEZ <- Neighbors %>% 
-  group_by(EEZID,Country_Territory,Neighbor_Territory) %>% 
+  #Step 1.  Get EEZ id and Neighbour
+  Neighbours_EEZ <- Neighbours %>% 
+  group_by(EEZID,Country_Territory,Neighbour_Territory) %>% 
   summarise(n=n()) %>% 
   ungroup() %>% 
   select(-n)
@@ -1925,12 +2046,12 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
              Model, 
              EEZID) %>% 
     summarise(n_spp_eez = length(unique(INDEX))) %>% 
-    left_join(Neighbors_EEZ,
+    left_join(Neighbours_EEZ,
               by = "EEZID") %>% 
-    filter(Country_Territory %in% Trans_Spp$Name, #Filter out unwanted neighbors (those who don't have grids within but get included because they are neighbors)
-           Neighbor_Territory %in% Trans_Spp$Name)
+    filter(Country_Territory %in% Trans_Spp$Name, #Filter out unwanted Neighbours (those who don't have grids within but get included because they are Neighbours)
+           Neighbour_Territory %in% Trans_Spp$Name)
   
-  # Step 3. Sum total grids per neighbors
+  # Step 3. Sum total grids per Neighbours
   
   # Split dataframes to merge latter
   Country_Territory_T <- Spp_Grid %>% 
@@ -1940,22 +2061,22 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
       TaxonKey,Name=Country_Territory,n_spp_eez
     )
   
-  Neighbor_Territory_T <- Spp_Grid %>% 
+  Neighbour_Territory_T <- Spp_Grid %>% 
     ungroup() %>% 
     select(
       Model_Index,
-      TaxonKey,n_spp_eez,Name=Neighbor_Territory, Country_Territory
+      TaxonKey,n_spp_eez,Name=Neighbour_Territory, Country_Territory
     )
 
-  # Merge dataframes to get totals per neighbords
+  # Merge dataframes to get totals per Neighbourds
   Area_Index_D <- full_join(Country_Territory_T,
-                           Neighbor_Territory_T, by = c("Name","TaxonKey","Model")) %>%
+                           Neighbour_Territory_T, by = c("Name","TaxonKey","Model")) %>%
     rowwise() %>%
-    mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per neighbors
+    mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per Neighbours
     distinct() %>% # Removes false duplicates from `full_join()`
-    rename(Neighbor_Territory = Name,
+    rename(Neighbour_Territory = Name,
            n_spp_Country = n_spp_eez.x,
-           n_spp_Neighbor = n_spp_eez.y) %>% 
+           n_spp_Neighbour = n_spp_eez.y) %>% 
     mutate(Area_Index = n_spp_Country/Spp_Total) %>%  #Estimates the proportion of grids per country
     select(1:4,6,8)
 
@@ -1966,7 +2087,7 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
             by = c("TaxonKey","Country_Territory","Model")
   ) %>% 
     filter(!is.na(Area_Index))%>%  # Remove cases where the country does not pass the area_index and viceversa
-    select(Model,TaxonKey,Country_Territory,Neighbor_Territory,everything())
+    select(Model,TaxonKey,Country_Territory,Neighbour_Territory,everything())
 
   ### Save spp dataframe
   
@@ -2009,9 +2130,9 @@ EstTransIndex <- function(Spp,Model,Neighbors,Coord,Save="Y"){
 ### Testing Function ####
 # Spp <- 600006
 # Model <- "All"
-# Neighbors <- Neighbor_List
+# Neighbours <- Neighbour_List
 # 
-# Tryout <- EstTransIndex(Spp,Model,Neighbors,CoorG,Save="N")
+# Tryout <- EstTransIndex(Spp,Model,Neighbours,CoorG,Save="N")
 # 
 # Over_20 <-Tryout %>% 
 #     filter(Area_Index > 0.20,
@@ -2075,58 +2196,58 @@ for(v in 1:length(Mod)){
 
 
 # Old code
-```{r OLD_funEstNeighbors, eval = F, echo=T}
-# Determine which countries are neighbors
+```{r OLD_funEstNeighbours, eval = F, echo=T}
+# Determine which countries are Neighbours
 
 # Method adopted from Adrew Heiss
 # https://gist.github.com/andrewheiss/926b9d60a26e29f6bf32
 
-EstNeighbors <- function(Shapefile){
+EstNeighbours <- function(Shapefile){
   
   # Get the list using the poly2nb function
   
-  Neighbor_List <- poly2nb(Shapefile)
+  Neighbour_List <- poly2nb(Shapefile)
   
   # Convert te nb data to a Matrix of crossing references
-  Neighbor_Matrix <- nb2mat(Neighbor_List,
+  Neighbour_Matrix <- nb2mat(Neighbour_List,
                             style="B", 
                             zero.policy=TRUE)
   
   # Rename the matrix axis
-  colnames(Neighbor_Matrix) <- rownames(Neighbor_Matrix)
+  colnames(Neighbour_Matrix) <- rownames(Neighbour_Matrix)
   
   
   # Get the names of the countries for identifying them
   Country_Names <- tibble(id = row.names(Shapefile@data),
                               Country_Territory = as.character(Shapefile@data$Name),
-                              Neighbor_Territory = Country_Territory,
+                              Neighbour_Territory = Country_Territory,
                               EEZID = Shapefile@data$EEZID # specific of SAU sf
                               )
   
-  # Clean up and transform the neighbor matrix
-  Neighbors <- as.data.frame(Neighbor_Matrix) %>%
+  # Clean up and transform the Neighbour matrix
+  Neighbours <- as.data.frame(Neighbour_Matrix) %>%
     mutate(country = row.names(.)) %>%  # Convert row names to actual column
-    gather(neighbor, present, -country) %>%  # Convert to long
+    gather(Neighbour, present, -country) %>%  # Convert to long
     filter(present == 1) %>%  # Only look at cells with a match
     # Add country names
     left_join(select(Country_Names,
-                     -Neighbor_Territory), by=c("country" = "id")) %>%
+                     -Neighbour_Territory), by=c("country" = "id")) %>%
     left_join(select(Country_Names, 
-                     -Country_Territory), by=c("neighbor" = "id")) %>% 
-    select(EEZID = EEZID.x,Country_Territory,Neighbor_Territory) # select final column
+                     -Country_Territory), by=c("Neighbour" = "id")) %>% 
+    select(EEZID = EEZID.x,Country_Territory,Neighbour_Territory) # select final column
  
     # Merge them with SAU data
   
-  DBEM_Neighbors_Data <- EEZIDs_List %>% 
+  DBEM_Neighbours_Data <- EEZIDs_List %>% 
   left_join(EEZ_CellID, 
             by = "EEZID") %>% # Asign EEZ id to each country
-  left_join(Neighbors, 
-            by = "EEZID") %>% # Include all neighboring countries 
-  filter(Neighbor_Territory != "NA") %>% 
+  left_join(Neighbours, 
+            by = "EEZID") %>% # Include all Neighbouring countries 
+  filter(Neighbour_Territory != "NA") %>% 
   left_join(Coor,
             by = "INDEX") # Inclu
   
-  return(DBEM_Neighbors_Data)
+  return(DBEM_Neighbours_Data)
    
 }
 
@@ -2140,8 +2261,173 @@ EstNeighbors <- function(Shapefile){
 # Test <- World_EEZs[World_EEZs@data$Name %in% Test_Countries, ]
 
 # Running function
-# getNeighbors(Test)
+# getNeighbours(Test)
 
 #### Works beautifully! 
 
+```
+
+```{r Trans_Spp_Function, eval= T ,echo = T,warning = F,message = F}
+
+# Function to determine whether or not a species is transboundary
+
+# Varibales needed
+# Spp: Species to be analized, data with presence/absence per gridcell
+# Index_EEZ: Reference list of all INDEX that fall within EEZs
+# EEZ_Size: Number of grid-cells that each EEZ has
+# Neighbours: Reference list of neighbouring countries
+
+# Needs getSppDist
+
+#### For testing 
+# Spp <- 600059
+ #Model <- "All"
+ #Neighbours <- Neighbour_List
+ #Coord = CoorG
+# __________________________________
+
+# The function
+EstTransIndex <- function(Spp,Model,Neighbours,Coord,Save="Y"){
+  
+  # Get model data from spps
+  SppDist <- GetSppDist(Spp,Model,Coord)
+  
+  # Result 1. Number of Countries that share the species
+  
+  #____________ ESTIMATING MODEL INDEX (TRESHOLD 1)_________ #
+  Trans_Spp <- SppDist %>%
+    filter(INDEX %in% Neighbours$INDEX,# Filter data only located within EEZs
+           Model != "SAU_C") %>% # Only using observational and modelled data
+    mutate(Value = ifelse(Value > 0, 1,0)) %>%  
+    filter(Value > 0) %>%
+    group_by(TaxonKey,
+             INDEX
+    ) %>%
+    summarise(Model_Index = mean(Value,na.rm=T)
+    ) %>%
+    filter(Model_Index > 0) %>%
+    # ____________ ESTIMATING FUNDAMENTAL NICHE (TRESHOLD 2)_________ #
+    left_join(SppDist,
+              by = c("TaxonKey","INDEX")) %>%
+    filter(Model == "SAU_C", # Only keeping cells where SAU catch exists
+           Value > 0) %>%
+    mutate(Model_Index = Model_Index*100) %>%
+    select(-Model, -Value, -Latitude,-Longitude) %>%
+    left_join(EEZ_CellID,
+              by = "INDEX") %>% 
+    left_join(EEZIDs_List,
+              by = "EEZID")
+  
+  # MODEL INDEX (TRESHOLDS 1 & 2) #
+  Model_Index_D <- Trans_Spp %>% 
+    group_by(Name,
+             TaxonKey,
+             Model_Index
+    ) %>% 
+    summarise(n_cells_spp = n()) %>% 
+    select(-n_cells_spp)
+  
+  #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 3)_________ #
+  # The number of species' cells present within each country's EEZ
+  
+  #Step 1.  Get EEZ id and Neighbour
+  Neighbours_EEZ <- Neighbours %>% 
+    group_by(EEZID,Country_Territory,Neighbour_Territory) %>% 
+    summarise(n=n()) %>% 
+    ungroup() %>% 
+    select(-n)
+  
+  # Step 2. Determines the amount of grids present in each country
+  Spp_Grid <- Trans_Spp %>% 
+    group_by(TaxonKey,
+             Model_Index, # Un-comment after producing models x datasets
+             EEZID) %>% 
+    summarise(n_spp_eez = length(unique(INDEX))) %>% 
+    left_join(Neighbours_EEZ,
+              by = "EEZID") %>% 
+    filter(Country_Territory %in% Trans_Spp$Name, #Filter out unwanted Neighbours (those who don't have grids within but get included because they are Neighbours)
+           Neighbour_Territory %in% Trans_Spp$Name)
+  
+  # Step 3. Sum total grids per Neighbours
+  
+  # Split dataframes to merge latter
+  Country_Territory_T <- Spp_Grid %>% 
+    ungroup() %>% 
+    select(
+      Model_Index, # Un-comment after producing models x datasets
+      TaxonKey,
+      Name=Country_Territory,
+      n_spp_eez
+    )
+  
+  Neighbour_Territory_T <- Spp_Grid %>% 
+    ungroup() %>% 
+    select(
+      Model_Index,
+      TaxonKey,n_spp_eez,
+      Name=Neighbour_Territory, 
+      Country_Territory
+    )
+  
+  # Merge dataframes to get totals per Neighbourds
+  Area_Index_D <- full_join(Country_Territory_T,
+                            Neighbour_Territory_T, 
+                            by = c("Model_Index","Name","TaxonKey")
+  ) %>%
+    rowwise() %>%
+    mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per Neighbours
+    distinct() %>% # Removes false duplicates from `full_join()`
+    rename(Neighbour_Territory = Name,
+           n_spp_Country = n_spp_eez.x,
+           n_spp_Neighbour = n_spp_eez.y) %>% 
+    mutate(Area_Index = n_spp_Country/Spp_Total) %>%  #Estimates the proportion of grids per country
+    select(1:3,6,8)
+  
+  #____________ FINAL INDEX TABLE_________ #
+  Indexes <- Model_Index_D %>% 
+    rename(Country_Territory = Name) %>% 
+    full_join(Area_Index_D,
+              by = c("TaxonKey","Country_Territory","Model_Index")
+    ) %>% 
+    filter(!is.na(Area_Index),
+           !is.na(Model_Index) # Uncomment after producing Models x datasets
+    )%>%  # Remove cases where the country does not pass the area_index and viceversa
+    select(TaxonKey,Country_Territory,Neighbour_Territory,everything())
+  
+  ### Save spp dataframe
+  
+  if(nrow(Indexes) > 0 & Save == "Y"){
+    
+    File_Name <- paste(Spp,"_Transboundary.csv",sep = "")
+    Save_Path <- paste(Results_Path,File_Name,sep="")
+    
+    write.csv(Indexes,
+              Save_Path,
+              row.names = F)
+    
+  }
+  
+  if(nrow(Indexes) == 0 & Save == "Y"){
+    
+    # Reads dataset of Non transboundary species
+    Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
+    
+    # Get current Spp that is not transboundary 
+    Current_Spp <- tibble(TaxonKey = Spp)
+    
+    # Combine new spp with others
+    New_Non <- Non_Transboundary_Data %>% 
+      bind_rows(Current_Spp)
+    
+    # Set a name for file and saves data
+    New_Non_Name <- paste(Results_Path,"Non_Transboundary_Data.csv",sep="")
+    write.csv(New_Non, New_Non_Name, row.names = F)
+    
+  }
+  
+  ### Function return
+  
+  EstTransIndex=Indexes # A dataframe with 
+  
+}
 ```
