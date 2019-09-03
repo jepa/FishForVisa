@@ -851,6 +851,8 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdi
 
 ```
 
+### Function 'Mclapply_Hack'
+
 ```{r Mclapply_Hack_Fun, eval= T , echo = T, warning = F, message = F}
 
 # The hack
@@ -928,12 +930,14 @@ mclapply <- switch( Sys.info()[['sysname']],
 ```
 
 
-## Routine for estimating transboundary species
+## Principal Routine
+
+#### Control Pannel
 
 ```{r EEZ_Control_Pannel, eval = T, echo = F}
 
 # Set Jurisdiction to EEZ or RFMO
-Jurisdiction <- "EEZ"
+Jurisdiction <- "RFMO"
 
 # Updates result's path for the jurisdiction
 Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
@@ -994,6 +998,7 @@ n_cores <- detectCores()
 print(paste("You are running the model for",nrow(Exploited_Species),"Species at the",Jurisdiction,"level"))
 ```
 
+#### Run Routine
 ```{r Routine_parallel, eval = F, echo = F}
 
 
