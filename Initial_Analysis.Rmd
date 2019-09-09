@@ -37,6 +37,7 @@ packages <- c(
   # "knitr",
   # "kableExtra",
   "ggrepel", # for nice plot labels
+  "ggsflabel", # for nice sf_plots labels
   # "gridExtra",
   # "ggmap",
   # "rgeos",
@@ -295,7 +296,7 @@ EstNeighbours <- function(Shapefile, Partial = "NA"){
 
 ```
 
-### Sub Routine
+### Sub Routine; Neighbours
 
 #### EEZ
 
@@ -488,7 +489,11 @@ write.csv(RFMO_Neighbour_List,
           row.names = F)
 
 ```
-### Function `GetSppDist`
+
+
+### Estimate Transboundary Species
+
+#### Function `GetSppDist`
 
 This function Read in species distribution from the observation data, ESM models and SAU data, still missing DBEM
 
@@ -629,16 +634,16 @@ GetSppDist=function(Spp,Model,Coord){
 
 ```
 
-### Function `EstTransIndex`
+#### Function `EstTransIndex`
 
-#### NOTES:
+##### NOTES:
 
-##### General:
+###### General:
 - For now using SAU_C as presence absence
 - Grouping by species distribution within EEZ and not EEZ area
 
-##### Tresholds:
-##### Model Index, line ~479
+###### Tresholds:
+###### Model Index, line ~479
 
 This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follows:
 
@@ -650,7 +655,7 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 
 ** NOTE THAT THE FUNCTION IS SETTED TO OUTPUT RESULTS FOR LL MODELS **
 
-##### Distribution Index, line ~482
+###### Distribution Index, line ~482
 
 ```{r Trans_Spp_Function, eval= T ,echo = T,warning = F,message = F}
 
@@ -851,7 +856,7 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdi
 
 ```
 
-### Function 'Mclapply_Hack'
+#### Function 'Mclapply_Hack'
 
 ```{r Mclapply_Hack_Fun, eval= T , echo = T, warning = F, message = F}
 
@@ -1025,6 +1030,65 @@ system.time(
    
 ```
 
+## Sub Routine; SAU Catch
+
+###`getSAucat` 
+
+```{r getSAUCatch, eval = F, echo = F}
+
+# Function to get sau Catch data and total per country over a mean of (standarized 10 years )
+getSAUCatch <-function(TaxonKey, Coord, nyears = 10){
+  suppressMessages(
+
+  year <- 67-nyears-1  
+    
+Catch_Data <- GetSppDist(TaxonKey,Model="SAU_C",Coord = Coord) %>% 
+  select(year:67) %>% 
+  gather("Year","Catch",1:nyears) %>% 
+  filter(!is.na(Catch)) %>%  # remove NAs earlier
+  left_join(Index_Code,
+            by ="INDEX") %>% 
+  group_by(Species,Territory,Year) %>% 
+  summarise(Total_Catch = sum(Catch,na.rm=T)) %>% 
+  group_by(Species,Territory) %>% 
+  summarise(Mean_Catch = mean(Total_Catch,na.rm=T))
+)
+return(Catch_Data)
+  
+}
+
+```
+
+#### Run Subroutine
+
+```{r SAU_Catch_Data, eval = F, echo = F}
+
+# get SAU catch data per species per nation
+
+# Data needed for function
+CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>%
+  mutate(INDEX = seq(1,259200,1))
+
+EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
+EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
+colnames(EEZ_CellID) <- c("EEZID","INDEX")
+  
+  Index_Code <- EEZIDs_List %>% 
+    left_join(EEZ_CellID) %>% 
+    rename(Territory = Name)
+
+  # Get list of species catch
+Trans_Spp_List <- unique(Clean_Results_Trans$TaxonKey)
+
+# Run routine and save it for latter
+Sau_Catch_Data <- bind_rows(mclapply(Trans_Spp_List, getSAUCatch, Coord=CoorG))
+
+write.csv(Sau_Catch_Data,
+          paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv",sep=""),
+          row.names = F)
+
+```
+
 # Results
 
 ## Function `GetTransResults`
@@ -1045,7 +1109,17 @@ GetTransResults=function(Spp){
 
 ```
 
+
+## Load Results data
+
 ```{r Load_Results_Data, eval = F}
+
+# Set Jurisdiction to EEZ or RFMO
+Jurisdiction <- "EEZ"
+
+# Updates result's path for the jurisdiction
+Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
+
 
 # Species list to get species names
 Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep=""))
@@ -1059,133 +1133,174 @@ Clean_sau_eez_fes <- sau_eez_fes %>%
   gather("Type","FishingRegion",2,4) %>% 
   left_join(sau_eez_fes,
             by = ("fishing_entity_id")
-            ) %>% 
+  ) %>% 
   group_by(FishingRegion,fishing_entity) %>% 
   summarise(n())
 
+# UN Regions dataset
+UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), header = TRUE) %>% 
+  select(Territory = Country.or.Area,
+         georegion = Region.Name)
+
+# Load Land shapefile
+path_world_land <- paste(Data_Path,"Spatial_Data/ne_50m_admin_0_countries",sep="")
+# #The File
+fnam_world_land <- "ne_50m_admin_0_countries.shp"
+
+World_land_sf <- st_read(dsn = path_world_land,
+                         layer =file_path_sans_ext(fnam_world_land)) %>% 
+  rename(Territory = NAME) 
+
+# head(World_land_sf)
 # Transboundary Results ####
 
 
 # For Carmelia
-if(Sys.info()[7] == "carmelia"){
-  Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep=""))
-}else{
+if(Jurisdiction == "EEZ"){
+  if(Sys.info()[7] == "carmelia"){
+    Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep="")) # losad carmelia data
+  }else{
+    # Read Sau Catch Data
+    Sau_Catch_Data <- fread(paste(Results_Path,"Speceies_Data/Sau_Catch_Data.csv")) %>% 
+      filter(!is.na(Territory))
+    # For Hall and The Beast
+    # List of species
+    Spp <- list.files(Results_Path)[1:672]
+    
+    # Get resukts for all species
+    Results_Trans <- GetTransResults(Spp)
+    
+    # Clean out countries that share with their own borders (Will be outdated soon)
+    Auto_Remove_Territories <- Results_Trans %>%   
+      rename(FishingRegion=Country_Territory) %>% 
+      left_join(Clean_sau_eez_fes,
+                by = "FishingRegion") %>% 
+      select(TaxonKey,
+             Country_Territory= FishingRegion,
+             FishingRegion=Neighbor_Territory, #Neighbour_Territory
+             Model_Index,
+             Area_Index,
+             CT_fishing_entity= fishing_entity) %>% 
+      left_join(Clean_sau_eez_fes,
+                by = "FishingRegion") %>% 
+      select(1,2, 
+             Neighbor_Territory = FishingRegion,
+             Model_Index:CT_fishing_entity,
+             NT_fishing_entity= fishing_entity,
+             everything()) %>% 
+      mutate(
+        CT_fishing_entity = ifelse(is.na(CT_fishing_entity),paste(Country_Territory),paste(CT_fishing_entity)),
+        NT_fishing_entity = ifelse(is.na(NT_fishing_entity),paste(Neighbor_Territory),paste(NT_fishing_entity)),
+        Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
+      )
+    
+    #### Manual removal of those left... 
+    
+    # List of territories to eliminate (No other neighobors but mainland)
+    Islands_to_Remove <- c(
+      "Brazil (Fernando de Noronha)",
+      "Brazil (St Paul and St. Peter Archipelago)",
+      "Hawaii Main Islands (USA)",
+      "Hawaii Northwest Islands (USA)",
+      "Juan Fernandez Islands (Chile)",
+      "Kermadec Isl. (New Zealand)"
+    )
+    
+    # Complete list of territories to remove from dataset (Including islands)
+    
+    Territories_to_Remove <- Results_Trans %>% 
+      filter(
+        Country_Territory %in% Islands_to_Remove |
+          Neighbor_Territory %in% Islands_to_Remove |
+          Country_Territory == "Balearic Island (Spain)" & Neighbor_Territory == "Spain (Mediterranean and Gulf of Cadiz)" |
+          Country_Territory == "British Virgin Isl. (UK)" & Neighbor_Territory == "Anguilla" |
+          Neighbor_Territory == "British Virgin Isl. (UK)" & Country_Territory == "Anguilla" |
+          Country_Territory == "Corsica (France)" & Neighbor_Territory == "France (Mediterranean)" |
+          Neighbor_Territory == "Corsica (France)" & Country_Territory == "France (Mediterranean)" |
+          Country_Territory == "Crete (Greece)" & Neighbor_Territory == "Grece" |
+          Neighbor_Territory == "Crete (Greece)" & Country_Territory == "Grece" |
+          Country_Territory == "Cyprus (North)" & Neighbor_Territory == "Cyprus (South)" |
+          Neighbor_Territory == "Cyprus (North)" & Country_Territory == "Cyprus (South)" |
+          Country_Territory == "Channel Isl. (UK)" & Neighbor_Territory == "United Kingdom" |
+          Neighbor_Territory == "Channel Isl. (UK)" & Country_Territory == "United Kingdom" |
+          Country_Territory == "Glorieuse Islands (France)" & Neighbor_Territory == "Mayotte (France)" |
+          Neighbor_Territory == "Glorieuse Islands (France)" & Country_Territory == "Mayotte (France)" |
+          Country_Territory == "Guam (USA)" & Neighbor_Territory == "Northern Marianas (USA)" |
+          Neighbor_Territory == "Guam (USA)" & Country_Territory == "Northern Marianas (USA)" |
+          Country_Territory == "Italy" & Neighbor_Territory == "Sardinia (Italy)" |
+          Neighbor_Territory == "Italy" & Country_Territory == "Sardinia (Italy)" |
+          Country_Territory == "Italy" & Neighbor_Territory == "Sicily (Italy)" |
+          Neighbor_Territory == "Italy" & Country_Territory == "Sicily (Italy)" |
+          Country_Territory == "Japan (Daito Islands)" & Neighbor_Territory == "Japan (main islands)"|
+          Neighbor_Territory == "Japan (Daito Islands)" & Country_Territory == "Japan (main islands)"|
+          Country_Territory == "Japan (Daito Islands)" & Neighbor_Territory == "Japan (Ogasawara Islands)"|
+          Neighbor_Territory == "Japan (Daito Islands)" & Country_Territory == "Japan (Ogasawara Islands)"|
+          Country_Territory == "Norway" & Neighbor_Territory == "Svalbard Isl. (Norway)" |
+          Neighbor_Territory == "Norway" & Country_Territory == "Svalbard Isl. (Norway)" |
+          Country_Territory == "Sicily (Italy)" & Neighbor_Territory == "Sardinia (Italy)" |
+          Neighbor_Territory == "Sicily (Italy)" & Country_Territory == "Sardinia (Italy)" |
+          Country_Territory == "South Africa (Atlantic Coast)" & Neighbor_Territory == "South Africa (Indian Ocean Coast)" |
+          Neighbor_Territory == "South Africa (Atlantic Coast)" & Country_Territory == "South Africa (Indian Ocean Coast)" |
+          Country_Territory == "USA (Alaska, Arctic)" & Neighbor_Territory == "USA (Alaska, Subarctic)" |
+          Neighbor_Territory == "USA (Alaska, Arctic)" & Country_Territory == "USA (Alaska, Subarctic)"
+      ) %>%
+      group_by(Country_Territory,Neighbor_Territory) %>% 
+      summarise(n())
+    
+    # Cleaned results 
+    Clean_Results_Trans <- Auto_Remove_Territories %>% 
+      anti_join(Territories_to_Remove,
+                by = c("Country_Territory","Neighbor_Territory")
+      ) %>% 
+      filter(Same_Nation == "No") %>% 
+      rename(Territory = Country_Territory,
+             Neighbour = Neighbor_Territory)
+    
+    # SAU shapefile
+    
+    # The path
+    path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile/",sep="")
+    # #The File
+    fnam_world <- "SAUEEZ_July2015.shp"
+    # #Load it!
+    
+    ### Sau Catch Data
+    
+    SAU_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv",sep = ""), deader = TRUE)
+    
+  } # closes ifstatement for carmelia temporal files
+}else{ # Closes EEZ ifelse
   
+  # List of files without the non-trans data file
+  Spp <- list.files(Results_Path)
+  Spp <- Spp[Spp !="Non_Transboundary_Data.csv"]
   
-  
-  # For Hall and The Beast
-  
-  Spp <- list.files(Results_Path)[1:672]
-  
-  
+  # Results loaing 
   Results_Trans <- GetTransResults(Spp)
   
-  # Clean out countries that share with their own borders
+  # Cleaning results (No cleaning needed for now)
+  Clean_Results_Trans <- Results_Trans
   
-  Auto_Remove_Territories <- Results_Trans %>%   
-    rename(FishingRegion=Country_Territory) %>% 
-    left_join(Clean_sau_eez_fes,
-              by = "FishingRegion") %>% 
-    select(TaxonKey,
-           Country_Territory= FishingRegion,
-           FishingRegion=Neighbour_Territory,
-           Model_Index,
-           Area_Index,
-           CT_fishing_entity= fishing_entity) %>% 
-    left_join(Clean_sau_eez_fes,
-              by = "FishingRegion") %>% 
-    select(1,2, 
-           Neighbour_Territory = FishingRegion,
-           Model_Index:CT_fishing_entity,
-           NT_fishing_entity= fishing_entity,
-           everything()) %>% 
-    mutate(
-      CT_fishing_entity = ifelse(is.na(CT_fishing_entity),paste(Country_Territory),paste(CT_fishing_entity)),
-      NT_fishing_entity = ifelse(is.na(NT_fishing_entity),paste(Neighbour_Territory),paste(NT_fishing_entity)),
-      Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
-    )
+  # Load results for non transboundary (discrete) stocks
+  Results_Discrete <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep="")) %>% 
+    filter(!is.na(TaxonKey))
   
-  #### Manual removal of those left... 
+  # Shapefiles 
+  path_world <- paste(Data_Path,"Spatial_Data/RFMO/SAU_RFMO/",sep="")
+  # #The File
+  fnam_world <- "SAU_RFMO_Sept_2015.shp"
   
-  # List of territories to eliminate (No other neighobors but mainland)
-  Islands_to_Remove <- c(
-    "Brazil (Fernando de Noronha)",
-    "Brazil (St Paul and St. Peter Archipelago)",
-    "Hawaii Main Islands (USA)",
-    "Hawaii Northwest Islands (USA)",
-    "Juan Fernandez Islands (Chile)",
-    "Kermadec Isl. (New Zealand)"
-  )
-  
-  # Complete list of territories to remove from dataset (Including islands)
-  
-  Territories_to_Remove <- Results_Trans %>% 
-    filter(
-      Country_Territory %in% Islands_to_Remove |
-        Neighbour_Territory %in% Islands_to_Remove |
-        Country_Territory == "Balearic Island (Spain)" & Neighbour_Territory == "Spain (Mediterranean and Gulf of Cadiz)" |
-        Country_Territory == "British Virgin Isl. (UK)" & Neighbour_Territory == "Anguilla" |
-        Neighbour_Territory == "British Virgin Isl. (UK)" & Country_Territory == "Anguilla" |
-        Country_Territory == "Corsica (France)" & Neighbour_Territory == "France (Mediterranean)" |
-        Neighbour_Territory == "Corsica (France)" & Country_Territory == "France (Mediterranean)" |
-        Country_Territory == "Crete (Greece)" & Neighbour_Territory == "Grece" |
-        Neighbour_Territory == "Crete (Greece)" & Country_Territory == "Grece" |
-        Country_Territory == "Cyprus (North)" & Neighbour_Territory == "Cyprus (South)" |
-        Neighbour_Territory == "Cyprus (North)" & Country_Territory == "Cyprus (South)" |
-        Country_Territory == "Channel Isl. (UK)" & Neighbour_Territory == "United Kingdom" |
-        Neighbour_Territory == "Channel Isl. (UK)" & Country_Territory == "United Kingdom" |
-        Country_Territory == "Glorieuse Islands (France)" & Neighbour_Territory == "Mayotte (France)" |
-        Neighbour_Territory == "Glorieuse Islands (France)" & Country_Territory == "Mayotte (France)" |
-        Country_Territory == "Guam (USA)" & Neighbour_Territory == "Northern Marianas (USA)" |
-        Neighbour_Territory == "Guam (USA)" & Country_Territory == "Northern Marianas (USA)" |
-        Country_Territory == "Italy" & Neighbour_Territory == "Sardinia (Italy)" |
-        Neighbour_Territory == "Italy" & Country_Territory == "Sardinia (Italy)" |
-        Country_Territory == "Italy" & Neighbour_Territory == "Sicily (Italy)" |
-        Neighbour_Territory == "Italy" & Country_Territory == "Sicily (Italy)" |
-        Country_Territory == "Japan (Daito Islands)" & Neighbour_Territory == "Japan (main islands)"|
-        Neighbour_Territory == "Japan (Daito Islands)" & Country_Territory == "Japan (main islands)"|
-        Country_Territory == "Japan (Daito Islands)" & Neighbour_Territory == "Japan (Ogasawara Islands)"|
-        Neighbour_Territory == "Japan (Daito Islands)" & Country_Territory == "Japan (Ogasawara Islands)"|
-        Country_Territory == "Norway" & Neighbour_Territory == "Svalbard Isl. (Norway)" |
-        Neighbour_Territory == "Norway" & Country_Territory == "Svalbard Isl. (Norway)" |
-        Country_Territory == "Sicily (Italy)" & Neighbour_Territory == "Sardinia (Italy)" |
-        Neighbour_Territory == "Sicily (Italy)" & Country_Territory == "Sardinia (Italy)" |
-        Country_Territory == "South Africa (Atlantic Coast)" & Neighbour_Territory == "South Africa (Indian Ocean Coast)" |
-        Neighbour_Territory == "South Africa (Atlantic Coast)" & Country_Territory == "South Africa (Indian Ocean Coast)" |
-        Country_Territory == "USA (Alaska, Arctic)" & Neighbour_Territory == "USA (Alaska, Subarctic)" |
-        Neighbour_Territory == "USA (Alaska, Arctic)" & Country_Territory == "USA (Alaska, Subarctic)"
-    ) %>%
-    group_by(Country_Territory,Neighbour_Territory) %>% 
-    summarise(n())
-  
-  # Cleaned results 
-  Clean_Results_Trans <- Auto_Remove_Territories %>% 
-    anti_join(Territories_to_Remove,
-              by = c("Country_Territory","Neighbour_Territory")
-    ) %>% 
-    filter(Same_Nation == "No")
-  
-} # closes ifstatement for carmelia temporal files
-# Load results for non transboundary (discrete) stocks
-# Results_Discrete <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
+}
 
-
-# SAU shapefile
-
-# The path
-path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile/",sep="")
-# #The File
-fnam_world <- "SAUEEZ_July2015.shp"
-# #Load it!
-# 
-World_EEZs <- st_read(dsn = path_world,
-                      layer =file_path_sans_ext(fnam_world))
-# 
-# head(World_EEZs)
-
+#  GLobal data depending on jursidiction
+# Load Regional shapefiles 
+World_sf <- st_read(dsn = path_world,
+                    layer =file_path_sans_ext(fnam_world)) %>% 
+  rename(Territory = Name)
 
 ```
 
+## Determine Tresholds
 
 ```{r Results_Tresholds, eval =F, echo = F}
 
@@ -1209,71 +1324,94 @@ Transboundary_Spp <- Clean_Results_Trans %>%
   filter(
          Area_Index >= Min_AI,
          Area_Index <= Max_AI,
-         Model_Index == MI,
-         Same_Nation == "No"
+         Model_Index == MI#,
+         # Same_Nation == "No"
          ) %>% 
-  group_by(Name=Country_Territory) %>% 
+  group_by(Territory) %>% 
   summarise(
-    n_trans = length(unique(TaxonKey)),
-    n_countries = length(unique(Neighbour_Territory)),
-    Trans_Rate = n_trans/n_countries
+    n_trans_spp = length(unique(TaxonKey)),
+    n_Neighbours = length(unique(Neighbour)),
+    Trans_Rate = n_trans_spp/n_Neighbours
     )
-  # filter(Model_Index == 100)
-  # head(Results_Data)
-
+  
 ### Non-transboundary
 
 Discrete_Spp <- Clean_Results_Trans %>% 
   filter(
          Area_Index < Min_AI |
          Area_Index > Max_AI,
-         Model_Index == MI,
-         Same_Nation == "No"
+         Model_Index == MI#,
+         # Same_Nation == "No"
          ) %>% 
-  group_by(Name=Country_Territory) %>% 
+  group_by(Territory) %>% 
   summarise(
-    n_no_trans = length(unique(TaxonKey)),
-    n_countries = length(unique(Neighbour_Territory))
-  )
-
-
-```
-
-## Validate Results using RFMOs
-
-```{Validation_RFMOs}
-
-#### Load RFMO data provided by Vicky (SAU)
-
-RFMOs_sf <- fread(paste(Data_Path,"Spatial_Data/SAU_RFMO/SAU_RFMO_Sept_2015.shp",sep=""))
-
+    n_no_discrete_spp = length(unique(TaxonKey)),
+    n_Territories = length(unique(Territory))
+    )
 
 
 
 ```
 
-## Analysis per Country
+## Results per Territory
 
-```{Tran_country_Map, eval =F, echo =F}
+### Map of Transboundary Species
 
+```{r Territory_Map, eval =F, echo =F}
 
-World_EEZs_simple <- World_EEZs %>%
+World_sf_si <- World_sf %>%
   st_transform(crs = 4326) %>% # 4326
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
-  left_join(TenTwenyfive, by ="Name") #%>%
-  # filter(!is.na(n_trans)) #%>%
-  # st_transform(crs = 3832)
+  left_join(Transboundary_Spp, by ="Territory") 
 
-pal <- wes_palette("Zissou1", 1000, type = "continuous")
+Catch_Country <- Sau_Catch_Data %>% 
+  group_by(FishingRegion=Territory) %>% 
+  summarise(Total_Catch = round(sum(Mean_Catch,na.rm=T)/1000,2)) %>% 
+  filter(!(is.na(FishingRegion))) %>% 
+  left_join(Clean_sau_eez_fes) %>% 
+  group_by(Territory = fishing_entity) %>% 
+  summarise(Total_Catch = sum(Total_Catch,na.rm=T))
 
-Plot <- ggplot(World_EEZs_simple) +
-  geom_sf(aes(fill = n_trans)) +
-  scale_fill_gradientn(colours = pal,
-                       na.value = "white") +
-  ggtheme_map() +
-  facet_wrap(~Model)
+World_sf_si_land <- World_land_sf %>%
+  # st_transform(crs = 4326) %>% # 4326
+  # st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%  # Include transboundary species
+  left_join(Catch_Country, by ="Territory") # Include total specices catch
+  
+# head(World_sf_si)s
 
-ggsave("R4_100_25.png",
+# Create a pellet for plotting
+# pal <- wes_palette("Zissou1", 1000, type = "continuous")
+
+World_sf_si$Bins <- cut(World_sf_si$n_trans_spp,breaks = 5)
+World_sf_si_land$BinsLan <- cut(World_sf_si_land$Total_Catch,breaks = 6)
+
+unique(World_sf_si$Bins)
+unique(World_sf_si_land$Bins)
+
+# levels(World_sf_si$Bins)
+# levels(World_sf_si_land$Bins_C)
+
+Plot <- ggplot() +
+  geom_sf(data = World_sf_si,aes(fill = Bins),colour="white") + # n_trans_spp or Bins
+  geom_sf(data = World_sf_si_land,aes(fill = BinsLan),show.legend = FALSE) +
+  # scale_fill_gradientn(colours = pal,
+  #                      na.value = "white") +
+  # scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
+  #                              rev(wes_palette(n = 4, name = "Darjeeling1"))
+  #                              ),
+  #                    na.value = "white"
+  # ) +
+  scale_fill_manual(values = c("#5BBCD6","#5BBCD6","#F98400","#F98400","#F2AD00","#F2AD00","#00A08A","#00A08A","#FF0000","#FF0000"),
+                     na.value = "white"
+  ) +
+  # scale_fill_manual(values = rev(wes_palette(n = 5, name = "Darjeeling1")),
+  #                    na.value = "white"
+  # ) +
+  ggtheme_map()
+
+Plot_Name <- paste(Jurisdiction,"_100_25_Bins_Land.png", sep = "") 
+
+ggsave(Plot_Name,
        plot = Plot,
        width = 16,
        height = 8,
@@ -1281,6 +1419,153 @@ ggsave("R4_100_25.png",
        path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
 )
 
+```
+
+### OHI-inspired Circular plot Countries
+
+```{r species_circluar_plot, eval = F, echo =F}
+
+Countries_Data <- Clean_Results_Trans %>% 
+  filter(
+         Area_Index >= Min_AI,
+         Area_Index <= Max_AI,
+         Model_Index == MI,
+         Same_Nation == "No"
+         ) %>% 
+  group_by(Territory = CT_fishing_entity) %>% 
+  summarise(value = length(unique(TaxonKey))) %>% 
+  left_join(UN_Regions, by ="Territory") %>%
+  mutate(group = ifelse(is.na(georegion),"Other",paste(georegion))) %>% 
+  rename(FishingRegion=Territory) %>% 
+  left_join(Clean_sau_eez_fes) %>% 
+  group_by(individual = fishing_entity,group) %>% 
+  summarise(Total_Catch = sum(value,na.rm=T)) %>% 
+  arrange(group,Total_Catch) %>% 
+  filter(!is.na(individual)) %>% 
+  select(individual,group,value=Total_Catch)
+
+
+# hist(Countries_Data$value)
+# unique(Countries_Data$group)
+Median_trans <- median(Countries_Data$value,na.rm=T)
+Char <- as.factor(Countries_Data$group)
+
+# Set a number of 'empty bar' to add at the end of each group
+empty_bar <- length(unique(Countries_Data$group))
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(Char), ncol(Countries_Data)) )
+colnames(to_add) <- colnames(Countries_Data)
+to_add$group <- rep(levels(Char), each=empty_bar)
+Countries_Data <- bind_rows(Countries_Data, to_add)
+Countries_Data <- Countries_Data %>% arrange(group,value)
+Countries_Data$id <- seq(1, nrow(Countries_Data))
+ 
+# Get the name and the y position of each label
+label_data <- Countries_Data
+number_of_bar <- nrow(label_data)
+angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data$hjust <- ifelse( angle < -90, 1, 0)
+label_data$angle <- ifelse(angle < -90, angle+180, angle)
+
+# prepare a data frame for base lines
+base_data <- Countries_Data %>% 
+  group_by(group) %>% 
+  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+
+# prepare a data frame for grid (scales)
+grid_data <- base_data
+grid_data$end <- grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
+grid_data$start <- grid_data$start - 1
+grid_data <- grid_data[-1,]
+ 
+# Make the plot
+ggplot(Countries_Data, 
+       aes(x=as.factor(id), 
+           y=value,
+           fill=group)
+       ) +       # Note that id is a factor. If x is numeric, there is some space between the first bar
+  geom_bar(aes(x=as.factor(id),
+               y=value,
+               fill=group),
+           stat="identity",
+           alpha=0.5) +
+  scale_fill_manual("Ecosystem Preference",
+                    values = c(wes_palette(n = 5, name = "Darjeeling1"),
+                               wes_palette(n = 4, name = "Darjeeling2")
+                               ),
+                     na.value = "white"
+  ) +
+  # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
+  geom_segment(data=grid_data, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_hline(yintercept = Median_trans, colour = "black", alpha=1, size=0.3,linetype="dashed") +
+  # Add text showing the value of each line
+  annotate("text", 
+           x = rep(max(Countries_Data$id),4),
+           y = c(20, 40, 60, 80,100),
+           label = c("20", "40", "60"),
+           color="grey", 
+           size=3 , 
+           angle=0, 
+           fontface="bold",
+           hjust=1) +
+  geom_bar(aes(x=as.factor(id),
+               y=value,
+               fill=group),
+           stat="identity",
+           alpha=0.5) +
+  ylim(-100,200) + # sets the circle the first value the central the last value how wide
+  theme_minimal() +
+  theme(
+    legend.position = c(0.5,0.5),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = unit(rep(-1,4), "cm") 
+  ) +
+  coord_polar() + 
+  geom_text(data=label_data, 
+            aes(x=id, y=110,
+                label=individual,
+                hjust=hjust), 
+            color="black",
+            # fontface="bold",
+            alpha=0.6,
+            size=2.5,
+            angle= label_data$angle,
+            inherit.aes = FALSE ) +
+  geom_text(aes(x = 229, 
+                y = 14,
+                label = "Median"),
+            colour = "grey", 
+            size = 2.5,
+            alpha=0.6,
+            angle=5,
+            inherit.aes = FALSE) +
+  # Add base line information
+  geom_segment(data=base_data, 
+               aes(x = start, 
+                   y = -5, 
+                   xend = end, 
+                   yend = -5
+                   ), 
+               colour = "black",
+               alpha=0.8, 
+               size=0.6 , 
+               inherit.aes = FALSE)
+
+ggsave(
+    plot = last_plot(),
+    width = 14,
+    height = 10,
+    units = "in",
+    filename = "Territory_circular_over10.tiff",
+    path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
+  )
+ 
 ```
 
 ```{r Top_country_Circle_Diagram, eval =F, echo = F}
@@ -1387,6 +1672,7 @@ length(unique(Results_Discrete$TaxonKey))
 ```
 
 
+
 ```{n_species_country, eval =F, echo =F}
 
 # Number of countries shared by each Species
@@ -1399,7 +1685,7 @@ Species_Trans <- Clean_Results_Trans %>%
          ) %>% 
   group_by(TaxonKey) %>% 
   summarise(
-    n_countries = length(unique(Country_Territory))
+    n_countries = length(unique(Territory))
   ) %>% 
   left_join(Exploited_Species) %>%
   left_join(Spp_Clasification)
@@ -1490,6 +1776,154 @@ ggplot(Species_data,
   ) +
   ggtheme_plot()
 
+```
+
+### OHI-inspired Circular plot Species
+
+```{r species_circluar_plot, eval = F, echo =F}
+
+Species_Data <- Clean_Results_Trans %>% 
+  filter(
+         Area_Index >= Min_AI,
+         Area_Index <= Max_AI,
+         Model_Index == MI#,
+         # Same_Nation == "No"
+         ) %>% 
+  group_by(TaxonKey) %>% 
+  summarise(n_trans_spp = length(unique(Territory))) %>% 
+  left_join(Exploited_Species) %>%
+  rename(scientific_name = TaxonName) %>% 
+  left_join(Species_environ_list) %>%
+  mutate(DemersPelag = ifelse(is.na(DemersPelag),"Other",paste(DemersPelag))) %>% 
+  select(individual=scientific_name,
+         value = n_trans_spp,
+         group = DemersPelag) %>% 
+  arrange(group,value) %>% 
+  filter(value > 10)
+
+Median_trans <- median(Species_Data$value)
+# hist(Species_Data$value)
+# unique(Species_Data$group)
+
+Char <- as.factor(Species_Data$group)
+
+# Set a number of 'empty bar' to add at the end of each group
+empty_bar <- 8
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(Char), ncol(Species_Data)) )
+colnames(to_add) <- colnames(Species_Data)
+to_add$group <- rep(levels(Char), each=empty_bar)
+Species_Data <- rbind(Species_Data, to_add)
+Species_Data <- Species_Data %>% arrange(group,value)
+Species_Data$id <- seq(1, nrow(Species_Data))
+ 
+# Get the name and the y position of each label
+label_data <- Species_Data
+number_of_bar <- nrow(label_data)
+angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data$hjust <- ifelse( angle < -90, 1, 0)
+label_data$angle <- ifelse(angle < -90, angle+180, angle)
+
+# prepare a data frame for base lines
+base_data <- Species_Data %>% 
+  group_by(group) %>% 
+  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  rowwise() %>% 
+  mutate(title=mean(c(start, end)))
+
+# prepare a data frame for grid (scales)
+grid_data <- base_data
+grid_data$end <- grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
+grid_data$start <- grid_data$start - 1
+grid_data <- grid_data[-1,]
+ 
+# Make the plot
+ggplot(Species_Data, 
+       aes(x=as.factor(id), 
+           y=value,
+           fill=group)
+       ) +       # Note that id is a factor. If x is numeric, there is some space between the first bar
+  geom_bar(aes(x=as.factor(id),
+               y=value,
+               fill=group),
+           stat="identity",
+           alpha=0.5) +
+  scale_fill_manual("Ecosystem Preference",
+                    values = c(wes_palette(n = 5, name = "Darjeeling1"),
+                               wes_palette(n = 4, name = "Darjeeling2")
+                               ),
+                     na.value = "white"
+  ) +
+  # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
+  geom_segment(data=grid_data, aes(x = end, y = 100, xend = start, yend = 100), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_hline(yintercept = Median_trans, colour = "black", alpha=1, size=0.3,linetype="dashed") +
+  # Add text showing the value of each line
+  annotate("text", 
+           x = rep(max(Species_Data$id),5),
+           y = c(20, 40, 60, 80,100),
+           label = c("20", "40", "60", "80","100"),
+           color="grey", 
+           size=3 , 
+           angle=0, 
+           fontface="bold",
+           hjust=1) +
+  geom_bar(aes(x=as.factor(id),
+               y=value,
+               fill=group),
+           stat="identity",
+           alpha=0.5) +
+  ylim(-100,200) + # sets the circle the first value the central the last value how wide
+  theme_minimal() +
+  theme(
+    legend.position = c(0.5,0.5),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = unit(rep(-1,4), "cm") 
+  ) +
+  geom_text(aes(x = 229, 
+                y = 14,
+                label = "Median"),
+            colour = "grey", 
+            size = 2.5,
+            alpha=0.6,
+            angle=5,
+            inherit.aes = FALSE) +
+  geom_text(data=label_data, 
+            aes(x=id, y=110,
+                label=individual,
+                hjust=hjust), 
+            color="black",
+            # fontface="bold",
+            alpha=0.6,
+            size=2.5,
+            angle= label_data$angle,
+            inherit.aes = FALSE ) +
+  # Add base line information
+  geom_segment(data=base_data, 
+               aes(x = start, 
+                   y = -5, 
+                   xend = end, 
+                   yend = -5
+                   ), 
+               colour = "black",
+               alpha=0.8, 
+               size=0.6 , 
+               inherit.aes = FALSE) +
+  coord_polar()
+
+ggsave(
+    plot = last_plot(),
+    width = 14,
+    height = 10,
+    units = "in",
+    filename = "Species_circular_over10.tiff",
+    path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
+  )
+ 
 ```
 
 ```{r Top_spp_Circle_Diagram, eval =F, echo = F}
@@ -1641,9 +2075,6 @@ for(s in 1:2){ # sclae loop
 } #close scale loop
 
 ```
-
-
-
 
 # Problem solving
 
