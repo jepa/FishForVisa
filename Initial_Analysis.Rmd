@@ -1527,7 +1527,7 @@ ggplot(Countries_Data,
     plot.margin = unit(rep(-1,4), "cm") 
   ) +
   coord_polar() + 
-  geom_text(data=label_data, 
+  geom_text(data=label_data,
             aes(x=id, y=110,
                 label=individual,
                 hjust=hjust), 
