@@ -1119,7 +1119,7 @@ Jurisdiction <- "EEZ"
 
 # Updates result's path for the jurisdiction
 Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
-
+Results_Path <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Old_Results/"
 
 # Species list to get species names
 Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep=""))
@@ -1139,8 +1139,31 @@ Clean_sau_eez_fes <- sau_eez_fes %>%
 
 # UN Regions dataset
 UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), header = TRUE) %>% 
-  select(Territory = Country.or.Area,
-         georegion = Region.Name)
+  group_by(Territory = Country.or.Area,
+    georegion = Region.Name) %>% 
+  summarise(n=n()) %>% #merge china's 3 rows
+  select(-n) %>% 
+  filter(Territory != "") %>%  # there are three rows with "developing" status as in, the code
+  ungroup() %>% 
+  mutate(
+    Territory = gsub("\\s*\\([^\\)]+\\)","",Territory),
+    Territory = gsub("United Kingdom of Great Britain and Northern Ireland","United Kingdom",Territory),
+    Territory = gsub( "United States of America", "USA",Territory),
+    Territory = gsub("Democratic People's Republic of Korea", "Korea (North)",Territory),
+    Territory = gsub("Republic of Korea", "Korea (South)",Territory),
+    Territory = gsub("Iran (Islamic Republic of)", "Iran",Territory),
+    Territory = gsub("Democratic Republic of the Congo", "Congo (ex-Zaire)",Territory),
+    # Territory = gsub("Congo", "Congo, R. of",Territory),
+    Territory = gsub("United Republic of Tanzania", "Tanzania",Territory),
+    Territory = gsub("Cabo Verde", "Cape Verde",Territory),
+    Territory = gsub("Timor-Leste", "Timor Leste",Territory),
+    Territory = gsub(" and ", " & ",Territory),
+    # Territory = gsub("Puerto Rico (USA)", "Puerto Rico",Territory),
+    Territory = gsub("Taiwan", "Taiwan (China)",Territory)
+  )
+
+# Manually change congo
+UN_Regions[52,1] <- "Congo, R. of"
 
 # Load Land shapefile
 path_world_land <- paste(Data_Path,"Spatial_Data/ne_50m_admin_0_countries",sep="")
@@ -1161,7 +1184,7 @@ if(Jurisdiction == "EEZ"){
     Clean_Results_Trans <- read.csv(paste(Data_Path,"Clean_Results.csv",sep="")) # losad carmelia data
   }else{
     # Read Sau Catch Data
-    Sau_Catch_Data <- fread(paste(Results_Path,"Speceies_Data/Sau_Catch_Data.csv")) %>% 
+    Sau_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv", sep ="")) %>% 
       filter(!is.na(Territory))
     # For Hall and The Beast
     # List of species
@@ -1266,7 +1289,7 @@ if(Jurisdiction == "EEZ"){
     
     ### Sau Catch Data
     
-    SAU_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv",sep = ""), deader = TRUE)
+    SAU_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv",sep = ""), header = TRUE)
     
   } # closes ifstatement for carmelia temporal files
 }else{ # Closes EEZ ifelse
@@ -1361,20 +1384,22 @@ Discrete_Spp <- Clean_Results_Trans %>%
 
 World_sf_si <- World_sf %>%
   st_transform(crs = 4326) %>% # 4326
+  # st_transform(crs = "+proj=moll") %>% # tubed world
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
   left_join(Transboundary_Spp, by ="Territory") 
 
 Catch_Country <- Sau_Catch_Data %>% 
   group_by(FishingRegion=Territory) %>% 
-  summarise(Total_Catch = round(sum(Mean_Catch,na.rm=T)/1000,2)) %>% 
+  summarise(Total_Catch = round(sum(Mean_Catch,na.rm=T),2)) %>% 
   filter(!(is.na(FishingRegion))) %>% 
   left_join(Clean_sau_eez_fes) %>% 
   group_by(Territory = fishing_entity) %>% 
   summarise(Total_Catch = sum(Total_Catch,na.rm=T))
 
 World_sf_si_land <- World_land_sf %>%
-  # st_transform(crs = 4326) %>% # 4326
-  # st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%  # Include transboundary species
+  st_transform(crs = 4326) %>% # 4326
+  # st_transform(crs = "+proj=moll") %>% # tubed world
+  st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%  # Include transboundary species
   left_join(Catch_Country, by ="Territory") # Include total specices catch
   
 # head(World_sf_si)s
@@ -1383,17 +1408,17 @@ World_sf_si_land <- World_land_sf %>%
 # pal <- wes_palette("Zissou1", 1000, type = "continuous")
 
 World_sf_si$Bins <- cut(World_sf_si$n_trans_spp,breaks = 5)
-World_sf_si_land$BinsLan <- cut(World_sf_si_land$Total_Catch,breaks = 6)
+World_sf_si_land$BinsLan <- cut(World_sf_si_land$Total_Catch,breaks = 5)
 
 unique(World_sf_si$Bins)
-unique(World_sf_si_land$Bins)
+unique(World_sf_si_land$BinsLan)
 
-# levels(World_sf_si$Bins)
-# levels(World_sf_si_land$Bins_C)
+levels(World_sf_si$Bins)
+levels(World_sf_si_land$BinsLan)
 
 Plot <- ggplot() +
-  geom_sf(data = World_sf_si,aes(fill = Bins),colour="white") + # n_trans_spp or Bins
-  geom_sf(data = World_sf_si_land,aes(fill = BinsLan),show.legend = FALSE) +
+  geom_sf(data = World_sf_si_land,aes(fill = BinsLan)) +
+  geom_sf(data = World_sf_si,aes(fill = Bins)) + # n_trans_spp or Bins
   # scale_fill_gradientn(colours = pal,
   #                      na.value = "white") +
   # scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
@@ -1401,7 +1426,7 @@ Plot <- ggplot() +
   #                              ),
   #                    na.value = "white"
   # ) +
-  scale_fill_manual(values = c("#5BBCD6","#5BBCD6","#F98400","#F98400","#F2AD00","#F2AD00","#00A08A","#00A08A","#FF0000","#FF0000"),
+  scale_fill_manual("",values = c("#5BBCD6","#5BBCD6","#F98400","#F98400","#F2AD00","#F2AD00","#00A08A","#FF0000","#FF0000","#FF0000"),
                      na.value = "white"
   ) +
   # scale_fill_manual(values = rev(wes_palette(n = 5, name = "Darjeeling1")),
@@ -1419,11 +1444,12 @@ ggsave(Plot_Name,
        path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
 )
 
+
 ```
 
-### OHI-inspired Circular plot Countries
+### OHI-inspired Circular plot for Territories
 
-```{r species_circluar_plot, eval = F, echo =F}
+```{r Territories_Circluar_Plot, eval = T, echo = T}
 
 Countries_Data <- Clean_Results_Trans %>% 
   filter(
@@ -1439,10 +1465,10 @@ Countries_Data <- Clean_Results_Trans %>%
   rename(FishingRegion=Territory) %>% 
   left_join(Clean_sau_eez_fes) %>% 
   group_by(individual = fishing_entity,group) %>% 
-  summarise(Total_Catch = sum(value,na.rm=T)) %>% 
-  arrange(group,Total_Catch) %>% 
+  summarise(Total_trans = sum(value,na.rm=T)) %>% 
   filter(!is.na(individual)) %>% 
-  select(individual,group,value=Total_Catch)
+  select(individual,group,value=Total_trans) %>% 
+  arrange(group,value)
 
 
 # hist(Countries_Data$value)
@@ -1460,16 +1486,34 @@ Countries_Data <- Countries_Data %>% arrange(group,value)
 Countries_Data$id <- seq(1, nrow(Countries_Data))
  
 # Get the name and the y position of each label
-label_data <- Countries_Data
+
+# Top n of each group label
+Top_Countries <- Countries_Data %>% 
+  group_by(group) %>% 
+  top_n(5,value)
+
+# Create labels for all but top 5
+label_data <- Countries_Data 
 number_of_bar <- nrow(label_data)
 angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
 label_data$hjust <- ifelse( angle < -90, 1, 0)
 label_data$angle <- ifelse(angle < -90, angle+180, angle)
 
+# Remove top 5
+label_data_rest <- label_data %>% 
+  filter(!individual %in% Top_Countries$individual)
+
+# Create labels for top 5
+Top_label_data <- label_data %>% 
+  filter(individual %in% Top_Countries$individual)
+
 # prepare a data frame for base lines
 base_data <- Countries_Data %>% 
   group_by(group) %>% 
-  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  summarize(start=min(id), 
+            end=max(id) - empty_bar, 
+            median = median(value, na.rm = T)
+            ) %>% 
   rowwise() %>% 
   mutate(title=mean(c(start, end)))
 
@@ -1477,9 +1521,18 @@ base_data <- Countries_Data %>%
 grid_data <- base_data
 grid_data$end <- grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
 grid_data$start <- grid_data$start - 1
-grid_data <- grid_data[-1,]
+grid_data[1,2] <- 5 # Manually include Africa for the median
+grid_data[1,3] <- 1
+
+# Median data
+median_data <- grid_data %>% 
+  mutate_at(vars(start,end),
+            .funs = as.numeric)
  
+# -------------------------- #
 # Make the plot
+# -------------------------- #
+# Base plot
 ggplot(Countries_Data, 
        aes(x=as.factor(id), 
            y=value,
@@ -1490,23 +1543,21 @@ ggplot(Countries_Data,
                fill=group),
            stat="identity",
            alpha=0.5) +
-  scale_fill_manual("Ecosystem Preference",
-                    values = c(wes_palette(n = 5, name = "Darjeeling1"),
-                               wes_palette(n = 4, name = "Darjeeling2")
-                               ),
-                     na.value = "white"
-  ) +
   # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
+  geom_segment(data=grid_data, aes(x = end, y = 100, xend = start, yend = 100), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   geom_segment(data=grid_data, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   geom_segment(data=grid_data, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   geom_segment(data=grid_data, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   geom_segment(data=grid_data, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
-  geom_hline(yintercept = Median_trans, colour = "black", alpha=1, size=0.3,linetype="dashed") +
+  # Add median lines for each gropup
+  geom_segment(data=median_data, aes(x = end, y = median, xend = start+5, yend = median, colour = group),
+               alpha=1, size=0.5 , inherit.aes = FALSE ) +
+  # geom_hline(yintercept = Median_trans, colour = "black", alpha=1, size=0.3,linetype="dashed") + # All groups median
   # Add text showing the value of each line
   annotate("text", 
-           x = rep(max(Countries_Data$id),4),
-           y = c(20, 40, 60, 80,100),
-           label = c("20", "40", "60"),
+           x = rep(max(Countries_Data$id),5),
+           y = c(20, 40, 60, 80, 100),
+           label = c("20", "40", "60","80",">100"),
            color="grey", 
            size=3 , 
            angle=0, 
@@ -1517,17 +1568,7 @@ ggplot(Countries_Data,
                fill=group),
            stat="identity",
            alpha=0.5) +
-  ylim(-100,200) + # sets the circle the first value the central the last value how wide
-  theme_minimal() +
-  theme(
-    legend.position = c(0.5,0.5),
-    axis.text = element_blank(),
-    axis.title = element_blank(),
-    panel.grid = element_blank(),
-    plot.margin = unit(rep(-1,4), "cm") 
-  ) +
-  coord_polar() + 
-  geom_text(data=label_data,
+  geom_text(data=label_data_rest,
             aes(x=id, y=110,
                 label=individual,
                 hjust=hjust), 
@@ -1535,15 +1576,18 @@ ggplot(Countries_Data,
             # fontface="bold",
             alpha=0.6,
             size=2.5,
-            angle= label_data$angle,
-            inherit.aes = FALSE ) +
-  geom_text(aes(x = 229, 
-                y = 14,
-                label = "Median"),
-            colour = "grey", 
-            size = 2.5,
+            angle= label_data_rest$angle,
+            inherit.aes = FALSE) +
+  # Bold top 3 
+  geom_text(data=Top_label_data,
+            aes(x=id, y=110,
+                label=individual,
+                hjust=hjust), 
+            color="black",
+            fontface="bold",
             alpha=0.6,
-            angle=5,
+            size=2.5,
+            angle= Top_label_data$angle,
             inherit.aes = FALSE) +
   # Add base line information
   geom_segment(data=base_data, 
@@ -1555,17 +1599,44 @@ ggplot(Countries_Data,
                colour = "black",
                alpha=0.8, 
                size=0.6 , 
-               inherit.aes = FALSE)
-
-ggsave(
-    plot = last_plot(),
-    width = 14,
-    height = 10,
-    units = "in",
-    filename = "Territory_circular_over10.tiff",
-    path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
+               inherit.aes = FALSE) +
+  ylim(-140,140) + # sets the circle the first value the central the last value how wide
+  theme_minimal() +
+  theme(
+    legend.position = c(0.5,0.5),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = unit(rep(-1,4), "cm") 
+  ) +
+  coord_polar() + 
+  scale_fill_manual("Continent",
+                    values = c(wes_palette(n = 5, name = "Darjeeling1"),
+                               wes_palette(n = 4, name = "Darjeeling2")
+                    ),
+                    na.value = "white"
+  ) +
+  scale_colour_manual("Continent",
+                      values = c(wes_palette(n = 5, name = "Darjeeling1"),
+                                 wes_palette(n = 4, name = "Darjeeling2")
+                      ),
+                      na.value = "white"
   )
+
+#  Warring of missing values are the NA's for the columns
+
+# Save plot
+
+# ggsave(
+#     plot = last_plot(),
+#     width = 14,
+#     height = 10,
+#     units = "in",
+#     filename = "Territory_circular.tiff",
+#     path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
+#   )
  
+
 ```
 
 ```{r Top_country_Circle_Diagram, eval =F, echo = F}
@@ -1671,10 +1742,7 @@ length(unique(Results_Discrete$TaxonKey))
 
 ```
 
-
-
-```{n_species_country, eval =F, echo =F}
-
+```{r n_species_country, eval = T, echo =F}
 # Number of countries shared by each Species
 Species_Trans <- Clean_Results_Trans %>% 
   filter(
@@ -1780,7 +1848,7 @@ ggplot(Species_data,
 
 ### OHI-inspired Circular plot Species
 
-```{r species_circluar_plot, eval = F, echo =F}
+```{r species_circluar_plot, eval = T, echo = T}
 
 Species_Data <- Clean_Results_Trans %>% 
   filter(
@@ -1794,12 +1862,13 @@ Species_Data <- Clean_Results_Trans %>%
   left_join(Exploited_Species) %>%
   rename(scientific_name = TaxonName) %>% 
   left_join(Species_environ_list) %>%
-  mutate(DemersPelag = ifelse(is.na(DemersPelag),"Other",paste(DemersPelag))) %>% 
+  mutate(DemersPelag = ifelse(is.na(DemersPelag),"Other",paste(DemersPelag)),
+         n_trans_spp = ifelse(n_trans_spp > 100, 100, n_trans_spp)) %>% 
   select(individual=scientific_name,
          value = n_trans_spp,
          group = DemersPelag) %>% 
   arrange(group,value) %>% 
-  filter(value > 10)
+  filter(value > 10) # remove all species under 10 (way too many to plot!)
 
 Median_trans <- median(Species_Data$value)
 # hist(Species_Data$value)
@@ -1815,27 +1884,65 @@ to_add$group <- rep(levels(Char), each=empty_bar)
 Species_Data <- rbind(Species_Data, to_add)
 Species_Data <- Species_Data %>% arrange(group,value)
 Species_Data$id <- seq(1, nrow(Species_Data))
- 
+
 # Get the name and the y position of each label
+
+
+
+# Create labels for all but top 5
+label_data <- Countries_Data 
+number_of_bar <- nrow(label_data)
+angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
+label_data$hjust <- ifelse( angle < -90, 1, 0)
+label_data$angle <- ifelse(angle < -90, angle+180, angle)
+
+
+# Get the name and the y position of each label
+# Top n of each group label
+Top_spp <- Species_Data %>% 
+  group_by(group) %>% 
+  top_n(5,value)
+
+# Create labels for all but top 5
 label_data <- Species_Data
 number_of_bar <- nrow(label_data)
 angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
 label_data$hjust <- ifelse( angle < -90, 1, 0)
 label_data$angle <- ifelse(angle < -90, angle+180, angle)
 
+# Remove top 5
+label_data_rest <- label_data %>% 
+  filter(!individual %in% Top_spp$individual)
+
+# Create labels for top 5
+Top_label_data <- label_data %>% 
+  filter(individual %in% Top_spp$individual)
+
+
 # prepare a data frame for base lines
 base_data <- Species_Data %>% 
   group_by(group) %>% 
-  summarize(start=min(id), end=max(id) - empty_bar) %>% 
+  summarize(start=min(id), 
+            end=max(id) - empty_bar, 
+            median = median(value, na.rm = T)
+            ) %>% 
   rowwise() %>% 
   mutate(title=mean(c(start, end)))
+
 
 # prepare a data frame for grid (scales)
 grid_data <- base_data
 grid_data$end <- grid_data$end[ c( nrow(grid_data), 1:nrow(grid_data)-1)] + 1
 grid_data$start <- grid_data$start - 1
-grid_data <- grid_data[-1,]
- 
+# grid_data <- grid_data[-1,]
+grid_data[1,2] <- 5 # Manually include bathydemerssal
+grid_data[1,3] <- 1 
+
+# Median data
+median_data <- grid_data %>% 
+  mutate_at(vars(start,end),
+            .funs = as.numeric)
+
 # Make the plot
 ggplot(Species_Data, 
        aes(x=as.factor(id), 
@@ -1847,24 +1954,21 @@ ggplot(Species_Data,
                fill=group),
            stat="identity",
            alpha=0.5) +
-  scale_fill_manual("Ecosystem Preference",
-                    values = c(wes_palette(n = 5, name = "Darjeeling1"),
-                               wes_palette(n = 4, name = "Darjeeling2")
-                               ),
-                     na.value = "white"
-  ) +
   # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
   geom_segment(data=grid_data, aes(x = end, y = 100, xend = start, yend = 100), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   geom_segment(data=grid_data, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   geom_segment(data=grid_data, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   geom_segment(data=grid_data, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   geom_segment(data=grid_data, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
-  geom_hline(yintercept = Median_trans, colour = "black", alpha=1, size=0.3,linetype="dashed") +
+  # Add median lines for each gropup
+  geom_segment(data=median_data, aes(x = end, y = median, xend = start+5, yend = median, colour = group),
+               alpha=1, size=0.5 , inherit.aes = FALSE ) +
+  # geom_hline(yintercept = Median_trans, colour = "black", alpha=1, size=0.3,linetype="dashed") + # All groups median
   # Add text showing the value of each line
   annotate("text", 
            x = rep(max(Species_Data$id),5),
-           y = c(20, 40, 60, 80,100),
-           label = c("20", "40", "60", "80","100"),
+           y = c(20, 40, 60, 80, 100),
+           label = c("20", "40", "60","80",">100"),
            color="grey", 
            size=3 , 
            angle=0, 
@@ -1875,24 +1979,7 @@ ggplot(Species_Data,
                fill=group),
            stat="identity",
            alpha=0.5) +
-  ylim(-100,200) + # sets the circle the first value the central the last value how wide
-  theme_minimal() +
-  theme(
-    legend.position = c(0.5,0.5),
-    axis.text = element_blank(),
-    axis.title = element_blank(),
-    panel.grid = element_blank(),
-    plot.margin = unit(rep(-1,4), "cm") 
-  ) +
-  geom_text(aes(x = 229, 
-                y = 14,
-                label = "Median"),
-            colour = "grey", 
-            size = 2.5,
-            alpha=0.6,
-            angle=5,
-            inherit.aes = FALSE) +
-  geom_text(data=label_data, 
+  geom_text(data=label_data_rest,
             aes(x=id, y=110,
                 label=individual,
                 hjust=hjust), 
@@ -1900,8 +1987,19 @@ ggplot(Species_Data,
             # fontface="bold",
             alpha=0.6,
             size=2.5,
-            angle= label_data$angle,
-            inherit.aes = FALSE ) +
+            angle= label_data_rest$angle,
+            inherit.aes = FALSE) +
+  # Bold top 3 
+  geom_text(data=Top_label_data,
+            aes(x=id, y=110,
+                label=individual,
+                hjust=hjust), 
+            color="black",
+            fontface="bold",
+            alpha=0.6,
+            size=2.5,
+            angle= Top_label_data$angle,
+            inherit.aes = FALSE) +
   # Add base line information
   geom_segment(data=base_data, 
                aes(x = start, 
@@ -1913,7 +2011,28 @@ ggplot(Species_Data,
                alpha=0.8, 
                size=0.6 , 
                inherit.aes = FALSE) +
-  coord_polar()
+  ylim(-140,140) + # sets the circle the first value the central the last value how wide
+  theme_minimal() +
+  theme(
+    legend.position = c(0.5,0.5),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = unit(rep(-1,4), "cm") 
+  ) +
+  coord_polar() + 
+  scale_fill_manual("Ecosystem Preference",
+                    values = c(wes_palette(n = 5, name = "Darjeeling1"),
+                               wes_palette(n = 4, name = "Darjeeling2")
+                    ),
+                    na.value = "white"
+  ) +
+  scale_colour_manual("Ecosystem Preference",
+                      values = c(wes_palette(n = 5, name = "Darjeeling1"),
+                                 wes_palette(n = 4, name = "Darjeeling2")
+                      ),
+                      na.value = "white"
+  )
 
 ggsave(
     plot = last_plot(),
@@ -2417,7 +2536,6 @@ unique(Russia_Neighbour$Country_Territory)
 
 
 # Extra Analysis
-
 ## Extra Analysis; Functions
 
 ```{r Trans_Spp_Function_All, eval = F ,echo = T,warning = F,message = F}
