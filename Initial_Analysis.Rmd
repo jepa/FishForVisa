@@ -280,7 +280,7 @@ EstNeighbours <- function(Shapefile, Partial = "NA"){
               by = "EEZID") %>% # Asign EEZ id to each country
     left_join(Coor,
               by = "INDEX") %>%  # Inclu
-    rename(Country_Territory = Name)
+    rename(Country_Territory = Territory)
   
   )
   
@@ -317,7 +317,7 @@ EstNeighbours <- function(Shapefile, Partial = "NA"){
 # SAU shapefile
 
 # The path
-path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile/",sep="")
+path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile",sep="")
 # #The File
 fnam_world <- "SAUEEZ_July2015.shp"
 # #Load it!
@@ -342,14 +342,16 @@ colnames(Coor) <- c("INDEX","Longitude","Latitude")
 
 # Run Function (Ran and saved May 27 2019 at 6pm)
  system.time(
-  EEZ_Neighbour_List <- EstNeighbours(World_EEZs, Partial = T)
+  EEZ_Neighbour_List <- EstNeighbours(World_EEZs, Partial = F)
  )
 # 8203.05    0.25 8204.51 (around 2 hours 30 min)
 
+# user  system elapsed 
+# 291.53  238.73  530.73 (SO MUCH FASTER!)
+ 
 write.csv(EEZ_Neighbour_List,
           paste(Data_Path,"Spatial_Data/EEZ_Neighbour_List.csv", sep =""),
           row.names = F)
-
 
 
 
@@ -670,14 +672,14 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 # Needs getSppDist
 
 #### For testing 
-# Spp <- #600004  # Anchovie Equator, Chile and Peru
+#Spp <- 600004  # Anchovie Equator, Chile and Peru
 # Spp <- 600107 # Tuna Many RFMOs
-# Model <- "All"
-# Coord = CoorG
+#Model <- "All"
+#Coord = CoorG
 
 # For EEZ
- # Neighbours <- Neighbours_EEZ
- # Index_Code <- EEZ_Index_Code
+# Neighbours <- Neighbours_Data
+# Index_Code <- Index_Code
  
  # For RFMO 
  # Index_Code <- RFMO_INDEX
@@ -690,7 +692,7 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 # __________________________________
 
 # The function
-EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdiction_Type){
+EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdiction_Type,Catch = "N"){
   
   # Get model data from spps
   SppDist <- GetSppDist(Spp,Model,Coord)
@@ -795,12 +797,13 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdi
     ) %>%  # Remove cases where the country does not pass the area_index and viceversa
     select(TaxonKey,Territory,Neighbour,everything())
   
+  
   ### Save spp dataframe
   
   if(nrow(Indexes) > 0 & Save == "Y"){
     
     File_Name <- paste(Spp,"_Transboundary.csv",sep = "")
-    Save_Path <- paste(Results_Path,File_Name,sep="")
+    Save_Path <- paste(Results_Path,"/Trans_Results/",File_Name,sep="")
     
     write.csv(Indexes,
               Save_Path,
@@ -811,7 +814,7 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdi
   if(nrow(Indexes) == 0 & Save == "Y"){
     
     # Reads dataset of Non transboundary species
-    Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
+    Non_Transboundary_Data <- fread(paste(Results_Path,"/Trans_Results/Non_Transboundary_Data.csv",sep=""))
     
     # Get current Spp that is not transboundary 
     Current_Spp <- tibble(TaxonKey = Spp)
@@ -821,8 +824,32 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdi
       bind_rows(Current_Spp)
     
     # Set a name for file and saves data
-    New_Non_Name <- paste(Results_Path,"Non_Transboundary_Data.csv",sep="")
+    New_Non_Name <- paste(Results_Path,"/Trans_Results/Non_Transboundary_Data.csv",sep="")
     write.csv(New_Non, New_Non_Name, row.names = F)
+    
+  }
+  
+  ### Get Specie's catch
+    
+Catch_Data <- SppDist %>%
+  filter(INDEX %in% Neighbours$INDEX,# Filter data only located within EEZs
+           Model == "SAU_C",
+         Value > 0) %>%
+  left_join(Index_Code,
+            by ="INDEX") %>% 
+  group_by(TaxonKey,Territory) %>% 
+  summarise(Total_Catch = sum(Value,na.rm=T))
+
+  ### Save Catch data
+
+ if(nrow(Catch_Data) > 0 & Catch == "Y"){
+    
+    File_Name <- paste(Spp,"_Catch.csv",sep = "")
+    Save_Path <- paste(Results_Path,"/Catch_Results/",File_Name,sep="")
+    
+    write.csv(Catch_Data,
+              Save_Path,
+              row.names = F)
     
   }
   
@@ -835,10 +862,16 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdi
 # __________________________________
 # Test function
 # __________________________________
-# EstTransIndex(Spp = 600107,
-#               Mode = "All",
-#               Neighbours = ,Coord,Index_Code,Save="Y")
-# 
+# EstTransIndex(Spp = 600004,
+ #              Mode = "All",
+  #             Neighbours = Neighbours_Data,
+   #            Coord = CoorG,
+    #           Index_Code=Index_Code,
+     #          Jurisdiction_Type = "EEZ",
+      #         Save="Y",
+       #        Catch = "Y")
+
+  
 # Spp <-  # Tuna Many RFMOs
 # Model <- "All"
 # Coord = CoorG
@@ -942,7 +975,7 @@ mclapply <- switch( Sys.info()[['sysname']],
 ```{r EEZ_Control_Pannel, eval = T, echo = F}
 
 # Set Jurisdiction to EEZ or RFMO
-Jurisdiction <- "RFMO"
+Jurisdiction <- "EEZ"
 
 # Updates result's path for the jurisdiction
 Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
@@ -994,7 +1027,7 @@ if(Jurisdiction == "EEZ"){
 }
 
 # Creates dummy dataset for Non transboundary species
-write.csv(tibble(TaxonKey = "NA"), paste(Results_Path,"Non_Transboundary_Data.csv",sep=""), row.names = F)
+write.csv(tibble(TaxonKey = "NA"), paste(Results_Path,"Trans_Results/Non_Transboundary_Data.csv",sep=""), row.names = F)
 
 # Number of cores to us 
 n_cores <- detectCores()
@@ -1018,6 +1051,7 @@ system.time(
       Coord = CoorG,  # Gabriels coordinate system for read species dist
       Index_Code = Index_Code, 
       Save = "Y",  # For saving
+      Catch = "Y",
       Jurisdiction_Type = Jurisdiction # For saving in proper path
     )
   )
