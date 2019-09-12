@@ -440,7 +440,7 @@ GetSppDist=function(Spp,Model,Coord){
     SAU_C_data <- as.data.frame(R.matlab::readMat(SppPath)) %>% 
       select(CATCH.1:CATCH.65) %>% 
       mutate(INDEX = INDEX) %>% 
-      gather("Year","Catch",1:10) %>% # Last 10 years of data
+      gather("Year","Catch",CATCH.56:CATCH.65) %>% # Last 10 years of data
       group_by(INDEX) %>% 
       summarise(SAU_C = mean(Catch,na.rm=T))
     
@@ -547,22 +547,20 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 # Needs getSppDist
 
 #### For testing 
-# Spp <- #600004  # Anchovie Equator, Chile and Peru
+# Spp <- 604250  # Anchovie Equator, Chile and Peru
 # Spp <- 600107 # Tuna Many RFMOs
+# Spp <- 600464 # Discrete species 
+# x <- c(600464, # Discreat spp in one nation
+      # 600059, # nowhere to be found spp
+       # 601352, # Discrete spp in two nations
+       # 600004) # transboundary spp
 # Model <- "All"
-# Coord = CoorG
-
-# For EEZ
- # Neighbours <- Neighbours_EEZ
- # Index_Code <- EEZ_Index_Code
- 
- # For RFMO 
- # Index_Code <- RFMO_INDEX
- # Neighbours <- RFMO_Neighbor_List %>% 
- #   rename(Territory = Name,
- #         Neighbour = Neighbor_Territory)
- 
- 
+# Coord <- CoorG
+# 
+# # For EEZ
+# Neighbours <- Neighbours_Data
+# Index_Code <- Index_Code
+#  
 # __________________________________
 # __________________________________
 
@@ -595,7 +593,7 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdi
     select(-Model, -Value, -Latitude,-Longitude) %>%
     left_join(Index_Code,
               by = "INDEX")
-  
+
   # MODEL INDEX (TRESHOLDS 1 & 2) #
   Model_Index_D <- Trans_Spp %>% 
     group_by(Territory,
@@ -605,8 +603,11 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdi
     summarise(n_cells_spp = n()) %>% 
     select(-n_cells_spp)
   
+
   #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 3)_________ #
   # The number of species' cells present within each country's EEZ
+  
+  # if(n_Territory > 1){
   
   #Step 1.  Get EEZ id and Neighbour
   Neighbours_List <- Neighbours %>% 
@@ -625,6 +626,47 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdi
               by = "Territory") %>% 
     filter(Territory %in% Trans_Spp$Territory, #Filter out unwanted Neighbours (those who don't have grids within but get included because they are Neighbours)
            Neighbour %in% Trans_Spp$Territory)
+  
+  
+  # IF SPECIES DISCRETE AND APEARS IN ONLY 1 REGION OR > 1 REGION BUT NOT NEIGHBOURS #
+  
+  if(nrow(Spp_Grid) == 0 & Save == "Y"){
+    
+    # IF SPECIES IS DISCRETE AND ONLY APEARS IN ONE REGION
+  Discrete_Territory <- unique(Model_Index_D$Territory)
+  n_Territory <- length(Discrete_Territory)
+    
+    # Reads dataset of Non transboundary species
+    Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
+    
+    # Get current Spp that is not transboundary 
+    Current_Spp <- tibble(TaxonKey = as.integer(Spp),
+                          Territory = Discrete_Territory)
+    
+    # Combine new spp with others
+    New_Non <- Non_Transboundary_Data %>% 
+      bind_rows(Current_Spp)
+    
+    # Set a name for file and saves data
+    New_Non_Name <- paste(Results_Path,"Non_Transboundary_Data.csv",sep="")
+    write.csv(New_Non, New_Non_Name, row.names = F)
+    
+    if(n_Territory ==1){
+      
+    To_Print <- paste(Spp, "is only present in",Discrete_Territory)
+    print(To_Print)
+    paste(Spp, "is only present in",Discrete_Territory)
+    }else{
+      
+      To_Print <- paste(Spp, "is in both (non-neighbouring)",Discrete_Territory[1],Discrete_Territory[2])
+      print(To_Print)
+    }
+    
+  EstTransIndex=Current_Spp
+    print(To_Print)
+  }
+  
+  if(nrow(Spp_Grid) > 0 & Save == "Y"){
   
   # Step 3. Sum total grids per Neighbours
   
@@ -684,52 +726,29 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Index_Code,Save="Y",Jurisdi
               row.names = F)
     
   }
-  
-  if(nrow(Indexes) == 0 & Save == "Y"){
-    
-    # Reads dataset of Non transboundary species
-    Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
-    
-    # Get current Spp that is not transboundary 
-    Current_Spp <- tibble(TaxonKey = Spp)
-    
-    # Combine new spp with others
-    New_Non <- Non_Transboundary_Data %>% 
-      bind_rows(Current_Spp)
-    
-    # Set a name for file and saves data
-    New_Non_Name <- paste(Results_Path,"Non_Transboundary_Data.csv",sep="")
-    write.csv(New_Non, New_Non_Name, row.names = F)
-    
-  }
-  
   ### Function return
-  
   EstTransIndex=Indexes # A dataframe with 
-  
+    
+  } # Closes Treshold 3
 }
 
 # __________________________________
 # Test function
 # __________________________________
-# EstTransIndex(Spp = 600107,
-#               Mode = "All",
-#               Neighbours = ,Coord,Index_Code,Save="Y")
-# 
+ 
 # Spp <-  # Tuna Many RFMOs
 # Model <- "All"
 # Coord = CoorG
+# #
 # 
 # # For EEZ
-#  # Neighbours <- Neighbours_EEZ
-#  # Index_Code <- EEZ_Index_Code
-#  
-#  # For RFMO 
-#  Index_Code <- RFMO_INDEX
-#  Neighbours <- RFMO_Neighbor_List %>% 
-#    rename(Territory = Name,
-#          Neighbour = Neighbor_Territory)
-
+# Neighbours <- Neighbours_EEZ
+# Index_Code <- EEZ_Index_Code
+# 
+# 
+# EstTransIndex(Spp = 600107,
+#               Mode = "All",
+#               Neighbours = ,Coord,Index_Code,Save="Y")
 
 ```
 
@@ -819,7 +838,7 @@ mclapply <- switch( Sys.info()[['sysname']],
 ```{r EEZ_Control_Pannel, eval = T, echo = F}
 
 # Set Jurisdiction to EEZ or RFMO
-Jurisdiction <- "RFMO"
+Jurisdiction <- "EEZ"
 
 # Updates result's path for the jurisdiction
 Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
@@ -871,7 +890,7 @@ if(Jurisdiction == "EEZ"){
 }
 
 # Creates dummy dataset for Non transboundary species
-write.csv(tibble(TaxonKey = "NA"), paste(Results_Path,"Non_Transboundary_Data.csv",sep=""), row.names = F)
+write.csv(tibble(), paste(Results_Path,"Non_Transboundary_Data.csv",sep=""), row.names = F)
 
 # Number of cores to us 
 n_cores <- detectCores()
@@ -883,10 +902,9 @@ print(paste("You are running the model for",nrow(Exploited_Species),"Species at 
 #### Run Routine
 ```{r Routine_parallel, eval = F, echo = F}
 
-
 # Run model in parallel
 system.time(
-  Spp_Trans <- bind_rows(
+  Dis_Trans <- bind_rows(
     mclapply(
       Exploited_Species_List,
       FUN = EstTransIndex,
@@ -1119,7 +1137,8 @@ if(Sys.info()[7] == "carmelia"){ # For Carmelia
   # ---------------------------- #
   
   # Load and clean Discrete results
-  Discrete_Data <- fread(paste(Results_Path,"/Trans_Results/Non_Transboundary_Data.csv",sep=""))
+  Discrete_Data <- fread(paste(Results_Path,"/Trans_Results/Non_Transboundary_Data.csv",sep="")) %>% 
+    left_join(Exploited_Species)
   
 } # closes ifstatement for carmelia temporal files
 
@@ -1227,20 +1246,20 @@ Plot <- ggplot() +
   geom_sf(data = Grey_land,aes(fill = BinsLan),fill = "grey80") + # n_trans_spp or Bins
   # scale_fill_gradientn(colours = pal,
   #                      na.value = "white") +
-  # scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
-  #                              rev(wes_palette(n = 4, name = "Darjeeling1"))
-  #                              ),
-  #                    na.value = "white"
-  # ) +
-  scale_fill_manual("",values = c("#5BBCD6","#5BBCD6","#00A08A","#00A08A","#F2AD00","#F2AD00","#F98400","#FF0000","#FF0000","#FF0000"),
+  scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
+                               rev(wes_palette(n = 5, name = "Darjeeling2"))
+                               ),
                      na.value = "white"
   ) +
+  # scale_fill_manual("",values = c("#5BBCD6","#5BBCD6","#00A08A","#00A08A","#F2AD00","#F2AD00","#F98400","#FF0000","#FF0000","#FF0000"),
+  #                    na.value = "white"
+  # ) +
   # scale_fill_manual(values = rev(wes_palette(n = 5, name = "Darjeeling1")),
   #                    na.value = "white"
   # ) +
   ggtheme_map()
 
-Plot_Name <- paste(Jurisdiction,"_100_25_Bins_Land.png", sep = "") 
+Plot_Name <- paste(Jurisdiction,"_100_25_Bins_Landb.png", sep = "") 
 
 ggsave(Plot_Name,
        plot = Plot,
