@@ -162,12 +162,9 @@ Alternatively, we could create a "confidence level" based on a ratio, i.e;
 - How many grid cells of both the EEZs is the species present on. A species that covers all cells would have 100% but a species that covers, lets say, all of EEZ1 but only half of EEZ2 would be 75%.  
 - Another option is to have the index based on the species distribution. That is to say, what proportion of the total species distribution actually falls within both EEZs....
 
-
-### Current issues
-
-- How to distinguish between North and South? Example of Brazil, Uruguay and French Guyana
-
 ## Data
+
+### Determine species list
 
 ```{r Speceis_List_For_Data, eval = F, echo = T}
 
@@ -393,7 +390,7 @@ write.csv(EEZ_Neighbour_List,
 
 #### Function `GetSppDist`
 
-This function Read in species distribution from the observation data, ESM models and SAU data, still missing DBEM
+This function Read in species distribution from the observation data, ESM models and SAU data
 
 ```{r GetSppDist, eval = T, echo = T}
 
@@ -580,8 +577,8 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 # Coord <- CoorG
 # 
 # # For EEZ
-Neighbours <- Neighbours_Data
-Index_Code <- Index_Code
+# Neighbours <- Neighbours_Data
+# Index_Code <- Index_Code
 #  
 # __________________________________
 # __________________________________
@@ -675,7 +672,7 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
     write.csv(New_Non, New_Non_Name, row.names = F)
     
   EstTransIndex=Current_Spp
-    print(To_Print)
+    
   }
   
   # Step 3. Sum total grids per Neighbours
@@ -854,7 +851,7 @@ Jurisdiction <- "EEZ"
 
 # Determine forlder for saving results
 Folder <- "Trans_Results"
-Results_Path <- paste(Data_Path,"Results/",Jurisdiction,"/",Folder,sep = "")
+Results_Path <- paste(Data_Path,"Results/",Jurisdiction,"/",Folder,sep = "/")
 
 if(file.exists(Results_Path) == TRUE){
   Results_Path <- paste(Data_Path,"Results/",Jurisdiction,"/",Folder,sep = "")
@@ -945,7 +942,7 @@ system.time(
 GetTransResults=function(Spp){
 
   # Set the path for each file
-  Distpath <- paste(Results_Path,"/Trans_Results/",Spp,sep="")
+  Distpath <- paste(Results_Path,Spp,sep="")
   
   # Loads all files in a df
   Load_Data <- bind_rows(lapply(Distpath, FUN=fread))
@@ -955,7 +952,6 @@ GetTransResults=function(Spp){
 }
 
 ```
-
 
 ## Function `CleanResults`
 
@@ -1062,14 +1058,14 @@ CleanResults <- function(Data){
 
 ## Load Results data
 
-
 ```{r Load_Results_Data, eval = F}
 
 # Set Jurisdiction to EEZ or RFMO
 Jurisdiction <- "EEZ"
+Folder <- "Trans_Results"
 
 # Updates result's path for the jurisdiction
-Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
+Results_Path <- paste(Results_Path,Jurisdiction,"/",Folder,"/",sep="")
 
 # Species list to get species names
 Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep=""))
@@ -1154,7 +1150,7 @@ if(Sys.info()[7] == "carmelia"){ # For Carmelia
   
   
   # List of species
-  Spp <- list.files(paste(Results_Path,"/Trans_Results",sep=""))[-829]
+  Spp <- list.files(paste(Results_Path,sep=""))[-829]
   
   # Load and clean Transboundary results
   Results_Trans <- GetTransResults(Spp)
@@ -1239,7 +1235,7 @@ Tresholded_D_Data <- Clean_Results_Trans %>%
 ```{r Data_per_Territory}
 
 # Data per Territory
-Transboundary_Spp <- Tresholded_Data %>% 
+Transboundary_Spp <- Tresholded_T_Data %>% 
   group_by(Territory) %>% 
   summarise(
     n_trans_spp = length(unique(TaxonKey)),
@@ -1261,11 +1257,7 @@ length(unique(Total_trans_n$TaxonKey)) #674 spp
 
 ```
 
-
-
 ### Map of Transboundary Species
-
-
 
 ```{r Territory_Map, eval =F, echo =F}
 
@@ -1296,33 +1288,33 @@ World_sf_si_land <- World_land_sf %>%
 World_sf_si$Bins <- cut(World_sf_si$n_trans_spp,breaks = 4)
 World_sf_si_land$Bins <- cut(World_sf_si_land$Total_Catch,breaks = 4)
 
-head(World_sf_si)
-head(World_sf_si_land)
+# head(World_sf_si)
+# head(World_sf_si_land)
 
-unique(World_sf_si$Bins)
-unique(World_sf_si_land$BinsLan)
+# unique(World_sf_si$Bins)
+# unique(World_sf_si_land$BinsLan)
 
 # levels(World_sf_si$Bins)
 # levels(World_sf_si_land$BinsLan)
 
 # Get the NA's to be grey
 Grey_land <- World_sf_si_land %>% 
-  filter(is.na(BinsLan))
+  filter(is.na(Bins))
 
 Plot <- ggplot() +
-  geom_sf(data = World_sf_si_land,aes(fill = BinsLan), colour = "grey80") +
+  # geom_sf(data = World_sf_si_land,aes(fill = Bins), colour = "grey80") +
   geom_sf(data = World_sf_si,aes(fill = Bins),colour = "grey20") + # n_trans_spp or Bins
-  geom_sf(data = Grey_land,aes(fill = BinsLan),fill = "grey80") + # n_trans_spp or Bins
+  geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80") + # n_trans_spp or Bins
   # scale_fill_gradientn(colours = pal,
   #                      na.value = "white") +
-  # scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
-                               # rev(wes_palette(n = 4, name = "Darjeeling2"))
-                               # ),
-                     # na.value = "white"
-  # ) +
-  scale_fill_manual("",values = c("#5BBCD6","#5BBCD6","#00A08A","#00A08A","#F2AD00","#F2AD00","#FF0000","#FF0000"),
+  scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
+                               rev(wes_palette(n = 4, name = "Darjeeling2"))
+                               ),
                      na.value = "white"
   ) +
+  # scale_fill_manual("",values = c("#5BBCD6","#5BBCD6","#00A08A","#00A08A","#F2AD00","#F2AD00","#FF0000","#FF0000"),
+                     # na.value = "white"
+  # ) +
   # scale_fill_manual(values = rev(wes_palette(n = 5, name = "Darjeeling1")),
   #                    na.value = "white"
   # ) +
@@ -1338,74 +1330,74 @@ ggsave(Plot_Name,
        path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
 )
 
-Data <- World_sf_si_land %>% 
-  as_tibble() %>% 
-  select(Territory, BinsLan)
-
-Data_EEZ <- World_sf_si %>% 
-  as_tibble() %>% 
-  select(Territory, Bins)
-
-
-### EEZ shapefile
-eez  = readRDS(paste(Data_Path,"Spatial_Data/eez_simplified.rds",sep="")) #taken from cotterel https://github.com/cottrellr/shocks
-
-eez = spTransform(eez, CRS("+proj=longlat"))
-eez = spTransform(eez, CRS("+proj=wintri"))
-eez = fortify(eez) 
-
-World_sf_si <- World_sf %>%
-  st_transform(crs = 4326
-
-#### Round map tryout 
-mapworld = fortify(spTransform(rworldmap::getMap(), CRS("+proj=wintri")))
-
-mapworld<- mapworld %>% 
-  rename(Territory = id) %>% 
-  left_join(Data,
-            by = "Territory") %>% 
-  left_join(Data_EEZ,
-            by = "Territory") %>% 
-  rename(id = Territory)
-
-# head(mapworld)
-
-#create map boundary
-ll.to.wt <- function (points)
-  as.data.frame(spTransform(SpatialPoints(points, CRS("+proj=longlat")),
-                            CRS("+proj=wintri")))
- 
-lseq = seq(-85, 85, by=.25)
-boundary <- ll.to.wt(data.frame(
-  long = c(rep(-180, length(lseq)), rep(180, length(lseq)), -180),
-  lat  = c(lseq,                    rev(lseq),          lseq[1])))
- 
-# New facet label names for dose variable
-ggplot()+
-  geom_polygon(data=boundary, aes(x=long, y=lat), fill="azure") +
-  geom_map(data=mapworld, map=mapworld, aes(map_id=id, x=long, y=lat), fill ="gray93", colour=NA) +
-  geom_polygon(data = mapworld, 
-               aes(
-                 x = long,
-                 y = lat,
-                 group = group,
-                 fill = BinsLan
-               ),
-               colour="grey") +
-  geom_polygon(data = mapworld, 
-               aes(
-                 x = long,
-                 y = lat,
-                 group = group,
-                 fill = Bins)
-               ) +
-  geom_path(data=eez, aes(x=long,y=lat, group=group),colour="grey") +
+# Data <- World_sf_si_land %>% 
+#   as_tibble() %>% 
+#   select(Territory, BinsLan)
+# 
+# Data_EEZ <- World_sf_si %>% 
+#   as_tibble() %>% 
+#   select(Territory, Bins)
+# 
+# 
+# ### EEZ shapefile
+# eez  = readRDS(paste(Data_Path,"Spatial_Data/eez_simplified.rds",sep="")) #taken from cotterel https://github.com/cottrellr/shocks
+# 
+# eez = spTransform(eez, CRS("+proj=longlat"))
+# eez = spTransform(eez, CRS("+proj=wintri"))
+# eez = fortify(eez) 
+# 
+# World_sf_si <- World_sf %>%
+#   st_transform(crs = 4326
+# 
+# #### Round map tryout 
+# mapworld = fortify(spTransform(rworldmap::getMap(), CRS("+proj=wintri")))
+# 
+# mapworld<- mapworld %>% 
+#   rename(Territory = id) %>% 
+#   left_join(Data,
+#             by = "Territory") %>% 
+#   left_join(Data_EEZ,
+#             by = "Territory") %>% 
+#   rename(id = Territory)
+# 
+# # head(mapworld)
+# 
+# #create map boundary
+# ll.to.wt <- function (points)
+#   as.data.frame(spTransform(SpatialPoints(points, CRS("+proj=longlat")),
+#                             CRS("+proj=wintri")))
+#  
+# lseq = seq(-85, 85, by=.25)
+# boundary <- ll.to.wt(data.frame(
+#   long = c(rep(-180, length(lseq)), rep(180, length(lseq)), -180),
+#   lat  = c(lseq,                    rev(lseq),          lseq[1])))
+#  
+# # New facet label names for dose variable
+# ggplot()+
+#   geom_polygon(data=boundary, aes(x=long, y=lat), fill="azure") +
+#   geom_map(data=mapworld, map=mapworld, aes(map_id=id, x=long, y=lat), fill ="gray93", colour=NA) +
+#   geom_polygon(data = mapworld, 
+#                aes(
+#                  x = long,
+#                  y = lat,
+#                  group = group,
+#                  fill = BinsLan
+#                ),
+#                colour="grey") +
+#   geom_polygon(data = mapworld, 
+#                aes(
+#                  x = long,
+#                  y = lat,
+#                  group = group,
+#                  fill = Bins)
+#                ) +
+#   geom_path(data=eez, aes(x=long,y=lat, group=group),colour="grey") +
   # geom_point(data=ui, aes(x=long, y=lat, size=M, color=M), alpha=0.9) +
   # geom_text_repel(data=ui,aes(x=long, y=lat, label=un.name), size=2.5, color = 'black',
   #                 box.padding = unit(0.5, "lines"),
   #                 point.padding = unit(0.5, "lines"),
   #                 segment.color = 'grey50') +
-  scale_radius(range = c(1, 2)) #+
+  # scale_radius(range = c(1, 2)) #+
   # scale_colour_distiller(palette ="Spectral", direction = 1, limits=c(0,1), breaks=c(c(0,1))) + # or direction=1
   # theme_map()+
 #   theme(legend.key = element_blank(),
@@ -2640,6 +2632,23 @@ Pierre <-  Clean_Results_Trans %>%
 # using 600051 to see what's the problem with the Area index
 
 # Found the problem, Territory and Neighbour were switched un the last step of the EstTransSpp function
+
+```
+
+### Côte de Ivory missing data
+
+For some reason Côte de ivory is missing data. It was fixed at the begining when I was averaging 1951 to 1961 instead of 2004 to 2014, but now is somehow back to cero.
+
+```{Cote_Deivory, eval =F, echo =F}
+
+# It might be a problem in the name côte de'ivory....
+# Nope, both INDEX and neighbours datasets are names alike
+
+# Run getSppDistribution function with this:
+Model="All"
+Coord=CoorG
+
+Spp <- 600423 #This species should work
 
 ```
 
