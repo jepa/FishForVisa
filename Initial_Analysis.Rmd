@@ -851,13 +851,13 @@ Jurisdiction <- "EEZ"
 
 # Determine forlder for saving results
 Folder <- "Trans_Results"
-Results_Path <- paste(Data_Path,"Results/",Jurisdiction,"/",Folder,sep = "/")
+Results_Path <- paste(Data_Path,"Results/",Jurisdiction,"/",Folder,"/",sep = "")
 
 if(file.exists(Results_Path) == TRUE){
-  Results_Path <- paste(Data_Path,"Results/",Jurisdiction,"/",Folder,sep = "")
+  Results_Path <- paste(Data_Path,"Results/",Jurisdiction,"/",Folder,"/",sep = "")
 }else{
-  dir.create(paste(Data_Path,"Results/",Jurisdiction,"/",Folder,sep = ""))
-  Results_Path <- paste(Data_Path,"Results/",Jurisdiction,"/",Folder,sep = "")
+  dir.create(paste(Data_Path,"Results/",Jurisdiction,"/",Folder,"/",sep = ""))
+  Results_Path <- paste(Data_Path,"Results/",Jurisdiction,"/",Folder,"/",sep = "")
 }
 
 # Removes everything before the number
@@ -886,7 +886,7 @@ Exploited_Species_List <- Exploited_Species$TaxonKey
 # Load Jursidiction-dependant data
 
 # Load neighbours data from previouse routine
-Neighbours_Data <- read_excel(paste(Data_Path,"Spatial_Data/EEZ_Neighbours_List.xlsx", sep =""))
+Neighbours_Data <- read_excel(paste(Data_Path,"Spatial_Data/EEZ_Neighbour_List.xlsx", sep =""))
 
 # Modifications have to be made if ran un Hall
 # R<e9>union (Réunion) and C<f4>te d'Ivoire (Côte d'Ivoire)
