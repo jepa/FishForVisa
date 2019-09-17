@@ -1163,7 +1163,7 @@ if(Sys.info()[7] == "carmelia"){ # For Carmelia
   Clean_Results_Trans <- CleanResults(Results_Trans)
   
   # Load and clean Discrete results
-  Discrete_Data <- fread(paste(Results_Path,"/Trans_Results/Non_Transboundary_Data.csv",sep="")) %>% 
+  Non_Transboundary_Data <- fread(paste(Results_Path,"/Trans_Results/Non_Transboundary_Data.csv",sep="")) %>% 
     filter(!is.na(TaxonKey)) %>% 
     select(2:3)
   
@@ -1191,64 +1191,81 @@ MI <- 100 # Model Index
 
 #### Determine transboundary and non-transboundary species and nations
 
-Transboundary_Spp <- Clean_Results_Trans %>% 
+Tresholded_T_Data <- Clean_Results_Trans %>% 
   filter(
          Area_Index >= Min_AI,
          Area_Index <= Max_AI,
          Model_Index == MI
+         )
+
+### Non-transboundary Tresh 1
+Clean_Non_Transboundary_Data <- Non_Transboundary_Data %>% 
+  rename(eez_name = Territory) %>% 
+  left_join(sau_eez_fes) %>% 
+  group_by(Territory = fishing_entity) %>% 
+  summarise(value = length(unique(TaxonKey)),
+            Taxons = paste(unique(TaxonKey),collapse = ";"))
+
+## Determine as Trans. those species that are both trans and discrete for a nation (Tresh 2 and 3)
+Tresholded_D_Data <- Clean_Results_Trans %>% 
+  filter(Model_Index == MI) %>% 
+  mutate(Species_Type = ifelse(Area_Index > Max_AI,"Discrete",
+                                ifelse(Area_Index < Min_AI,NA,
+                                "Transboundary"))
          ) %>% 
+  filter(!is.na(Species_Type)) %>% 
+  group_by(CT_fishing_entity,Species_Type,TaxonKey) %>%
+  summarise(n=n()) %>%
+  spread(Species_Type,n) %>% 
+  mutate(Discrete = ifelse(!is.na(Discrete) & !is.na(Transboundary),NA,Discrete)) %>% 
+  gather("Species_Type","value", Discrete:Transboundary) %>% 
+  filter(!is.na(value),
+         Species_Type == "Discrete") %>% 
+  group_by(Territory = CT_fishing_entity) %>% 
+  summarise(value = length(unique(TaxonKey)),
+            Taxons = paste(unique(TaxonKey),collapse = ";")) %>% 
+  #  Include discrete species of Trsh. 1
+  bind_rows(Clean_Non_Transboundary_Data) %>%
+  # Data cleaning (group by territory and include georegions for plot)
+  rename(FishingRegion=Territory) %>% 
+  left_join(Clean_sau_eez_fes) %>% 
+  group_by(Territory = fishing_entity)
+
+  
+```
+
+## Results per Territory
+
+```{r Data_per_Territory}
+
+# Data per Territory
+Transboundary_Spp <- Tresholded_Data %>% 
   group_by(Territory) %>% 
   summarise(
     n_trans_spp = length(unique(TaxonKey)),
     n_Neighbours = length(unique(Neighbour)),
     Trans_Rate = n_trans_spp/n_Neighbours
     )
-  
-### Non-transboundary
-# 
-# Partial_Transboundary_Spp <- Clean_Results_Trans %>% 
-#   filter(
-#          Area_Index >= Min_AI,
-#          Area_Index <= Max_AI,
-#          Model_Index == MI
-#          ) 
-# 
-# Discrete_Spp_Area_Index <- Clean_Results_Trans %>% 
-#   filter(
-#     Area_Index >= Max_AI, # Discrete spp only on countryes with > 75%
-#     # Area_Index <= Min_AI,
-#          Model_Index == MI
-#          ) %>% 
-#   anti_join(Partial_Transboundary_Spp, # Removes species if it is already transboundary in a country
-#             by = c("TaxonKey","Territory")
-#   ) %>% 
-#   group_by(Territory) %>% 
-#   summarise(
-#     n_discrete_spp = length(unique(TaxonKey))
-    )
-  
 
-# Discrete_Spp <- Discrete_Data %>% 
-#   group_by(Territory) %>% 
-#   summarise(
-#     n_discrete_spp = length(unique(TaxonKey))
-#     ) %>% 
-#   bind_rows(Discrete_Spp_Area_Index) %>% 
-#   group_by(Territory) %>% 
-#   summarise(n_discrete = sum(n_discrete_spp))
 
-  # Merging eezs by territories (e.g. Mex Atlantic and pacific to Mez)
-Country_Discrete_Data <- Discrete_Data %>% 
-  rename(eez_name = Territory) %>% 
-  left_join(sau_eez_fes) %>% 
-  group_by(Territory = fishing_entity) %>% 
-  summarise(value = length(unique(TaxonKey)))
-  
+# Number of Transboundary Species
+Total_trans_n <- Clean_Results_Trans %>% 
+  filter(
+         Area_Index >= Min_AI,
+         Area_Index <= Max_AI,
+         Model_Index == MI
+         ) 
+
+length(unique(Total_trans_n$TaxonKey)) #674 spp
+
+
 ```
 
-## Results per Territory
+
 
 ### Map of Transboundary Species
+
+
 
 ```{r Territory_Map, eval =F, echo =F}
 
@@ -1259,7 +1276,7 @@ World_sf_si <- World_sf %>%
 
 Catch_Country <- Sau_Catch_Data %>% 
   group_by(FishingRegion=Territory) %>% 
-  summarise(Total_Catch = round(sum(Mean_Catch,na.rm=T)/1000000,2)) %>% 
+  summarise(Total_Catch = round(sum(Mean_Catch,na.rm=T),2)) %>% 
   filter(!(is.na(FishingRegion))) %>% 
   left_join(Clean_sau_eez_fes) %>% 
   group_by(Territory = fishing_entity) %>% 
@@ -1268,27 +1285,29 @@ Catch_Country <- Sau_Catch_Data %>%
 
 World_sf_si_land <- World_land_sf %>%
   st_transform(crs = 4326) %>% # 4326
-  # st_transform(crs = "+proj=wintri") %>% # tubed world
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%  # Include transboundary species
   left_join(Catch_Country, by ="Territory") # Include total specices catch
   
-# Get the NA's to be grey
-Grey_land <- World_sf_si_land %>% 
-  filter(is.na(BinsLan))
-
 # head(World_sf_si)s
 
 # Create a pellet for plotting
 # pal <- wes_palette("Zissou1", 1000, type = "continuous")
 
-World_sf_si$Bins <- cut(World_sf_si$n_trans_spp,breaks = 5)
-World_sf_si_land$BinsLan <- cut(World_sf_si_land$Total_Catch,breaks = 5)
+World_sf_si$Bins <- cut(World_sf_si$n_trans_spp,breaks = 4)
+World_sf_si_land$Bins <- cut(World_sf_si_land$Total_Catch,breaks = 4)
 
-# unique(World_sf_si$Bins)
-# unique(World_sf_si_land$BinsLan)
+head(World_sf_si)
+head(World_sf_si_land)
+
+unique(World_sf_si$Bins)
+unique(World_sf_si_land$BinsLan)
 
 # levels(World_sf_si$Bins)
 # levels(World_sf_si_land$BinsLan)
+
+# Get the NA's to be grey
+Grey_land <- World_sf_si_land %>% 
+  filter(is.na(BinsLan))
 
 Plot <- ggplot() +
   geom_sf(data = World_sf_si_land,aes(fill = BinsLan), colour = "grey80") +
@@ -1296,14 +1315,14 @@ Plot <- ggplot() +
   geom_sf(data = Grey_land,aes(fill = BinsLan),fill = "grey80") + # n_trans_spp or Bins
   # scale_fill_gradientn(colours = pal,
   #                      na.value = "white") +
-  scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
-                               rev(wes_palette(n = 5, name = "Darjeeling2"))
-                               ),
+  # scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
+                               # rev(wes_palette(n = 4, name = "Darjeeling2"))
+                               # ),
+                     # na.value = "white"
+  # ) +
+  scale_fill_manual("",values = c("#5BBCD6","#5BBCD6","#00A08A","#00A08A","#F2AD00","#F2AD00","#FF0000","#FF0000"),
                      na.value = "white"
   ) +
-  # scale_fill_manual("",values = c("#5BBCD6","#5BBCD6","#00A08A","#00A08A","#F2AD00","#F2AD00","#F98400","#FF0000","#FF0000","#FF0000"),
-  #                    na.value = "white"
-  # ) +
   # scale_fill_manual(values = rev(wes_palette(n = 5, name = "Darjeeling1")),
   #                    na.value = "white"
   # ) +
@@ -1408,12 +1427,7 @@ ggplot()+
 # Transboundary data
 # -------------------------- #
 
-Countries_Data <- Clean_Results_Trans %>% 
-  filter(
-    Area_Index >= Min_AI,
-    Area_Index <= Max_AI,
-    Model_Index == MI
-  ) %>% 
+Countries_Data_Plot <- Tresholded_Data %>% 
   group_by(Territory = CT_fishing_entity) %>% 
   summarise(value = length(unique(TaxonKey))) %>% 
   left_join(UN_Regions, by ="Territory") %>%
@@ -1433,30 +1447,7 @@ Countries_Data <- Clean_Results_Trans %>%
 # -------------------------- #
 
 
-Discrete_Data <- Clean_Results_Trans %>% 
-  filter(Model_Index == MI) %>% 
-  ## Determine as Trans. those species that are both trans and discrete for a nation (Tresh 2 and 3)
-  mutate(Species_Type = ifelse(Area_Index > Max_AI,"Discrete",
-                                ifelse(Area_Index < Min_AI,NA,
-                                "Transboundary"))
-         ) %>% 
-  filter(!is.na(Species_Type)) %>% 
-  group_by(CT_fishing_entity,Species_Type,TaxonKey) %>%
-  summarise(n=n()) %>%
-  spread(Species_Type,n) %>% 
-  mutate(Discrete = ifelse(!is.na(Discrete) & !is.na(Transboundary),NA,Discrete)) %>% 
-  gather("Species_Type","value", Discrete:Transboundary) %>% 
-  filter(!is.na(value),
-         Species_Type == "Discrete") %>% 
-  group_by(Territory = CT_fishing_entity) %>% 
-  summarise(value = length(unique(TaxonKey)),
-            Taxons = paste(unique(TaxonKey),collapse = ";")) %>% 
-  #  Include discrete species of Trsh. 1
-  bind_rows(Country_Discrete_Data) %>%
-  # Data cleaning (group by territory and include georegions for plot)
-  rename(FishingRegion=Territory) %>% 
-  left_join(Clean_sau_eez_fes) %>% 
-  group_by(Territory = fishing_entity) %>% 
+Discrete_Data_Plot <- Tresholded_D_Data %>% 
   summarise(value =sum(value,na.rm = T)*-1) %>% # Multyply them by -1 so they appear negative on plot
   mutate(value = ifelse(value <= -100,-100,value)) %>% 
   left_join(UN_Regions, by ="Territory") %>%
@@ -1468,23 +1459,21 @@ Discrete_Data <- Clean_Results_Trans %>%
   
 
 # Include possible missing countries in bothe datasets
-Countries_Data <- Discrete_Data %>% 
-  anti_join(Countries_Data,
+Countries_Data_Plot <- Discrete_Data_Plot %>% 
+  anti_join(Countries_Data_Plot,
             by = c("individual","group")) %>% 
   mutate(Total_Discrete = 0) %>% 
-  bind_rows(Countries_Data)
+  bind_rows(Countries_Data_Plot)
 
-Discrete_Data <- Countries_Data %>% 
-  anti_join(Discrete_Data,
+Discrete_Data_Plot <- Countries_Data_Plot %>% 
+  anti_join(Discrete_Data_Plot,
             by = c("individual","group")) %>% 
   mutate(value = 0) %>% 
-  bind_rows(Discrete_Data)
+  bind_rows(Discrete_Data_Plot)
 
 
 
 ```
-
-
 
 ```{r Territories_Circluar_Plot, eval = T, echo = T}
 
@@ -1493,24 +1482,24 @@ Discrete_Data <- Countries_Data %>%
 # -------------------------- #
 
 # Set a number of 'empty bar' to add at the end of each group
-Char <- as.factor(Countries_Data$group) # Set groups to factors
-empty_bar <- length(unique(Countries_Data$group))
-to_add <- data.frame( matrix(NA, empty_bar*nlevels(Char), ncol(Countries_Data)) )
-colnames(to_add) <- colnames(Countries_Data)
+Char <- as.factor(Countries_Data_Plot$group) # Set groups to factors
+empty_bar <- length(unique(Countries_Data_Plot$group))
+to_add <- data.frame( matrix(NA, empty_bar*nlevels(Char), ncol(Countries_Data_Plot)) )
+colnames(to_add) <- colnames(Countries_Data_Plot)
 to_add$group <- rep(levels(Char), each=empty_bar)
-Countries_Data <- bind_rows(Countries_Data, to_add)
-Countries_Data <- Countries_Data %>% arrange(group,value)
-Countries_Data$id <- seq(1, nrow(Countries_Data))
+Countries_Data_Plot <- bind_rows(Countries_Data_Plot, to_add)
+Countries_Data_Plot <- Countries_Data_Plot %>% arrange(group,value)
+Countries_Data_Plot$id <- seq(1, nrow(Countries_Data_Plot))
  
 # Get the name and the y position of each label
 
 # Top n of each group label
-Top_Countries <- Countries_Data %>% 
+Top_Countries <- Countries_Data_Plot %>% 
   group_by(group) %>% 
   top_n(5,value)
 
 # Create labels for all but top 5
-label_data <- Countries_Data 
+label_data <- Countries_Data_Plot 
 number_of_bar <- nrow(label_data)
 angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
 label_data$hjust <- ifelse( angle < -90, 1, 0)
@@ -1525,7 +1514,7 @@ Top_label_data <- label_data %>%
   filter(individual %in% Top_Countries$individual)
 
 # prepare a data frame for base lines
-base_data <- Countries_Data %>% 
+base_data <- Countries_Data_Plot %>% 
   group_by(group) %>% 
   summarize(start=min(id), 
             end=max(id) - empty_bar, 
@@ -1552,8 +1541,8 @@ median_data <- grid_data %>%
 # Get id to Discrete data
 # -------------------------- #
 
-Discrete_Data_Plot <- Discrete_Data %>% 
-  left_join(Countries_Data,
+Discrete_Data_Plot <- Discrete_Data_Plot %>% 
+  left_join(Countries_Data_Plot,
             by =c("individual","group")
   ) %>%
   mutate(value = ifelse(value.x <= -100,-100,value.x)) %>%
@@ -1563,7 +1552,7 @@ Discrete_Data_Plot <- Discrete_Data %>%
 ### make sure they have all same countries
 
 Discrete_Data_Plot %>% 
-  anti_join(Countries_Data,
+  anti_join(Countries_Data_Plot,
             by = c("individual","group","id"))
 
 
@@ -1574,12 +1563,12 @@ Discrete_Data_Plot %>%
 
 # Global Variables
 Seq_axis <- seq(-100,100,20)
-Plot_Limit <- max(Countries_Data$value,na.rm=T)
+Plot_Limit <- max(Countries_Data_Plot$value,na.rm=T)
 Plot_Limit_Low <- -110
 Ticks_Color <- "grey50"
 
 # Base plot
-ggplot(Countries_Data,
+ggplot(Countries_Data_Plot,
        aes(x=as.factor(id), 
            y=value,
            fill=group)
@@ -1621,7 +1610,7 @@ ggplot(Countries_Data,
   annotate("text", label = "Transboundary", x = 214, y = 45, size = 5, colour = "grey10", angle = 90) +
   annotate("text", label = "Discrete", x = 210, y = -45, size = 5, colour = "grey10", angle = 90) +
   annotate("text", 
-           x = rep(max(Countries_Data$id),length(Seq_axis)),
+           x = rep(max(Countries_Data_Plot$id),length(Seq_axis)),
            y = Seq_axis,
            label = c("<-100",as.character(Seq_axis)[2:(length(Seq_axis)-1)],">100"),
            color = Ticks_Color, 
@@ -1793,32 +1782,10 @@ circos.track(track.index = 1, panel.fun = function(x, y) {
 
 ## Analysis per Species
 
-```{Tran_country, eval =F, echo =F}
-
-# Number of Transboundary Species
-length(unique(Clean_Results_Trans$TaxonKey)) #664 spp
-
-
-# Number of Discret EEZ species
-
-# Ge those stocks that are not trans due to Area_Index
-length(unique(Results_Discrete$TaxonKey))
-
-
-```
-
 ```{r n_species_country, eval = T, echo =F}
 
-
-
-
 # Number of countries shared by each Species
-Species_Trans <- Clean_Results_Trans %>% 
-  filter(
-         Area_Index < Min_AI |
-         Area_Index > Max_AI,
-         Model_Index == MI
-         ) %>% 
+Species_Trans <- Tresholded_T_Data %>% 
   group_by(TaxonKey) %>% 
   summarise(
     n_countries = length(unique(Territory))
@@ -1918,13 +1885,7 @@ ggplot(Species_data,
 
 ```{r species_circluar_plot, eval = T, echo = T}
 
-Species_Data <- Clean_Results_Trans %>% 
-  filter(
-         Area_Index >= Min_AI,
-         Area_Index <= Max_AI,
-         Model_Index == MI#,
-         # Same_Nation == "No"
-         ) %>% 
+Species_Data <- Tresholded_T_Data %>% 
   group_by(TaxonKey) %>% 
   summarise(n_trans_spp = length(unique(Territory))) %>% 
   left_join(Exploited_Species) %>%
@@ -1936,7 +1897,7 @@ Species_Data <- Clean_Results_Trans %>%
          value = n_trans_spp,
          group = DemersPelag) %>% 
   arrange(group,value) %>% 
-  filter(value > 10) # remove all species under 10 (way too many to plot!)
+  filter(value > 20) # remove all species under 10 (way too many to plot!)
 
 Median_trans <- median(Species_Data$value)
 # hist(Species_Data$value)
@@ -2012,6 +1973,9 @@ median_data <- grid_data %>%
   mutate_at(vars(start,end),
             .funs = as.numeric)
 
+Seq_axis_spp <- seq(20,100,20)
+Plot_Limit <- max(Species_Data$value,na.rm=T)
+
 # Make the plot
 ggplot(Species_Data, 
        aes(x=as.factor(id), 
@@ -2024,21 +1988,20 @@ ggplot(Species_Data,
            stat="identity",
            alpha=0.5) +
   # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
-  geom_segment(data=grid_data, aes(x = end, y = 100, xend = start, yend = 100), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
-  geom_segment(data=grid_data, aes(x = end, y = 80, xend = start, yend = 80), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
-  geom_segment(data=grid_data, aes(x = end, y = 60, xend = start, yend = 60), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
-  geom_segment(data=grid_data, aes(x = end, y = 40, xend = start, yend = 40), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
-  geom_segment(data=grid_data, aes(x = end, y = 20, xend = start, yend = 20), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 100, xend = start, yend = 100), colour = Ticks_Color, alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 80, xend = start, yend = 80),  colour = Ticks_Color, alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 60, xend = start, yend = 60),  colour = Ticks_Color, alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 40, xend = start, yend = 40),  colour = Ticks_Color, alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 20, xend = start, yend = 20),  colour = Ticks_Color, alpha=1, size=0.3 , inherit.aes = FALSE ) +
   # Add median lines for each gropup
   geom_segment(data=median_data, aes(x = end, y = median, xend = start+5, yend = median, colour = group),
                alpha=1, size=0.5 , inherit.aes = FALSE ) +
-  # geom_hline(yintercept = Median_trans, colour = "black", alpha=1, size=0.3,linetype="dashed") + # All groups median
   # Add text showing the value of each line
   annotate("text", 
            x = rep(max(Species_Data$id),5),
-           y = c(20, 40, 60, 80, 100),
-           label = c("20", "40", "60","80",">100"),
-           color="grey", 
+           y = Seq_axis_spp,
+           label = c(Seq_axis_spp[-5],">100"),
+           color=Ticks_Color, 
            size=3 , 
            angle=0, 
            fontface="bold",
@@ -2049,23 +2012,23 @@ ggplot(Species_Data,
            stat="identity",
            alpha=0.5) +
   geom_text(data=label_data_rest,
-            aes(x=id, y=110,
+            aes(x=id, y=101,
                 label=individual,
                 hjust=hjust), 
             color="black",
-            # fontface="bold",
-            alpha=0.6,
+            fontface="italic",
+            alpha=1,
             size=2.5,
             angle= label_data_rest$angle,
             inherit.aes = FALSE) +
   # Bold top 3 
   geom_text(data=Top_label_data,
-            aes(x=id, y=110,
+            aes(x=id, y=101,
                 label=individual,
                 hjust=hjust), 
             color="black",
-            fontface="bold",
-            alpha=0.6,
+            fontface="bold.italic",
+            alpha=1,
             size=2.5,
             angle= Top_label_data$angle,
             inherit.aes = FALSE) +
@@ -2080,7 +2043,7 @@ ggplot(Species_Data,
                alpha=0.8, 
                size=0.6 , 
                inherit.aes = FALSE) +
-  ylim(-140,140) + # sets the circle the first value the central the last value how wide
+  ylim(-100,110) + # sets the circle the first value the central the last value how wide
   theme_minimal() +
   theme(
     legend.position = c(0.5,0.5),
@@ -2091,26 +2054,26 @@ ggplot(Species_Data,
   ) +
   coord_polar() + 
   scale_fill_manual("Ecosystem Preference",
-                    values = c(wes_palette(n = 5, name = "Darjeeling1"),
-                               wes_palette(n = 4, name = "Darjeeling2")
+                    values = c(wes_palette(n = 4, name = "GrandBudapest1"),
+                               wes_palette(n = 4, name = "GrandBudapest2")
                     ),
                     na.value = "white"
   ) +
   scale_colour_manual("Ecosystem Preference",
-                      values = c(wes_palette(n = 5, name = "Darjeeling1"),
-                                 wes_palette(n = 4, name = "Darjeeling2")
+                      values = c(wes_palette(n = 4, name = "GrandBudapest1"),
+                                 wes_palette(n = 4, name = "GrandBudapest2")
                       ),
                       na.value = "white"
   )
 # 
-# ggsave(
-#     plot = last_plot(),
-#     width = 14,
-#     height = 10,
-#     units = "in",
-#     filename = "Species_circular_over10.tiff",
-#     path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
-#   )
+ggsave(
+    plot = last_plot(),
+    width = 12,
+    height = 12,
+    units = "in",
+    filename = "Species_circular_over20.png",
+    path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
+  )
  
 ```
 
@@ -2264,126 +2227,68 @@ for(s in 1:2){ # sclae loop
 
 ```
 
-### Potential connections Map
+# Sensitivity Analysis
 
-```{r connection_map, eval = F, echo = F}
 
-# https://www.data-to-viz.com/story/MapConnection.html
+```{r Sensitivity_Area_Treshold, eval = T, echo = F}
 
-# Load dataset from github (Surfer project)
-data <- read.table("https://github.com/holtzy/data_to_viz/raw/master/Example_dataset/19_MapConnection.csv", header=T, sep=",")
+# Model Index
+MI <- 100 # Model Index
 
-head(data)
-Clean_Results <- read.csv("~/GitHub/FishForVisa/Temporal_Data/Clean_Results.csv")
+####_____End Select Tresholds_______ ###
 
-Clean_Results <- Clean_Results %>% 
-  select(TaxonKey, homename = Country_Territory, travelname = Neighbor_Territory)
+Area_Index_Level <- seq(.1,0.5,0.1)
 
-library(readxl)
-EEZIDs_List <- read_excel("~/Documents/UBC/Oceans_Project/Distribution/By Cell/Cell_Data/Updated_EEZList_17June2016.xlsx")
-EEZ_CellID <- read_excel("~/Documents/UBC/Oceans_Project/Distribution/By Cell/Cell_Data/EEZ_CellID.xlsx")
 
-colnames(EEZ_CellID) <- c("EEZID","INDEX")
+p <- list()
+i = NULL
 
-# DBEM Coordinate system
-Coor <- read.csv("~/Documents/UBC/Oceans_Project/Distribution/DBEM/Data/Lon_Lat_DBEM.txt",header = FALSE)
-colnames(Coor) <- c("INDEX","Longitude","Latitude")
+for(i in 1:length(Area_Index_Level)){
+  
+  data <- Clean_Results_Trans %>% 
+    filter(
+      Area_Index >= Area_Index_Level[i],
+      Area_Index <= 1-Area_Index_Level[i],
+      Model_Index == MI
+    ) %>% 
+    group_by(Territory) %>% 
+    summarise(
+      n_trans_spp = length(unique(TaxonKey)),
+      n_Neighbours = length(unique(Neighbour)),
+      Trans_Rate = n_trans_spp/n_Neighbours
+    )
+  
+  Median_data <- median(data$n_trans_spp)
+  print(Median_data)
+  
+  p[[i]] <- ggplot(data) +
+    geom_histogram(aes(n_trans_spp),
+                   binwidth = 10, 
+                   colour = "white"
+    ) +
+    labs(
+      x = "Transboundary species (n)",
+      y = "Frequency of EEZs",
+      title= paste("Using a",(Area_Index_Level[i]*100),"% area treshold. (Median",Median_data,")")
+    ) +
+    # ggtitle(paste("Using a",(Area_Index_Level[i]*100),"% area treshold. (Median",Median_data,")")) +
+    ggtheme_plot()
+  
+}
 
-Index_Code <- EEZIDs_List %>% 
-  left_join(EEZ_CellID) %>% 
-  rename(Territory = Name) %>% 
-  left_join(Coor, by = "INDEX") %>% 
-  group_by(Territory) %>% 
-  summarise(Latitude = mean(Latitude),
-            Longitude = mean(Longitude)
+ggsave(
+    plot = do.call(gridExtra::grid.arrange,p),
+    width = 8,
+    height = 8,
+    units = "in",
+    filename = "Area_Tresholds.png",
+    path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Sensitivity_Analysis"
   )
 
-Home_coor <- Index_Code %>% 
-  rename(
-    homename = Territory,
-    homelat = Latitude,
-    homelon = Longitude)
-
-Travel_coor <- Index_Code %>% 
-  rename(
-    travelname = Territory,
-    travellat = Latitude,
-    travellon = Longitude)
+```
 
 
-# Download NASA night lights image
-download.file("https://www.nasa.gov/specials/blackmarble/2016/globalmaps/BlackMarble_2016_01deg.jpg", 
-              destfile = "BlackMarble_2016_01deg.jpg", mode = "wb")
-# Load picture and render
-earth <- jpeg::readJPEG("BlackMarble_2016_01deg.jpg", native = TRUE)
-earth <- grid::rasterGrob(earth, interpolate = TRUE)
-
-# Count how many times we have each unique connexion + order by importance
-summary=data %>% 
-  dplyr::count(homelat,homelon,homecontinent, travellat,travellon,travelcontinent) %>%
-  arrange(n)
-
-summary <- Data %>%
-  group_by(homename,travelname) %>% 
-  summarise(n = n()) %>% 
-  left_join(Home_coor) %>% 
-  left_join(Travel_coor)
-
-# A function that makes a dateframe per connection (we will use these connections to plot each lines)
-data_for_connection=function( dep_lon, dep_lat, arr_lon, arr_lat, group){
-  inter <- geosphere::gcIntermediate(c(dep_lon, dep_lat), c(arr_lon, arr_lat), n=50, addStartEnd=TRUE, breakAtDateLine=F)             
-  inter=data.frame(inter)
-  inter$group=NA
-  diff_of_lon=abs(dep_lon) + abs(arr_lon)
-  if(diff_of_lon > 180){
-    inter$group[ which(inter$lon>=0)]=paste(group, "A",sep="")
-    inter$group[ which(inter$lon<0)]=paste(group, "B",sep="")
-  }else{
-    inter$group=group
-  }
-  return(inter)
-}
-
-# Création d'un dataframe complet avec les points de toutes les lignes à faire.
-data_ready_plot=data.frame()
-for(i in c(1:nrow(summary))){
-tmp=data_for_connection(summary$homelon[i], summary$homelat[i], summary$travellon[i], summary$travellat[i] , i)
-  # tmp$homecontinent=summary$homecontinent[i]
-  tmp$n=summary$n[i]
-  data_ready_plot=rbind(data_ready_plot, tmp)
-}
-
-data_ready_plot$homecontinent=factor(data_ready_plot$homecontinent, levels=c("Asia","Europe","Australia","Africa","North America","South America","Antarctica"))
-
-# Plot
-library(ggplot2)
-pal <- wesanderson::wes_palette("Zissou1", 1000, type = "continuous")
-ggplot() +
-  annotation_custom(earth, xmin = -180, xmax = 180, ymin = -90, ymax = 90) +
-  geom_line(data=data_ready_plot, aes(x=lon,
-                                      y=lat, 
-                                      group=group,
-                                      colour=n
-                                      )
-            ) +
-  # scale_color_brewer(palette="Set3") +
-  scale_colour_gradientn(colours = pal) +
-  theme_void() +
-  theme(
-    legend.position="bottom",
-    panel.background = element_rect(fill = "black", colour = "black"), 
-    panel.spacing=unit(c(0,0,0,0), "null"),
-    plot.margin=grid::unit(c(0,0,0,0), "cm")
-    ) +
-  xlim(-180,180) +
-  ylim(-60,80) +
-  scale_x_continuous(expand = c(0.006, 0.006)) +
-  coord_equal() 
-
-
-````
-
-# Problem solving
+#Problem solving
 
 
 
