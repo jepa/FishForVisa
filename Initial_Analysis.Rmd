@@ -886,7 +886,10 @@ Exploited_Species_List <- Exploited_Species$TaxonKey
 # Load Jursidiction-dependant data
 
 # Load neighbours data from previouse routine
-Neighbours_Data <- fread(paste(Data_Path,"Spatial_Data/EEZ_Neighbours_List.csv", sep =""))
+Neighbours_Data <- read_excel(paste(Data_Path,"Spatial_Data/EEZ_Neighbours_List.xlsx", sep =""))
+
+# Modifications have to be made if ran un Hall
+# R<e9>union (Réunion) and C<f4>te d'Ivoire (Côte d'Ivoire)
 
 # SAU relations between INDEX and Country's EEZs
 EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
@@ -2648,7 +2651,124 @@ For some reason Côte de ivory is missing data. It was fixed at the begining whe
 Model="All"
 Coord=CoorG
 
-Spp <- 600423 #This species should work
+# Spp <- 600423 #This species should work
+
+# Its a problem with compabillity between Windows and MAC. Fixed by changing the neighbours csv. to excell
+
+# Now Check Vietnam...Curacao and Réunion...
+# In INDEXES "Vietnam" in all others "Viet Nam"
+# Fixed directly on the excell
+
+# The russioan probelmo
+
+# Load neighbours data from previouse routine
+Neighbours_Data <- read_excel(paste(Data_Path,"Spatial_Data/EEZ_Neighbour_List.xlsx", sep =""))
+
+
+EEZCellIUD913 <- EEZ_CellID %>% 
+  filter(EEZID == 913)
+
+R912 <- Neighbours_Data %>% 
+  filter(ID == 912)
+
+R913 <- Neighbours_Data %>% 
+  filter(ID == 913)
+
+anti_join(R912,R913)
+
+
+Index_Code913 <- Index_Code %>% 
+  filter(EEZID == 913)
+
+
+Neighbours_Data %>% 
+  filter(INDEX %in% Index_Code913$INDEX)
+
+# SAU relations between INDEX and Country's EEZs
+EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
+# EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_JEPA_92019.xlsx",sep=""))
+EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
+# EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_JEPA_92019.xlsx",sep=""))
+colnames(EEZ_CellID) <- c("EEZID","INDEX")
+
+Index_Code <- EEZIDs_List %>% 
+  left_join(EEZ_CellID) %>% 
+  rename(Territory = Name)
+
+# The path
+path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile/",sep="")
+# #The File
+
+fnam_world <- "SAUEEZ_July2015.shp"
+World_sf <- st_read(dsn = path_world,
+                    layer =file_path_sans_ext(fnam_world)) %>% 
+  rename(Territory = Name)
+
+
+x <- Neighbours_Data %>%
+  select(-Neighbour) %>% 
+  group_by(Territory) %>% 
+  distinct() %>% 
+  anti_join(Index_Code) %>% 
+  group_by(Territory) %>% 
+  summarise(n());x
+
+# World_sf %>% 
+#   filter(Territory %in% x$Territory)
+
+
+# Fuck it! Re-run Neighbours code... 
+
+Russians <- c("Russia (Laptev to Chukchi Sea)", #913
+              "US Virgin Islands") #912
+
+SF_Names <- 850
+
+Russian_Index <- Index_Code %>% 
+  filter(Territory %in% Russians)
+
+unique(Russian_Index$EEZID)
+unique(Russian_Index$Territory)
+
+World_sf %>% 
+  # filter(Territory == "Russia (Laptev to Chukchi Sea)") # EEZid 912
+  # filter(Territory == "Russia (Kara Sea)") # EEZid also 912
+  filter(Territory %in% Russians) %>% 
+  ggplot() +
+  geom_sf(aes(fill = Territory))
+
+
+unique(Russian_sf$Territory)
+
+# split shapefile by DF
+ Russian_id <- World_sf %>% 
+  filter(Territory %in% Russians) %>% 
+  left_join(Russian_Index, by= "Territory") %>%  
+  mutate(EEZID = ifelse(Territory == "Russia (Kara Sea)",912,913)) %>% 
+  filter(EEZID == 913) %>% 
+  st_simplify(preserveTopology = TRUE, dTolerance = 1000)
+  
+ 
+ ggplot(Russian_id) +
+   geom_sf(aes())
+
+ # ok! 
+
+# split shapefile by DF
+Russia_id_912_913 <- World_sf %>% 
+  filter(Territory %in% Russians) %>% 
+  left_join(Russian_Index, by= "Territory") %>%  
+  mutate(EEZID = ifelse(Territory == "Russia (Kara Sea)",912,913)) %>% 
+  as.data.frame() %>% 
+  ungroup() %>% 
+  select(Territory,INDEX,EEZID)
+
+write.csv(Russia_id_912_913,
+         "Russia_id_912_913.csv",
+         row.names = F)
+  
+head(x)
+  
 
 ```
 
