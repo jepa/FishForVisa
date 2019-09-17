@@ -1,34 +1,56 @@
 ---
-title: "How many fisheries need visas?"
+title: "Fish do not need visa"
 author: "Juliano Palacios Abrantes"
 date: "10/4/2018"
-output: pdf_document
+output:
+  word_document: default
+  pdf_document: default
 ---
 
 # Introduction
 
-## Fisheries are important
-Marine fishes are an important source of food and wealth to million of people worldwide. Just in 2016, fisheries landings were estimated to be 90 million tonnes representing an important source of food security in many developing countries [@SOFIA]. The fishing industry employees XX thousand people worldwide and, combined with trade, generate US$ xxx billion in profits. An important part of these fisheries are cataloged as shared stocks. Shared fish stocks can be classified in two categories [@Bailey:2010ga]; 1) Transboundary, stocks occurring in the EEZs of 2 or more coastal states and 2) Straddling stocks, those occurring in the EEZs of at least one coastal state and the high seas. The management of these stocks differed from each other and from discrete fish stocks (e.g. stocks that only occur within the EEZ of a coastal nation or in the high seas).
+## Species Niche
 
-## Different ways to classify fisheries according to their distribution
+Species are not randomly distributed in the world. Species fundamental niche, that is, the area in space and time where a stable population lives and reproduces, is determined by the species' fitness response to a series of environmental variables such as temperature, salinity, and oxygen [@Hunch]. Once species interactions are included, we obtain the realize nich, that is the "real" area where a population can be mantained [@Hutchinson:1957]. The nich concept has been wildly used in determine species distributions, and hence, implement management programs. 
 
-The management of shared fish stocks has been mainly studied trough the lenses of game theory. Since its early work Gordon 1976 blablabla.... Cooperative game... Nash equilibrium... balbalba... 
+## UNCLOS and deffinitions
+
+However, this has not allways been the case in fisheries management. From 1973 to 1982 the members of the United Nations held a series of meetings to discuss a series of regulations regarding the high seas, a region of international common property, which, at that time, represented waters after 12 miles from shore [@McRae and Munro, 1989]. The third Conference on the Law of the Sea resulted the UN Convention on the Law of the Sea (UNCLOS) which allowed coastal states to claim jurisdiction over 200 nautical mile Exclusive Economic Zones (EEZs) of their coasts [@UN:1982]. Despite intended to improve fisheries management, this arbritary delimitation of management area had no input from biogeography, ignoring species distributions, and thus creating what we know today as shared stocks. Share stocks, as their name suggest, are fish stocks that live within the waters of two or more nations. The Food and Agricultural Organization of the UN (FAO) recognizes three types: (*i*) transboundary stocks, those stocks that are shared by 2 or more neighbouring coastal nations (e.g. Pacific halibu *Hippoglossus stenolepsis*); (*ii*) stradling, those stocks that are shared by two or more nations and also the high seas (e.g. Atlantic cod, *Gadus morhua*); (*iii*) higly migratory stocks; species that are found in the EEZs of coastal nations that are not necessarilly neighbours, and the high seas (e.g. all tunas and tuna-like species); and (*iv) discrete high seas stocks; those species that are only found in the high seas. 
+
+## Cady and Teh
+
+Despite the importance of shared stocks and their complex management, it is not clear, to date, how many shared stocks are there in the world, wich ones are the most productive, and something else. In 1997, that is 10 years after UNCLOS, Caddy (1997) estimated, with limited data and mehtods, that there could be up to 1,500 transboundary fish stocks in the world [@Cady], however, such estimation lacks a proper assessment. More recently, Teh and Sumaila (2015) carried a litterature review of shared stocks an estimated 344 shared species according to all UN categories [@Teh:2015gd]. 
 
 
-## Lack of information on it
-
-Despite the importance of these stocks and the complex management reflected in years of research we still don't know how many fish stocks are actually transboundary in nations. Previous estimates suggest that there are around 1,500 transboundary fish stocks in the world [@Cady], however, such estimation lacks a proper assessment. Determine the nature of fish stocks (weather or not is a shared resource) can help the proper management of natural resources improving profits [@costello] and food security [@REF] worldwide.
 
 ## What we did
 
-In the current paper we aimed to estimate the number of transboundary fished stocks and their contribution to food security and economics of the world. We used the known distribution [@GabsData] of all pelagic and demersal fish stocks listed in the Sea Around Us database [@Zeller] to determine what stocks are likely shared by two or more nations (transboundary), and what stocks are also likely to spend time in the high seas (straddling). Our results suggest that XXX global stocks are transboundary in nature from witch XXX also happen in the high seas. Transboundary stocks represent XX% of total landings and XX% of global revenues.
+In the current paper we aimed to estimate the number of transboundary fished stocks and their contribution to food security and economics of the world. We used the known distribution [@GabsData] of all pelagic and demersal fish stocks listed in the Sea Around Us database [@Zeller2016] to determine what stocks are likely shared by two or more nations (transboundary), and what stocks are also likely to spend time in the high seas (straddling). Our results suggest that XXX global stocks are transboundary in nature from witch XXX also happen in the high seas. Transboundary stocks represent XX% of total landings and XX% of global revenues.
 
-# Methods
+# Materials and Methods
 
-We used the SAU database and filter the pelagic and demersal fish species fished by neighboring countries. We then used the SAU catch data and fishing distribution data to determine the central abundance of the stock. Assuming that this was the center of the distribution of the stock in question, we overlapped the current distribution of each species [@Gabriel] with the current location of coastal states EEZs [@Shapefile]. We used the average distribution (mobility) of each species from the stock abundance center. If the average distribution from the center reached within two or more coastal nations, such species was considered transboundary. IN the other hand, if the species range also included the high seas were classified as straddling. 
+For the current proyect we define a transboundary species as those that spend partial or total part of their life within the Exclusive Economic Zone (EEZ) of two or more neighboring countries [@Munro:2002uf]. Such is the case of Pacific salmons (*Oncorhynchus sp.*) that live part of their life cycle within the US west coast and part within Canadian waters. 
+
+## Databases on species geographic distributions
+
+To determine the pool of transboundary marine species exploited by fisheries within each of the world's EEZs, we first determined their current distributions. For this, we used four species-distributions data sources based on (*i*) observational data, (*ii*) species distribution models, and (*iii*) fisheries catch data, in order to determine presence or absence of each species within each EEZ. (*i*) The observational data was collected from multiple databases online...**GABS** (*ii*) We then used data from two species distribution models. The Sea Around Us (SAU) distributions [@Close:2006ux], and an environmental niche model (ENM) [@REFGabs]. (*iii*) Finally, we used the historical fisheries catch reconstructions provided by the SAU [@Zeller2016], **Version and updates GABS** spatially distributed along the world's EEZs [@Close:2006ux]. All data was gridded on 0.5 x 0.5 grid cells. Only those species that had data from all four sources were included in the analysis, and therefore the final dataset comprised XXX species (**See S1_Data**).
+
+In order to determine the presence or absence of each species in any given EEZ we define the EEZ boundaries using the Sea Around Us dataset (updated 1 July 2015, available from http://www.seaaroundus.org) sub-divided by regions (e.g. Mexico Pacific and Mexico Atlantic). 
+
+## Determine if a species is transboundary
+
+We developed three steps for determining whether or not a species was transboundary. Such steps work as indexes to measure the uncertainty in the analysis. Only species that meet the criteria of the three steps were considered as transboundary species, those which did not were considered as discrete species only happening within one EEZ. 
+
+For each species and grid cell we firstly determine the presence or absence within each database. The *species Index* was computed by dividing the number of datasets that confirm presence over the total amount of datasets. Environmental niche models project the distribution of a certain species based on certain parameters such as environmental, behavioral or physiological of individuals and their environmental interaction (fundamental niche). However, such distribution does not represent the actual presence (realized niche) of the species after other factors such as species interactions have been taken into account [@Kearney:2010ip]. To differentiate the fundamental from the realize niche models with the ENMs we used the SAU catch data reconstruction. All species that were reported as caught in any single year between 1950 and 2014 in a given EEZ were kept while those with absent catch data were dropped from the specific country. The assumption relies in that if a ESM projects a commercial species in any fishing country, such species would been fished, and reported, at some period of time (**S1_Figure**), validating the ESM result, thus, the existence of the species. Finally, in order to have a more robust result and do not determine a transboundary species based on the presence in a single 0.5 x 0.5 grid cell within an EEZ, we computed the *area Index*. For this we estimate, for each species, the proportion of the total species distribution within both EEZs for each neighboring EEZ (**S2_Figure**).
+
+## Model validation 
+
+While we do not know the transboundary nature of many species, some are jointly managed by neighboring countries or Regional Fisheries Management Organizations (RFMOs). Hence, in order to validate our results, we cross-check our transboundary species with the fished species and countries of 18 RFMOs all around the globe [@CullisSuzuki:2010fi].
 
 
-# Results
-# Discussion
-# Conclussion
-# References
+<!-- # Results -->
+<!-- # Discussion -->
+<!-- # Conclussion -->
+<!-- # References -->
+
+```
