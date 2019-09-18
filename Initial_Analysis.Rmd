@@ -1049,7 +1049,16 @@ CleanResults <- function(Data){
               by = c("Territory","Neighbour")
     ) %>% 
     filter(Same_Nation == "No") %>% 
-    select(-8,-9)
+    select(-8,-9) %>% 
+    # Fixe coding issues between MAC and Windows
+    mutate(
+    Territory = gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",Territory),
+    Territory = gsub("C<f4>te d'Ivoire","Côte d'Ivoire",Territory),
+    Territory = gsub("R<e9>union (France)","Réunion",Territory),
+    Neighbour = gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",Neighbour),
+    Neighbour = gsub("C<f4>te d'Ivoire","Côte d'Ivoire",Neighbour),
+    Neighbour = gsub(" R<e9>union (France)","Réunion",Neighbour)
+    )
   
   return(Clean_Results)
 
@@ -1162,7 +1171,7 @@ if(Sys.info()[7] == "carmelia"){ # For Carmelia
   Clean_Results_Trans <- CleanResults(Results_Trans)
   
   # Load and clean Discrete results
-  Non_Transboundary_Data <- fread(paste(Results_Path,"/Trans_Results/Non_Transboundary_Data.csv",sep="")) %>% 
+  Non_Transboundary_Data <- fread(paste(Results_Path,"/Non_Transboundary_Data.csv",sep="")) %>% 
     filter(!is.na(TaxonKey)) %>% 
     select(2:3)
   
@@ -1269,6 +1278,10 @@ World_sf_si <- World_sf %>%
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
   left_join(Transboundary_Spp, by ="Territory") 
 
+World_sf_si %>% 
+  filter(Territory == "Côte d'Ivoire")
+
+
 Catch_Country <- Sau_Catch_Data %>% 
   group_by(FishingRegion=Territory) %>% 
   summarise(Total_Catch = round(sum(Mean_Catch,na.rm=T),2)) %>% 
@@ -1305,19 +1318,19 @@ Grey_land <- World_sf_si_land %>%
   filter(is.na(Bins))
 
 Plot <- ggplot() +
-  # geom_sf(data = World_sf_si_land,aes(fill = Bins), colour = "grey80") +
+  geom_sf(data = World_sf_si_land,aes(fill = Bins), colour = "grey80") +
   geom_sf(data = World_sf_si,aes(fill = Bins),colour = "grey20") + # n_trans_spp or Bins
   geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80") + # n_trans_spp or Bins
   # scale_fill_gradientn(colours = pal,
   #                      na.value = "white") +
-  scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
-                               rev(wes_palette(n = 4, name = "Darjeeling2"))
-                               ),
-                     na.value = "white"
-  ) +
-  # scale_fill_manual("",values = c("#5BBCD6","#5BBCD6","#00A08A","#00A08A","#F2AD00","#F2AD00","#FF0000","#FF0000"),
-                     # na.value = "white"
+  # scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
+  #                              rev(wes_palette(n = 4, name = "Darjeeling2"))
+  #                              ),
+  #                    na.value = "white"
   # ) +
+  scale_fill_manual("",values = c("#5BBCD6","#5BBCD6","#00A08A","#00A08A","#F2AD00","#F2AD00","#FF0000","#FF0000"),
+  na.value = "white"
+  ) +
   # scale_fill_manual(values = rev(wes_palette(n = 5, name = "Darjeeling1")),
   #                    na.value = "white"
   # ) +
