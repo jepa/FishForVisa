@@ -1,0 +1,16 @@
+---
+title: 'Fish do nor need Visas: Reference Letter'
+author: "Juliano Palacios Abrantes"
+date: '2019-09-18'
+output: pdf_document
+---
+
+Should include:
+- Reference to any pre-submission discussions with editors.
+- The title of the paper and a statement of its main point.
+- Any information needed to ensure a fair review process, including related manuscripts submitted to other journals.
+- Names of colleagues who have reviewed the paper.
+- A statement that none of the material has been published or is under consideration for publication elsewhere.
+- Specification of where all data underlying the study are available, or will be deposited, and whether there are any restrictions on data availability such as an MTA.
+- Information on any reference material or additional data files uploaded to the Auxiliary files section (see below).
+- Please also upload a .docx version of your cover letter – see below.
