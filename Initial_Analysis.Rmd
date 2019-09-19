@@ -53,7 +53,8 @@ packages <- c(
   # "grid" # For reading plots in chunk codes
   "parallel", # for parallelization
   "taxize", # For getting species names
-  "rfishbase" # for species ecosystem affinity
+  "rfishbase", # for species ecosystem affinity
+  "zoo" #for runing mean
 )
 
 ipak(packages)
@@ -579,9 +580,8 @@ This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follo
 # # For EEZ
 # Neighbours <- Neighbours_Data
 # Index_Code <- Index_Code
-#  
-# __________________________________
-# __________________________________
+ 
+# __________________________________ #
 
 # The function
 EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y",Jurisdiction_Type){
@@ -735,6 +735,11 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
               row.names = F)
     
   }
+  
+  if(nrow(Indexes) > 0 & Save == "N"){
+  EstTransIndex=Indexes # A dataframe with   
+  }
+  
   ### Function return
   EstTransIndex=Indexes # A dataframe with 
     
@@ -1068,6 +1073,129 @@ CleanResults <- function(Data){
 
 ```
 
+## Function `EstSppStatus`
+
+
+```{r Species_Status_fun, eval = T, echo =F}
+
+
+
+EstSppStatus <- function(Spp,Coord){
+  
+  Data <- GetSppDist(Spp, Model = "SAU_C", Coord = Coord) %>% 
+    gather("Year","Value",CATCH.1:CATCH.65) %>% 
+    arrange(INDEX) %>% 
+    mutate(Year = rep(seq(1951,2014,1),263250)) %>% 
+    left_join(Index_Code,
+              by = "INDEX") %>% 
+    filter(!is.na(EEZID),
+           Value > 0) %>% 
+    group_by(Species,Year,Territory) %>% # Total catch per country
+    summarise(Total_Catch = sum(Value,na.rm=T)) %>% 
+    group_by(Species,Territory,Year) %>% 
+    mutate(RMean = rollmean(x = Total_Catch, 3,
+                            align = "right",
+                            fill = Total_Catch)
+           ) %>% # Running mean
+    group_by(Species,Territory) %>% 
+    select(-Total_Catch)
+  
+  # Tresholds to evaluate stocks if these are not met, then soecies status = "No Status"
+  Tresholds_Data <- Data %>% 
+    arrange(Territory) %>% 
+    group_by(Species,Territory, grp = cumsum(c(1, diff(Year) != 65))) %>% 
+    group_by(Species,Territory) %>% 
+    summarise(Years_appart = ifelse(max(Year)-min(Year) >= 0,"Yes","No"), # Step 1. first and last reported landings are at least 10 years apart
+              Consecutive = ifelse(max(grp) >= 5,"Yes","No"), # Step 2. There are at least 5 consecutive catch years
+              Catch_over = ifelse(max(RMean >= 1000),"Yes","No") # Step 3. 3) The catch in a particular area (LME) is at least 1,000 tonnes.
+    ) %>% 
+    gather("Step","Treshold",Years_appart:Catch_over) %>% 
+    group_by(Species,Territory) %>% 
+    summarise(Met_Criteria = paste(unique(Treshold),collapse =";")
+              )
+  
+  
+  # Remove species that do not met the criterias
+    
+    No_Status_Data <- Tresholds_Data %>% 
+      filter(Met_Criteria != "Yes") %>% 
+      select(Species,Territory) %>% 
+      mutate(Status = "No Status")
+    
+
+  # Evaluate species that met the criteria
+  
+    # Get Variables to perform status metric
+    Status_Data <- Data %>% 
+      anti_join(No_Status_Data, # Removes no status data
+                by = c("Species","Territory")
+      ) %>% 
+      # Get Max catch and max catch year
+      group_by(Species,Territory) %>% 
+      top_n(1,RMean) %>% 
+      rename(Max_Peak = RMean,
+             Y_Max_Peak = Year) %>% 
+      # Get Min catch after peak catch
+      left_join(Data,
+                by = c("Species","Territory")
+                ) %>% 
+      filter(Year > Y_Max_Peak) %>% 
+      group_by(Species,Territory) %>% 
+      top_n(-1,RMean) %>% 
+      rename(Post_Max_Min = RMean,
+             Y_Post_Max_Min = Year) %>% 
+      left_join(Data,
+                by = c("Species","Territory")
+                ) %>% 
+      # Final Evaluation 
+      mutate(Status = ifelse(Year > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
+                             ifelse((Year < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Year)),"Developing",
+                                    ifelse(RMean > Max_Peak*0.50,"Max Exploited",
+                                           ifelse(Year > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Over Exploited",
+                                                  ifelse(Year > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
+                                                         "No Status")
+                                           )
+                                    )
+                             )
+      )
+      ) %>% 
+      filter(Year > 2004) %>% # last 10 years of data
+      group_by(Species,Territory,Status) %>% 
+      summarise(n_Status= n()) %>% 
+      group_by(Species,Territory) %>% 
+      top_n(1,n_Status) %>%
+      select(-n_Status)
+    
+    
+    # If both datasets have value RETURN BOTH
+    if(nrow(No_Status_Data) > 0 & nrow(Status_Data) > 0){
+      
+      Fun_Result <- bind_rows(No_Status_Data,
+                              Status_Data)
+    }
+    
+    # If only No status data, then just return that
+    if(nrow(No_Status_Data) > 0 & nrow(Status_Data) == 0){
+      return(No_Status_Data)
+    }else{
+      return(Status_Data)
+    }
+
+}
+
+# Testing
+# Test_1 <- EstSppStatus(Species_List[1],CoorG)
+
+Species_Status <- bind_rows(
+    mclapply(
+      Species_List,
+      FUN = EstSppStatus,
+      Coord = CoorG  # Gabriels coordinate system for read species dist
+    )
+  )
+
+```
+
 ## Load Results data
 
 ```{r Load_Results_Data, eval = F}
@@ -1160,6 +1288,10 @@ if(Sys.info()[7] == "carmelia"){ # For Carmelia
   Sau_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv", sep ="")) %>% 
     filter(!is.na(Territory))
   
+  # Read Sau Value Data (Thank you Tim!)
+  Sau_Revenue_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>% 
+    group_by(fishing_entity_id,TaxonKey=taxon_key) %>% 
+    summarise(Mean_Value = mean(value,na.rm=T))
   
   # List of species
   Spp <- list.files(paste(Results_Path,sep=""))[-829]
@@ -1278,9 +1410,10 @@ World_sf_si <- World_sf %>%
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
   left_join(Transboundary_Spp, by ="Territory") 
 
-World_sf_si %>% 
-  filter(Territory == "Côte d'Ivoire")
-
+#  Top 10 Larger EEZs...
+# World_sf_si %>% 
+#   arrange(desc(Area_km2)) %>% 
+#   head(10)
 
 Catch_Country <- Sau_Catch_Data %>% 
   group_by(FishingRegion=Territory) %>% 
@@ -1291,10 +1424,28 @@ Catch_Country <- Sau_Catch_Data %>%
   summarise(Total_Catch = sum(Total_Catch,na.rm=T)) %>% 
   mutate(Territory = gsub("USA","United States of America",Territory))
 
+# Or revenue data %>% 
+
+Tresholded_T_Data_x <- Tresholded_T_Data %>% 
+  select(TaxonKey, Territory=CT_fishing_entity)
+
+
+Revenue_Country <- sau_eez_fes %>% 
+  group_by(fishing_entity_id, Territory = fishing_entity) %>% 
+  summarise(n=n()) %>% 
+  select(-n) %>% 
+  left_join(Tresholded_T_Data_x) %>% 
+  left_join(Sau_Revenue_Data) %>% 
+  group_by(Territory) %>% 
+  summarise(Total_USD = sum(Mean_Value,na.rm=T)) %>% 
+  mutate(Territory = ifelse(Territory == "USA","United States of America",Territory))
+
+hist(Revenue_Country$Total_USD)
+
 World_sf_si_land <- World_land_sf %>%
   st_transform(crs = 4326) %>% # 4326
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%  # Include transboundary species
-  left_join(Catch_Country, by ="Territory") # Include total specices catch
+  left_join(Revenue_Country, by ="Territory") # Include total specices catch
   
 # head(World_sf_si)s
 
@@ -1302,7 +1453,14 @@ World_sf_si_land <- World_land_sf %>%
 # pal <- wes_palette("Zissou1", 1000, type = "continuous")
 
 World_sf_si$Bins <- cut(World_sf_si$n_trans_spp,breaks = 4)
-World_sf_si_land$Bins <- cut(World_sf_si_land$Total_Catch,breaks = 4)
+World_sf_si_land$Bins <- cut(World_sf_si_land$Total_USD,breaks = 4)
+
+World_sf_si_land <- World_sf_si_land %>% 
+  arrange(Total_USD)
+
+World_sf_si <- World_sf_si %>% 
+  arrange(n_trans_spp)
+
 
 # head(World_sf_si)
 # head(World_sf_si_land)
@@ -1318,15 +1476,15 @@ Grey_land <- World_sf_si_land %>%
   filter(is.na(Bins))
 
 Plot <- ggplot() +
-  geom_sf(data = World_sf_si_land,aes(fill = Bins), colour = "grey80") +
-  geom_sf(data = World_sf_si,aes(fill = Bins),colour = "grey20") + # n_trans_spp or Bins
-  geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80") + # n_trans_spp or Bins
+  geom_sf(data = World_sf_si_land,aes(fill = Bins), colour = "grey80",size = 0.1) +
+  geom_sf(data = World_sf_si,aes(fill = Bins),colour = "grey20", size = 0.1) + # n_trans_spp or Bins
+  geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80", colour = "grey50",size = 0.1) + # n_trans_spp or Bins
   # scale_fill_gradientn(colours = pal,
   #                      na.value = "white") +
   # scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
-  #                              rev(wes_palette(n = 4, name = "Darjeeling2"))
-  #                              ),
-  #                    na.value = "white"
+                               # rev(wes_palette(n = 4, name = "Darjeeling2"))
+                               # ),
+                     # na.value = "white"
   # ) +
   scale_fill_manual("",values = c("#5BBCD6","#5BBCD6","#00A08A","#00A08A","#F2AD00","#F2AD00","#FF0000","#FF0000"),
   na.value = "white"
@@ -1336,7 +1494,7 @@ Plot <- ggplot() +
   # ) +
   ggtheme_map()
 
-Plot_Name <- paste(Jurisdiction,"_100_25_Bins_Landb.png", sep = "") 
+Plot_Name <- paste(Jurisdiction,"_100_25_Bins_Value.png", sep = "") 
 
 ggsave(Plot_Name,
        plot = Plot,
@@ -1428,14 +1586,13 @@ ggsave(Plot_Name,
 
 ### OHI-inspired Circular plot for Territories
 
-
 ```{r Circular_Data, eval = T, echo = F}
 
 # -------------------------- #
 # Transboundary data
 # -------------------------- #
 
-Countries_Data_Plot <- Tresholded_Data %>% 
+Countries_Data_Plot <- Tresholded_T_Data %>% 
   group_by(Territory = CT_fishing_entity) %>% 
   summarise(value = length(unique(TaxonKey))) %>% 
   left_join(UN_Regions, by ="Territory") %>%
@@ -2084,6 +2241,157 @@ ggsave(
   )
  
 ```
+
+### Species status (SAU methods)
+
+Note that (n), the number of ‘stocks’ is defined as a time series of a given species, genus or family (higher and pooled groups have been excluded) for which the first and last reported landings are at least 10 years apart, for which there are at least 5 years of consecutive catches and for which the catch in a given area is at least 1000 tonnes.
+
+ 1) The first and last reported landings are at least ten years apart;
+
+2) There are at least five years of consecutive catches; and
+
+3) The catch in a particular area (LME) is at least 1,000 tonnes.
+
+Once those tresholds are met, the status of the species is determined as follows:
+
+- Rebuilding (Recovering)	Year of landing > year of post-max. min. landing AND post-max. min. landing < 10% of max. landing AND landing is 10-50% of max. landing
+- Developing	Year of landing < year of max. landing AND landing is < or = 50% of max. landing OR year of max. landing = final year of landing
+- Exploited	Landing > 50% of max. landing
+- Over exploited	Year of landing > year of max. landing AND landing is between 10-50% of max. landing
+- Collapsed	Year of landing > year of max. landing AND landing is < 10% of max. landing
+
+*Notes* = 3 years average mean
+
+
+
+
+```{r Species_Status, eval = T, echo =F}
+
+CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>%
+  mutate(INDEX = seq(1,259200,1))
+
+# SAU relations between INDEX and Country's EEZs
+EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
+EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
+colnames(EEZ_CellID) <- c("EEZID","INDEX")
+
+Index_Code <- EEZIDs_List %>% 
+  left_join(EEZ_CellID) %>% 
+  rename(Territory = Name)
+
+
+Spp <- GetSppDist(600004, Model = "SAU_C", Coord = CoorG)
+
+Data <- Spp %>% 
+  gather("Year","Value",CATCH.1:CATCH.65) %>% 
+  arrange(INDEX) %>% 
+  mutate(Year = rep(seq(1951,2014,1),263250)) %>% 
+  left_join(Index_Code) %>% 
+  filter(!is.na(EEZID),
+         Value > 0) %>% 
+  group_by(Species,Year,EEZID,Territory) %>% # Total catch per country
+  summarise(Total_Catch = sum(Value,na.rm=T)) %>% 
+  group_by(Species,Territory,EEZID,Year) %>% 
+  mutate(RMean = rollmean(x = Total_Catch, 5, align = "right", fill = Total_Catch)) %>% 
+  group_by(Species,Territory,EEZID)
+
+# head(Data)
+
+# Tresholds to evaluate stocks if these are not met, then soecies status = "No Status"
+ Tresholds <- Data %>% 
+  arrange(Territory) %>% 
+  group_by(Species,Territory, grp = cumsum(c(1, diff(Year) != 65))) %>% 
+  group_by(Species,Territory) %>% 
+  summarise(Years_appart = ifelse(max(Year)-min(Year) >= 0,"Yes","No"), # Step 1. first and last reported landings are at least 10 years apart
+            Consecutive = ifelse(max(grp) >= 5,"Yes","No"), # Step 2. There are at least 5 consecutive catch years
+            Catch_over = ifelse(max(RMean >= 1000),"Yes","No") # Step 3. 3) The catch in a particular area (LME) is at least 1,000 tonnes.
+            ) %>% 
+   gather("Step","Treshold",Years_appart:Catch_over) %>% 
+   filter(Treshold == "Yes")
+
+ 
+ # Evaluate stocks
+ 
+ # Filter data that does not satisfy tresholds
+
+ Landings_Peaks <- Data %>% 
+  group_by(Species,Territory) %>% 
+  summarise(Max_Peak = max(RMean,na.rm=T))
+ 
+ Eval_Data <- Data %>% 
+  semi_join(Tresholds,
+            by = c("Species","Territory")) %>% 
+   left_join(Landings_Peaks,
+             by = c("Species","Territory"))
+ 
+ Peak_Year <- Eval_Data %>% 
+   filter(RMean == Max_Peak) %>% 
+   select(Species,Territory,EEZID,Y_Max_Peak = Year)
+
+ Post_Max_Min <- Eval_Data %>% 
+   left_join(Peak_Year) %>% 
+   filter(Year > Y_Max_Peak) %>% 
+   group_by(Species,Territory,EEZID) %>% 
+   summarise(Post_Max_Min = min(RMean,na.rm=T))
+ 
+ Y_Post_Max_Min <- Eval_Data %>% 
+   left_join(Post_Max_Min) %>% 
+   filter(RMean == Post_Max_Min) %>% 
+   select(Species,Territory,EEZID,Y_Post_Max_Min = Year)
+ 
+ Data_Status <- Eval_Data %>% 
+   left_join(Peak_Year,
+             by = c("Species","Territory","EEZID")) %>%
+   left_join(Post_Max_Min,
+             by = c("Species","Territory","EEZID")) %>% 
+   left_join(Y_Post_Max_Min,
+             by = c("Species","Territory","EEZID")) %>% 
+   rename(Y_RMean = Year) %>% 
+   mutate(Status = ifelse(Y_RMean > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
+                          ifelse((Y_RMean < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Y_RMean)),"Developing",
+                                 ifelse(RMean > Max_Peak*0.50,"Max Exploited",
+                                        ifelse(Y_RMean > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Over Exploited",
+                                               ifelse(Y_RMean > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
+                                                      "No Status")
+                                        )
+                                 )
+                          )
+   )
+   ) %>% 
+   filter(Y_RMean > 2004) %>% 
+   group_by(Species,EEZID,Territory,Status) %>% 
+   summarise(n_Status= n()) %>% 
+   group_by(Species,EEZID,Territory) %>% 
+   top_n(1,n_Status)
+ 
+ 
+ # Manual estimation
+ 
+ data.frame(
+   Y_RMean = 1980,
+   RMean = 642187,
+   Max_Peak = 1298712,
+   Y_Max_Peak = 1990,
+   Post_Max_Min = 681967,
+   Y_Post_Max_Min = 2010,
+   Y_RMean = 2014
+ ) %>% 
+   mutate(Status = ifelse(Y_RMean > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
+                          ifelse((Y_RMean < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Y_RMean)),"Developing",
+                                 ifelse(RMean > Max_Peak*0.50,"Max Exploited",
+                                        ifelse(Y_RMean > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50))," Over Exploited",
+                                               ifelse(Y_RMean > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
+                                                      "NA")
+                                        )
+                                 )
+                          )
+   )
+   )
+ 
+```
+
+
+
 
 ```{r Top_spp_Circle_Diagram, eval =F, echo = F}
 
