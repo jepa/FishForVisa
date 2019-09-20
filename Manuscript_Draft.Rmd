@@ -88,25 +88,39 @@ All species that share over >100 countries are widly distributed pelagic species
 <!-- ## Data and materials availability: Any restrictions on materials such as MTAs.  -->
 
 
-<!-- # Materials and Methods  -->
+# Materials and Methods
 
-<!-- For the current proyect we define a transboundary species as those that spend partial or total part of their life within the Exclusive Economic Zone (EEZ) of two or more neighboring countries [@Munro:2002uf]. Such is the case of Pacific salmons (*Oncorhynchus sp.*) that live part of their life cycle within the US west coast and part within Canadian waters.  -->
+In here we present a novel method to estimate whether or not a species is transboundary. Our method is based on a series of criteria to be met and the overlap of species distributions and the spatial boundary of the world's EEZs. For the current analysis we work at the species level and adopt FAO's definition of transboundary species as those that occur within the Exclusive Economic Zone (EEZ) of two or more neighboring countries [@Munro:2002uf; @FAO]. 
 
-<!-- ## Databases on species geographic distributions -->
+## Databases on species geographic distributions
 
-<!-- To determine the pool of transboundary marine species exploited by fisheries within each of the world's EEZs, we first determined their current distributions. For this, we used four species-distributions data sources based on (*i*) observational data, (*ii*) species distribution models, and (*iii*) fisheries catch data, in order to determine presence or absence of each species within each EEZ. (*i*) The observational data was collected from multiple databases online...**GABS** (*ii*) We then used data from two species distribution models. The Sea Around Us (SAU) distributions [@Close:2006ux], and an environmental niche model (ENM) [@REFGabs]. (*iii*) Finally, we used the historical fisheries catch reconstructions provided by the SAU [@Zeller2016], **Version and updates GABS** spatially distributed along the world's EEZs [@Close:2006ux]. All data was gridded on 0.5 x 0.5 grid cells. Only those species that had data from all four sources were included in the analysis, and therefore the final dataset comprised XXX species (**See S1_Data**). -->
+To determine the pool of transboundary marine species exploited by fisheries within each of the world's EEZs, we first determined their current distributions. For this, we used four species-distributions data sources based on (*i*) observational data, (*ii*) Environmental Distribution Models (ENMs), and (*iii*) fisheries catch data.
 
-<!-- In order to determine the presence or absence of each species in any given EEZ we define the EEZ boundaries using the Sea Around Us dataset (updated 1 July 2015, available from http://www.seaaroundus.org) sub-divided by regions (e.g. Mexico Pacific and Mexico Atlantic).  -->
+(*i*) The occurrence data was collected from five publicly available repositories; Fishbase (http://fishbase.org), the Global Biodiversity Information Facility (GBIF; https://www.gbif.org/), the Ocean Biogeographic Information System (OBIS; https://obis.org/),  the Intergovernmental Oceanographic Comission (IOC; http://ioc-unesco.org), and the International Union for Conservation of Nature (IUCN; https://www.iucn.org/technical-documents/spatial-data) [@Reygondeau:2019uh].  
 
-<!-- ## Determine if a species is transboundary -->
+(*ii*) The ourrance data was used to determine a species presence but also to run two ENMs, hereafter refered as ENM-Nereus and ENM-SAU. For the ENM-Nereus [@REF] we employed all the data collected in the previous dataset. The model... 
 
-<!-- We developed three steps for determining whether or not a species was transboundary. Such steps work as indexes to measure the uncertainty in the analysis. Only species that meet the criteria of the three steps were considered as transboundary species, those which did not were considered as discrete species only happening within one EEZ.  -->
+In the case of the ENM-SAU [@Close:2006ux], the data was colelcted from Fishbase, OBIS, and FAO (www.fao.org).
 
-<!-- For each species and grid cell we firstly determine the presence or absence within each database. The *species Index* was computed by dividing the number of datasets that confirm presence over the total amount of datasets. Environmental niche models project the distribution of a certain species based on certain parameters such as environmental, behavioral or physiological of individuals and their environmental interaction (fundamental niche). However, such distribution does not represent the actual presence (realized niche) of the species after other factors such as species interactions have been taken into account [@Kearney:2010ip]. To differentiate the fundamental from the realize niche models with the ENMs we used the SAU catch data reconstruction. All species that were reported as caught in any single year between 1950 and 2014 in a given EEZ were kept while those with absent catch data were dropped from the specific country. The assumption relies in that if a ESM projects a commercial species in any fishing country, such species would been fished, and reported, at some period of time (**S1_Figure**), validating the ESM result, thus, the existence of the species. Finally, in order to have a more robust result and do not determine a transboundary species based on the presence in a single 0.5 x 0.5 grid cell within an EEZ, we computed the *area Index*. For this we estimate, for each species, the proportion of the total species distribution within both EEZs for each neighboring EEZ (**S2_Figure**). -->
 
-<!-- ## Model validation  -->
 
-<!-- While we do not know the transboundary nature of many species, some are jointly managed by neighboring countries or Regional Fisheries Management Organizations (RFMOs). Hence, in order to validate our results, we cross-check our transboundary species with the fished species and countries of 18 RFMOs all around the globe [@CullisSuzuki:2010fi]. -->
+
+The Sea Around Us (SAU) distributions [@Close:2006ux], and an environmental niche model (ENM) [@REFGabs]. 
+
+
+(*iii*) Finally, we used the historical fisheries catch reconstructions provided by the SAU [@Zeller2016], **Version and updates GABS** spatially distributed along the world's EEZs [@Close:2006ux]. All data was gridded on 0.5 x 0.5 grid cells. Only those species that had data from all four sources were included in the analysis, and therefore the final dataset comprised XXX species (**See S1_Data**).
+
+In order to determine the presence or absence of each species in any given EEZ we define the EEZ boundaries using the Sea Around Us dataset (updated 1 July 2015, available from http://www.seaaroundus.org) sub-divided by regions (e.g. Mexico Pacific and Mexico Atlantic).
+
+## Determine if a species is transboundary
+
+We developed three steps for determining whether or not a species was transboundary. Such steps work as indexes to measure the uncertainty in the analysis. Only species that meet the criteria of the three steps were considered as transboundary species, those which did not were considered as discrete species only happening within one EEZ.
+
+For each species and grid cell we firstly determine the presence or absence within each database. The *species Index* was computed by dividing the number of datasets that confirm presence over the total amount of datasets. Environmental niche models project the distribution of a certain species based on certain parameters such as environmental, behavioral or physiological of individuals and their environmental interaction (fundamental niche). However, such distribution does not represent the actual presence (realized niche) of the species after other factors such as species interactions have been taken into account [@Kearney:2010ip]. To differentiate the fundamental from the realize niche models with the ENMs we used the SAU catch data reconstruction. All species that were reported as caught in any single year between 1950 and 2014 in a given EEZ were kept while those with absent catch data were dropped from the specific country. The assumption relies in that if a ESM projects a commercial species in any fishing country, such species would been fished, and reported, at some period of time (**S1_Figure**), validating the ESM result, thus, the existence of the species. Finally, in order to have a more robust result and do not determine a transboundary species based on the presence in a single 0.5 x 0.5 grid cell within an EEZ, we computed the *area Index*. For this we estimate, for each species, the proportion of the total species distribution within both EEZs for each neighboring EEZ (**S2_Figure**).
+
+## Model validation
+
+While we do not know the transboundary nature of many species, some are jointly managed by neighboring countries or Regional Fisheries Management Organizations (RFMOs). Hence, in order to validate our results, we cross-check our transboundary species with the fished species and countries of 18 RFMOs all around the globe [@CullisSuzuki:2010fi].
 
 
 ```
