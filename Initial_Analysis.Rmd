@@ -152,20 +152,22 @@ print("_____________________ WARNING DO NOT FORGET TO PULL/PUSH BEFORE YOU START
 These are the methods to follow:
 
 1. Determine which countries have Neighbouring EEZs  
-  1.1. For this we used the Marine regions EEZ maps (We have to change this because it does not discriminate by oceans and we need this) and a routine to identify Neighbouring polygons,
-  1.2. Then we match the DBEM spatial information (e.g. INDEX within EEZ and coordinates) with the Neighbouring data
+  1.1. For this we used the Sea Around Us EEZ map that discriminate by oceans and a routine (*Estimate Transboundary Species*) to identify Neighbouring polygons,
+  1.2. Then we match the SAU spatial information (e.g. INDEX within EEZ and coordinates) with the Neighbouring data
+
 2. Overlap distribution maps with Neighbours data  
-  2.1. For each species we merged the DBEM_Neighbours data with their known distribution (Gab's data)  
+  2.1. For each species we merged the Neighbours data with their known distribution (SAU distribution and catch,ESMs, and Observation)  
 3. Determine transboundary if:  
   3.1. Species is present in both Neighbouring EEZs by INDEX  
 
-Alternatively, we could create a "confidence level" based on a ratio, i.e;
-- How many grid cells of both the EEZs is the species present on. A species that covers all cells would have 100% but a species that covers, lets say, all of EEZ1 but only half of EEZ2 would be 75%.  
-- Another option is to have the index based on the species distribution. That is to say, what proportion of the total species distribution actually falls within both EEZs....
+We create two "confidence level" based on data and area covered, i.e;
 
-## Data
+-
+-
 
-### Determine species list
+## Determine species list
+
+This part is to determine the list of species to be analized in the project. Initially this list was limited by the species data from the DBEM, however, as we are not using the DBEM, the limit is now the SAU.
 
 ```{r Speceis_List_For_Data, eval = F, echo = T}
 
@@ -249,9 +251,11 @@ Species_environ_list <- rbind(species(Species_list,
 
 ```
 
-## Estimating Neighbourds
+## Determine Neighbourds
 
-### Functions `EstNeighbours`
+This is the first step of the analysis and will determine what EEZs are neighbouring. THe routine creates a final dataset that we then use to estimate transboundary species.
+
+### Function `EstNeighbours`
 
 This function determines what EEZs are Neighbours and returns a data.frame of it
 
@@ -291,7 +295,8 @@ EstNeighbours <- function(Shapefile, Partial = "NA"){
     return(Result_table)
     
   }else{
-  # Merge them with SAU data
+    
+  # Merge them with SAU data so we have the INDEX and lat long info
   suppressWarnings(
     # warning for characters in name, no problem
   DBEM_Neighbours_Data <- Result_table %>% 
@@ -300,7 +305,7 @@ EstNeighbours <- function(Shapefile, Partial = "NA"){
     left_join(EEZ_CellID, 
               by = "EEZID") %>% # Asign EEZ id to each country
     left_join(Coor,
-              by = "INDEX") %>%  # Inclu
+              by = "INDEX") %>%  # Include lat long
     rename(Country_Territory = Name)
   
   )
@@ -319,28 +324,21 @@ EstNeighbours <- function(Shapefile, Partial = "NA"){
 
 ### Sub Routine; Neighbours
 
-```{r EEZ_Neighbourds_Control_Pannel, eval = F, echo = F}
+```{r Neighbours_Control_Pannel, eval = F, echo = F}
 
-#### Load Data Needed ####
-
-# Spatial analysis for Countries boundaries from marine regions ####
-
-###_______________________________Read Me_____________________________________________#
-#### Data License and references ###
-# Marine Regions’ data is licensed under CC-By-NC-SA (https://creativecommons.org/licenses/by-nc-sa/4.0/).
-# Flanders Marine Institute (2018). Maritime Boundaries Geodatabase: Maritime Boundaries and Exclusive Economic Zones (200NM), version 10. Available online at http://www.marineregions.org/. https://doi.org/10.14284/312
-
+###___________________Read Me_____________________#
 #### Using the SAU shapefile that contains EEZ per ocean (E.G. Mexico Pacific and Mexico Atlantic)
-###________________________________________________________________________________#
+###_______________________________________________#
 
 # SAU shapefile
 
 # The path
 path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile/",sep="")
-# #The File
+
+# The File
 fnam_world <- "SAUEEZ_July2015.shp"
-# #Load it!
-# 
+
+# Load it!
 World_EEZs <- st_read(dsn = path_world,
                       layer =file_path_sans_ext(fnam_world))
 
@@ -358,6 +356,9 @@ colnames(EEZ_CellID) <- c("EEZID","INDEX")
 Coor <- fread(paste(Data_Path,"Spatial_Data/Lon_Lat_DBEM.txt",sep=""),header = FALSE)
 colnames(Coor) <- c("INDEX","Longitude","Latitude")
 
+```
+
+```{r Neighbours_Subroutine, eval = F, echo = T}
 
 # Run Function (Ran and saved May 27 2019 at 6pm)
  system.time(
@@ -372,7 +373,7 @@ write.csv(EEZ_Neighbour_List,
 
 
 
-####_________________________________________ TESTING PERIOD_________________________________________####
+####_________________________________________ TESTING PERIOD_________________________________________###
 # I'm substetting central america to do the whole analysis (smaller EEZs = faster computation) once I have figure out things I'll run for all
 
 ### Data
@@ -390,14 +391,33 @@ write.csv(EEZ_Neighbour_List,
 
 ## Determine Species Status
 
+This sub routine determines the species exploitation status based on the SAU methodology. **Note:** For the current project we do not consider this method to determine the species exploitation status *per se*, but rather a catch trend that *could* indicate that a species is under/over/max exploited.
+
+In the original method the authors analyze stocks, while we analyze at the species level within each EEZ. Also (n), the number of species, is defined as a time series of a given species, genus or family (higher and pooled groups have been excluded) for which the first and last reported landings are at least 10 years apart, for which there are at least 5 years of consecutive catches and for which the catch in a given area (LME) is at least 1000 tonnes. We removed the last one (LME) and computed all of the species that only followed the first two;
+ 
+1) The first and last reported landings are at least ten years apart;
+
+2) There are at least five years of consecutive catches
+
+Once those tresholds are met, the status of the species is determined as follows:
+
+- Rebuilding (Recovering)	Year of landing > year of post-max. min. landing AND post-max. min. landing < 10% of max. landing AND landing is 10-50% of max. landing
+- Developing	Year of landing < year of max. landing AND landing is < or = 50% of max. landing OR year of max. landing = final year of landing
+- Exploited	Landing > 50% of max. landing
+- Over exploited	Year of landing > year of max. landing AND landing is between 10-50% of max. landing
+- Collapsed	Year of landing > year of max. landing AND landing is < 10% of max. landing
+
+*Notes* = 3 years average mean
+
 ### Function `EstSppStatus`
 
+This function estimates the exploitation status of a species based on catch data.
 
-```{r Species_Status_fun, eval = T, echo =F}
-
+```{r funEstSppStatus, eval = T, echo =F}
 
 EstSppStatus <- function(Spp,Coord){
   
+  # Load species' data
   Data <- GetSppDist(Spp, Model = "SAU_C", Coord = Coord) %>% 
     set_names(c(seq(1950,2014,1),"INDEX","Species","Longitude","Latitude")) %>% 
     gather("Year","Value",`1950`:`2014`) %>%
@@ -406,13 +426,13 @@ EstSppStatus <- function(Spp,Coord){
               by = "INDEX") %>% 
     filter(!is.na(EEZID),
            Value > 0) %>% 
-    group_by(TaxonKey=Species,Year,Territory) %>% # Total catch per country
+    group_by(TaxonKey=Species,Year,Territory) %>% # Estimates total catch per country
     summarise(Total_Catch = sum(Value,na.rm=T)) %>% 
-    group_by(TaxonKey,Territory,Year) %>% 
+    group_by(TaxonKey,Territory,Year) %>% # Running mean as Pauly et la.
     mutate(RMean = rollmean(x = Total_Catch, 3,
                             align = "right",
                             fill = Total_Catch)
-           ) %>% # Running mean
+    ) %>% 
     select(-Total_Catch) %>% 
     ungroup() %>% 
     mutate(Year = as.numeric(Year))
@@ -423,81 +443,80 @@ EstSppStatus <- function(Spp,Coord){
     group_by(TaxonKey,Territory, grp = cumsum(c(1, diff(Year) != 65))) %>% 
     group_by(TaxonKey,Territory) %>% 
     summarise(Years_appart = ifelse(max(Year)-min(Year) >= 0,"Yes","No"), # Step 1. first and last reported landings are at least 10 years apart
-              Consecutive = ifelse(max(grp) >= 5,"Yes","No"), # Step 2. There are at least 5 consecutive catch years
-              Catch_over = ifelse(max(RMean >= 1000),"Yes","No") # Step 3. 3) The catch in a particular area (LME) is at least 1,000 tonnes.
+              Consecutive = ifelse(max(grp) >= 5,"Yes","No")#, # Step 2. There are at least 5 consecutive catch years
+              # Catch_over = ifelse(max(RMean >= 1000),"Yes","No") # Step 3. 3) The catch in a particular area (LME) is at least 1,000 tonnes. (CURRENTLY OFF)
     ) %>% 
     gather("Step","Treshold",Years_appart:Catch_over) %>% 
     group_by(TaxonKey,Territory) %>% 
     summarise(Met_Criteria = paste(unique(Treshold),collapse =";")
-              )
-  
+    )
   
   # Remove species that do not met the criterias
-    
-    No_Status_Data <- Tresholds_Data %>% 
-      filter(Met_Criteria != "Yes") %>% 
-      select(TaxonKey,Territory) %>% 
-      mutate(Status = "No Status")
-    
-
+  
+  No_Status_Data <- Tresholds_Data %>% 
+    filter(Met_Criteria != "Yes") %>% 
+    select(TaxonKey,Territory) %>% 
+    mutate(Status = "No Status")
+  
+  
   # Evaluate species that met the criteria
   
-    # Get Variables to perform status metric
-    Status_Data <- Data %>% 
-      anti_join(No_Status_Data, # Removes no status data
-                by = c("TaxonKey","Territory")
-      ) %>% 
-      # Get Max catch and max catch year
-      group_by(TaxonKey,Territory) %>% 
-      top_n(1,RMean) %>% 
-      rename(Max_Peak = RMean,
-             Y_Max_Peak = Year) %>% 
-      # Get Min catch after peak catch
-      left_join(Data,
-                by = c("TaxonKey","Territory")
-                ) %>% 
-      filter(Year > Y_Max_Peak) %>% 
-      group_by(TaxonKey,Territory) %>% 
-      top_n(-1,RMean) %>% 
-      rename(Post_Max_Min = RMean,
-             Y_Post_Max_Min = Year) %>% 
-      left_join(Data,
-                by = c("TaxonKey","Territory")
-                ) %>% 
-      # Final Evaluation 
-      mutate(Status = ifelse(Year > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
-                             ifelse((Year < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Year)),"Developing",
-                                    ifelse(RMean > Max_Peak*0.50,"Max Exploited",
-                                           ifelse(Year > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Over Exploited",
-                                                  ifelse(Year > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
-                                                         "No Status")
-                                           )
-                                    )
-                             )
-      )
-      ) %>% 
-      filter(Year > 2004) %>% # last 10 years of data
-      group_by(TaxonKey,Territory,Status) %>% 
-      summarise(n_Status= n()) %>% 
-      group_by(TaxonKey,Territory) %>% 
-      top_n(1,n_Status) %>%
-      select(-n_Status)
+  # Get Variables to perform status metric
+  Status_Data <- Data %>% 
+    anti_join(No_Status_Data, # Removes no status data
+              by = c("TaxonKey","Territory")
+    ) %>% 
+    # Get Max catch and max catch year
+    group_by(TaxonKey,Territory) %>% 
+    top_n(1,RMean) %>% 
+    rename(Max_Peak = RMean,
+           Y_Max_Peak = Year) %>% 
+    # Get Min catch after peak catch
+    left_join(Data,
+              by = c("TaxonKey","Territory")
+    ) %>% 
+    filter(Year > Y_Max_Peak) %>% # Filter years after peak year
+    group_by(TaxonKey,Territory) %>% 
+    top_n(-1,RMean) %>% # find min value
+    rename(Post_Max_Min = RMean,
+           Y_Post_Max_Min = Year) %>% 
+    left_join(Data,
+              by = c("TaxonKey","Territory")
+    ) %>% 
+    # Final Species Status Evaluation 
+    mutate(Status = ifelse(Year > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
+                           ifelse((Year < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Year)),"Developing",
+                                  ifelse(RMean > Max_Peak*0.50,"Max Exploited",
+                                         ifelse(Year > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Over Exploited",
+                                                ifelse(Year > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
+                                                       "No Status")
+                                         )
+                                  )
+                           )
+    )
+    ) %>% 
+    filter(Year > 2004) %>% # last 10 years of data
+    group_by(TaxonKey,Territory,Status) %>% 
+    summarise(n_Status= n()) %>% 
+    group_by(TaxonKey,Territory) %>% 
+    top_n(1,n_Status) %>%
+    select(-n_Status)
+  
+  # Function Return 
+  
+  # If both datasets have value RETURN BOTH
+  if(nrow(No_Status_Data) > 0 & nrow(Status_Data) > 0){
     
-    
-    # If both datasets have value RETURN BOTH
-    if(nrow(No_Status_Data) > 0 & nrow(Status_Data) > 0){
-      
-      Fun_Result <- bind_rows(No_Status_Data,
-                              Status_Data)
-    }
-    
-    # If only No status data, then just return that
-    if(nrow(No_Status_Data) > 0 & nrow(Status_Data) == 0){
-      return(No_Status_Data)
-    }else{
-      return(Status_Data)
-    }
-
+    Fun_Result <- bind_rows(No_Status_Data,
+                            Status_Data)
+  }
+  
+  # If only No status data, then just return No Status Data
+  if(nrow(No_Status_Data) > 0 & nrow(Status_Data) == 0){
+    return(No_Status_Data)
+  }else{
+    return(Status_Data)
+  }
 }
 
 # Testing
@@ -505,12 +524,11 @@ EstSppStatus <- function(Spp,Coord){
 
 ```
 
-
 ### Data Species Status
 
 ### Sub routine for Species Status
 
-```{r spp_status_data eval = T, echo = F}
+```{r Spp_Status_Control_Pannel, eval = T, echo = F}
 
 # SAU relations between INDEX and Country's EEZs
 EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
@@ -533,7 +551,7 @@ Species_List <- gsub("\\..*","",Step_One)
 
 ```
 
-```{r species_status_routine eval = T, echo = F}
+```{r Spp_Status_Sub_Routine, eval = T, echo = F}
 # Needs to have trans species 
 Species_Status <- bind_rows(
     mclapply(
@@ -543,22 +561,34 @@ Species_Status <- bind_rows(
     )
   )
 
-# x <-Species_Status %>% 
-#   group_by(Territory,Status) %>% 
-#   summarise(n())
-
-
-write.csv(Species_Status,
-          paste(Data_Path,"Distribution_Data/Species_Status.csv",sep=""),
-                row.names = F)
+# Save data
+# write.csv(Species_Status,
+#           paste(Results_Path,"Species_Status.csv",sep=""),
+#                 row.names = F)
 
 ```
 
 ## Estimate Transboundary Species
 
-#### Function `GetSppDist`
+This is the main step of the project. In this segment we estimate the number of transboundary species existing today in each of the worlds EEZs.
 
-This function Read in species distribution from the observation data, ESM models and SAU data
+The datasets SAU_D, OCC, and ESM are used as sppecies presence while SAU_C is used as a confirmation of that. The `Model Index` is the first treshold and estimates the uncertanty of models. Goes from 0 - 1 as follows:
+
+- 1 or 0; All models agree that in the presence of the species
+- 0.75; Three out of four models agree on speices presence
+- 0.50; Two out of four models agree on speices presence
+- 0.25; Only one model flags a speices presence
+- 0; All models agree there is no species there
+
+
+The `Area_Index` is the second treshold and estimates the proportion of each species distribution in each EEZ. It only take into consideration the distribution of the species within the two EEZs, rather than the complete distribution. Hence, is mirrord (e.g. if EEZ#1 is 0.40, EEZ#2 is 0.6)
+
+** NOTE THAT THE FUNCTION IS SETTED TO OUTPUT RESULTS FOR ALL MODELS **
+
+
+### Function `GetSppDist`
+
+This function reads in species distribution from the observation data, ESM models and SAU data.
 
 ```{r GetSppDist, eval = T, echo = T}
 
@@ -604,52 +634,49 @@ GetSppDist=function(Spp,Model,Coord){
     Models_List <- c(paste(Distpath,"SAU_Distribution/DIST_GOOD_SP_",Spp,".mat",sep =""),
                      paste(Distpath,"Occurence/OCCURENCE_JULIANO_",Spp,".mat",sep=""),
                      paste(Distpath,"ENM/ENM_JULIANO_",Spp,".mat",sep="")
-                     )
+    )
     
     # Jumps species not modeled. NOTE: We only need one as ENM, Occ and SAU Dis have all the same 939 spp
     if(file.exists(Models_List[1])){
-    
-    Load <- lapply(Models_List, FUN=R.matlab::readMat, na.strings=0)
-     
-    sppdist <- as.data.frame(bind_cols(Load)) %>% 
-      mutate(
-        INDEX = INDEX,
-        TaxonKey = Spp
-      )
-    colnames(sppdist) <- c("SAU_D","Occ","ENM","INDEX","TaxonKey")
-    
-    #### Step for SAU catch data that has to be averaged
-    File_Name <- paste("SAU_data_per_species/CATCH_SP_")
-    SppPath <- paste(Distpath,File_Name,Spp,".mat",sep="")
-    
-    # For now we're using only the last 10 years average, basicaaly if the species has been fished in any of these years, its considered present
-    SAU_C_data <- as.data.frame(R.matlab::readMat(SppPath)) %>% 
-      select(CATCH.1:CATCH.65) %>% 
-      mutate(INDEX = INDEX) %>% 
-      gather("Year","Catch",CATCH.56:CATCH.65) %>% # Last 10 years of data
-      group_by(INDEX) %>% 
-      summarise(SAU_C = mean(Catch,na.rm=T))
-    
-    # Join both tables
-    sppdist <- sppdist %>% 
-      left_join(SAU_C_data,
-                by = "INDEX") %>% 
-      select(TaxonKey,INDEX,everything()) %>% 
-      left_join(CoorG,
-                by = "INDEX")
-    
-    # Fix coordinate system incompatibility between Gab and DBEM
-    sppdist <- suppressWarnings(sppdist[order(sppdist$Latitude, rev(sppdist$Longitude),decreasing=TRUE), ] %>% 
-      mutate(INDEX = seq(1,259200,1)) %>% 
-      gather("Model","Value",3:6) %>%
-      mutate(Value = ifelse(is.na(Value), 0, Value)) # Converting NA's to ceros
-    )
-    
-    getSppDist = sppdist
-    
-    }else{
       
-      # print(paste("No info for this species"))
+      Load <- lapply(Models_List, FUN=R.matlab::readMat, na.strings=0)
+      
+      sppdist <- as.data.frame(bind_cols(Load)) %>% 
+        mutate(
+          INDEX = INDEX,
+          TaxonKey = Spp
+        )
+      colnames(sppdist) <- c("SAU_D","Occ","ENM","INDEX","TaxonKey")
+      
+      #### Step for SAU catch data that has to be averaged
+      File_Name <- paste("SAU_data_per_species/CATCH_SP_")
+      SppPath <- paste(Distpath,File_Name,Spp,".mat",sep="")
+      
+      # For now we're using only the last 10 years average, basicaaly if the species has been fished in any of these years, its considered present
+      SAU_C_data <- as.data.frame(R.matlab::readMat(SppPath)) %>% 
+        select(CATCH.1:CATCH.65) %>% 
+        mutate(INDEX = INDEX) %>% 
+        gather("Year","Catch",CATCH.56:CATCH.65) %>% # Last 10 years of data
+        group_by(INDEX) %>% 
+        summarise(SAU_C = mean(Catch,na.rm=T))
+      
+      # Join both tables
+      sppdist <- sppdist %>% 
+        left_join(SAU_C_data,
+                  by = "INDEX") %>% 
+        select(TaxonKey,INDEX,everything()) %>% 
+        left_join(CoorG,
+                  by = "INDEX")
+      
+      # Fix coordinate system incompatibility between Gab and DBEM
+      sppdist <- suppressWarnings(sppdist[order(sppdist$Latitude, rev(sppdist$Longitude),decreasing=TRUE), ] %>% 
+                                    mutate(INDEX = seq(1,259200,1)) %>% 
+                                    gather("Model","Value",3:6) %>%
+                                    mutate(Value = ifelse(is.na(Value), 0, Value)) # Converting NA's to ceros
+      )
+      
+      getSppDist = sppdist
+      
     }
     
   }else{  
@@ -659,29 +686,29 @@ GetSppDist=function(Spp,Model,Coord){
     
     if(file.exists(SppPath) == TRUE){
       
-    #Install (if needed) R.matlab package
-    if(!require(R.matlab)){
-      install.packages("R.matlab")
+      #Install (if needed) R.matlab package
+      if(!require(R.matlab)){
+        install.packages("R.matlab")
+      }
+      
+      # Read Files
+      
+      sppdist <- as.data.frame(R.matlab::readMat(SppPath)) %>% 
+        mutate(INDEX = INDEX,
+               Species = Spp) %>% 
+        left_join(Coord) 
+      
+      # Fix coordinate system incompatibility between Gab and DBEM
+      sppdist <- sppdist[order(sppdist$Latitude, rev(sppdist$Longitude),decreasing=TRUE), ] %>% 
+        mutate(INDEX = seq(1,259200,1))
+      
+      # Return 
+      getSppDist=sppdist
+      
+    }else{
+      print(paste("No info for this species",Spp, "in",Model))
     }
     
-    # Read Files
-    
-    sppdist <- as.data.frame(R.matlab::readMat(SppPath)) %>% 
-      mutate(INDEX = INDEX,
-             Species = Spp) %>% 
-      left_join(Coord) 
-    
-    # Fix coordinate system incompatibility between Gab and DBEM
-    sppdist <- sppdist[order(sppdist$Latitude, rev(sppdist$Longitude),decreasing=TRUE), ] %>% 
-      mutate(INDEX = seq(1,259200,1))
-   
-   # Return 
-    getSppDist=sppdist
-    
-    }else{
-    print(paste("No info for this species",Spp, "in",Model))
-  }
-  
   }
 }
 
@@ -697,30 +724,11 @@ GetSppDist=function(Spp,Model,Coord){
 
 ```
 
-#### Function `EstTransIndex`
+### Function `EstTransIndex`
 
-##### NOTES:
+This is the main function of the project, the one that actually estimates if a species is transboundary or not
 
-###### General:
-- For now using SAU_C as presence absence
-- Grouping by species distribution within EEZ and not EEZ area
-
-###### Tresholds:
-###### Model Index, line ~479
-
-This first treshold estimates the uncertanty of models. Goes from 0 - 1 as follows:
-
-- 1 or 0; All models agree that in the presence of the species
-- 0.75; Three out of four models agree on speices presence
-- 0.50; Two out of four models agree on speices presence
-- 0.25; Only one model flags a speices presence
-- 0; All models agree there is no species there
-
-** NOTE THAT THE FUNCTION IS SETTED TO OUTPUT RESULTS FOR LL MODELS **
-
-###### Distribution Index, line ~482
-
-```{r Trans_Spp_Function, eval= T ,echo = T,warning = F,message = F}
+```{r funEstTransIndex, eval= T ,echo = T,warning = F,message = F}
 
 # Function to determine whether or not a species is transboundary
 
