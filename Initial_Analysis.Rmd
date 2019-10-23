@@ -775,9 +775,9 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
     group_by(TaxonKey,
              INDEX
     ) %>%
-    summarise(Model_Index = mean(Value,na.rm=T)
+    summarise(Model_Index = sum(Value,na.rm=T)/3
     ) %>%
-    filter(Model_Index > 0) %>%
+    filter(Model_Index > 0.4) %>% # at least 2 sources agree
     # ____________ ESTIMATING FUNDAMENTAL NICHE (TRESHOLD 2)_________ #
     left_join(SppDist,
               by = c("TaxonKey","INDEX")) %>%
