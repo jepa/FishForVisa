@@ -1111,7 +1111,11 @@ system.time(
 
 # Data on time for the Beast with 30 cores
 # user   system  elapsed 
- #8117.72  1991.91 10296.00 
+# 8117.72  1991.91 10296.00 
+
+# Data on time for the Beast with 32 cores
+ #  user  system elapsed 
+# 7831.10 1327.27 9261.48 
     
    
 ```
