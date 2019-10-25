@@ -409,183 +409,6 @@ Once those tresholds are met, the status of the species is determined as follows
 
 *Notes* = 3 years average mean
 
-### Function `EstSppStatus`
-
-This function estimates the exploitation status of a species based on catch data.
-
-```{r funEstSppStatus, eval = T, echo =F}
-
-EstSppStatus <- function(Spp,Coord){
-  
-  # Load species' data
-  Data <- GetSppDist(Spp, Model = "SAU_C", Coord = Coord) %>% 
-    set_names(c(seq(1950,2014,1),"INDEX","Species","Longitude","Latitude")) %>% 
-    gather("Year","Value",`1950`:`2014`) %>%
-    arrange(INDEX) %>% 
-    left_join(Index_Code,
-              by = "INDEX") %>% 
-    filter(!is.na(EEZID),
-           Value > 0) %>% 
-    group_by(TaxonKey=Species,Year,Territory) %>% # Estimates total catch per country
-    summarise(Total_Catch = sum(Value,na.rm=T)) %>% 
-    group_by(TaxonKey,Territory,Year) %>% # Running mean as Pauly et la.
-    mutate(RMean = rollmean(x = Total_Catch, 3,
-                            align = "right",
-                            fill = Total_Catch)
-    ) %>% 
-    select(-Total_Catch) %>% 
-    ungroup() %>% 
-    mutate(Year = as.numeric(Year))
-  
-  # Tresholds to evaluate stocks if these are not met, then soecies status = "No Status"
-  Tresholds_Data <- Data %>% 
-    arrange(Territory) %>% 
-    group_by(TaxonKey,Territory, grp = cumsum(c(1, diff(Year) != 65))) %>% 
-    group_by(TaxonKey,Territory) %>% 
-    summarise(Years_appart = ifelse(max(Year)-min(Year) >= 0,"Yes","No"), # Step 1. first and last reported landings are at least 10 years apart
-              Consecutive = ifelse(max(grp) >= 5,"Yes","No")#, # Step 2. There are at least 5 consecutive catch years
-              # Catch_over = ifelse(max(RMean >= 1000),"Yes","No") # Step 3. 3) The catch in a particular area (LME) is at least 1,000 tonnes. (CURRENTLY OFF)
-    ) %>% 
-    gather("Step","Treshold",Years_appart:Catch_over) %>% 
-    group_by(TaxonKey,Territory) %>% 
-    summarise(Met_Criteria = paste(unique(Treshold),collapse =";")
-    )
-  
-  # Remove species that do not met the criterias
-  
-  No_Status_Data <- Tresholds_Data %>% 
-    filter(Met_Criteria != "Yes") %>% 
-    select(TaxonKey,Territory) %>% 
-    mutate(Status = "No Status")
-  
-  
-  # Evaluate species that met the criteria
-  
-  # Get Variables to perform status metric
-  Status_Data <- Data %>% 
-    anti_join(No_Status_Data, # Removes no status data
-              by = c("TaxonKey","Territory")
-    ) %>% 
-    # Get Max catch and max catch year
-    group_by(TaxonKey,Territory) %>% 
-    top_n(1,RMean) %>% 
-    rename(Max_Peak = RMean,
-           Y_Max_Peak = Year) %>% 
-    # Get Min catch after peak catch
-    left_join(Data,
-              by = c("TaxonKey","Territory")
-    ) %>% 
-    filter(Year > Y_Max_Peak) %>% # Filter years after peak year
-    group_by(TaxonKey,Territory) %>% 
-    top_n(-1,RMean) %>% # find min value
-    rename(Post_Max_Min = RMean,
-           Y_Post_Max_Min = Year) %>% 
-    left_join(Data,
-              by = c("TaxonKey","Territory")
-    ) %>% 
-    # Final Species Status Evaluation 
-    mutate(Status = ifelse(Year > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
-                           ifelse((Year < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Year)),"Developing",
-                                  ifelse(RMean > Max_Peak*0.50,"Max Exploited",
-                                         ifelse(Year > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Over Exploited",
-                                                ifelse(Year > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
-                                                       "No Status")
-                                         )
-                                  )
-                           )
-    )
-    ) %>% 
-    filter(Year > 2004) %>% # last 10 years of data
-    group_by(TaxonKey,Territory,Status) %>% 
-    summarise(n_Status= n()) %>% 
-    group_by(TaxonKey,Territory) %>% 
-    top_n(1,n_Status) %>%
-    select(-n_Status)
-  
-  # Function Return 
-  
-  # If both datasets have value RETURN BOTH
-  if(nrow(No_Status_Data) > 0 & nrow(Status_Data) > 0){
-    
-    Fun_Result <- bind_rows(No_Status_Data,
-                            Status_Data)
-  }
-  
-  # If only No status data, then just return No Status Data
-  if(nrow(No_Status_Data) > 0 & nrow(Status_Data) == 0){
-    return(No_Status_Data)
-  }else{
-    return(Status_Data)
-  }
-}
-
-# Testing
-# Test_1 <- EstSppStatus(Species_List[1],CoorG)
-
-```
-
-### Data Species Status
-
-### Sub routine for Species Status
-
-```{r Spp_Status_Control_Pannel, eval = T, echo = F}
-
-# SAU relations between INDEX and Country's EEZs
-EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
-EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
-colnames(EEZ_CellID) <- c("EEZID","INDEX")
-
-Index_Code <- EEZIDs_List %>% 
-  left_join(EEZ_CellID) %>% 
-  rename(Territory = Name)
-
-# Gabriel's coordinate system
-CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>%
-  mutate(INDEX = seq(1,259200,1))
-
-# Removes everything before the number
-Step_One <- gsub(".*_","",list.files(paste(Data_Path,"/Distribution_Data/SAU_Distribution/",sep="")))
-
-# Species List
-Species_List <- gsub("\\..*","",Step_One)
-
-```
-
-```{r Spp_Status_Sub_Routine, eval = T, echo = F}
-# Needs to have trans species 
-Species_Status <- bind_rows(
-    mclapply(
-      Species_List,
-      FUN = EstSppStatus,
-      Coord = CoorG  # Gabriels coordinate system for read species dist
-    )
-  )
-
-# Save data
-# write.csv(Species_Status,
-#           paste(Results_Path,"Species_Status.csv",sep=""),
-#                 row.names = F)
-
-```
-
-## Estimate Transboundary Species
-
-This is the main step of the project. In this segment we estimate the number of transboundary species existing today in each of the worlds EEZs.
-
-The datasets SAU_D, OCC, and ESM are used as sppecies presence while SAU_C is used as a confirmation of that. The `Model Index` is the first treshold and estimates the uncertanty of models. Goes from 0 - 1 as follows:
-
-- 1 or 0; All models agree that in the presence of the species
-- 0.75; Three out of four models agree on speices presence
-- 0.50; Two out of four models agree on speices presence
-- 0.25; Only one model flags a speices presence
-- 0; All models agree there is no species there
-
-
-The `Area_Index` is the second treshold and estimates the proportion of each species distribution in each EEZ. It only take into consideration the distribution of the species within the two EEZs, rather than the complete distribution. Hence, is mirrord (e.g. if EEZ#1 is 0.40, EEZ#2 is 0.6)
-
-** NOTE THAT THE FUNCTION IS SETTED TO OUTPUT RESULTS FOR ALL MODELS **
-
-
 ### Function `GetSppDist`
 
 This function reads in species distribution from the observation data, ESM models and SAU data.
@@ -723,6 +546,182 @@ GetSppDist=function(Spp,Model,Coord){
 
 
 ```
+
+### Function `EstSppStatus`
+
+This function estimates the exploitation status of a species based on catch data.
+
+```{r funEstSppStatus, eval = T, echo =F}
+
+EstSppStatus <- function(Spp,Coord){
+  
+  # Load species' data
+  Data <- GetSppDist(Spp, Model = "SAU_C", Coord = Coord) %>% 
+    set_names(c(seq(1950,2014,1),"INDEX","Species","Longitude","Latitude")) %>% 
+    gather("Year","Value",`1950`:`2014`) %>%
+    arrange(INDEX) %>% 
+    left_join(Index_Code,
+              by = "INDEX") %>% 
+    filter(!is.na(EEZID),
+           Value > 0) %>% 
+    group_by(TaxonKey=Species,Year,Territory) %>% # Estimates total catch per country
+    summarise(Total_Catch = sum(Value,na.rm=T)) %>% 
+    group_by(TaxonKey,Territory,Year) %>% # Running mean as Pauly et la.
+    mutate(RMean = rollmean(x = Total_Catch, 3,
+                            align = "right",
+                            fill = Total_Catch)
+    ) %>% 
+    select(-Total_Catch) %>% 
+    ungroup() %>% 
+    mutate(Year = as.numeric(Year))
+  
+  # Tresholds to evaluate stocks if these are not met, then soecies status = "No Status"
+  Tresholds_Data <- Data %>% 
+    arrange(Territory) %>% 
+    group_by(TaxonKey,Territory, grp = cumsum(c(1, diff(Year) != 65))) %>% 
+    group_by(TaxonKey,Territory) %>% 
+    summarise(Years_appart = ifelse(max(Year)-min(Year) >= 0,"Yes","No"), # Step 1. first and last reported landings are at least 10 years apart
+              Consecutive = ifelse(max(grp) >= 5,"Yes","No")#, # Step 2. There are at least 5 consecutive catch years
+              # Catch_over = ifelse(max(RMean >= 1000),"Yes","No") # Step 3. 3) The catch in a particular area (LME) is at least 1,000 tonnes. (CURRENTLY OFF)
+    ) %>% 
+    gather("Step","Treshold",Years_appart:Consecutive) %>% 
+    group_by(TaxonKey,Territory) %>% 
+    summarise(Met_Criteria = paste(unique(Treshold),collapse =";")
+    )
+  
+  # Remove species that do not met the criterias
+  
+  No_Status_Data <- Tresholds_Data %>% 
+    filter(Met_Criteria != "Yes") %>% 
+    select(TaxonKey,Territory) %>% 
+    mutate(Status = "No Status")
+  
+  
+  # Evaluate species that met the criteria
+  
+  # Get Variables to perform status metric
+  Status_Data <- Data %>% 
+    anti_join(No_Status_Data, # Removes no status data
+              by = c("TaxonKey","Territory")
+    ) %>% 
+    # Get Max catch and max catch year
+    group_by(TaxonKey,Territory) %>% 
+    top_n(1,RMean) %>% 
+    rename(Max_Peak = RMean,
+           Y_Max_Peak = Year) %>% 
+    # Get Min catch after peak catch
+    left_join(Data,
+              by = c("TaxonKey","Territory")
+    ) %>% 
+    filter(Year > Y_Max_Peak) %>% # Filter years after peak year
+    group_by(TaxonKey,Territory) %>% 
+    top_n(-1,RMean) %>% # find min value
+    rename(Post_Max_Min = RMean,
+           Y_Post_Max_Min = Year) %>% 
+    left_join(Data,
+              by = c("TaxonKey","Territory")
+    ) %>% 
+    # Final Species Status Evaluation 
+    mutate(Status = ifelse(Year > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
+                           ifelse((Year < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Year)),"Developing",
+                                  ifelse(RMean > Max_Peak*0.50,"Max Exploited",
+                                         ifelse(Year > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Over Exploited",
+                                                ifelse(Year > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
+                                                       "No Status")
+                                         )
+                                  )
+                           )
+    )
+    ) %>% 
+    filter(Year > 2004) %>% # last 10 years of data
+    group_by(TaxonKey,Territory,Status) %>% 
+    summarise(n_Status= n()) %>% 
+    group_by(TaxonKey,Territory) %>% 
+    top_n(1,n_Status) %>%
+    select(-n_Status)
+  
+  # Function Return 
+  
+  # If both datasets have value RETURN BOTH
+  if(nrow(No_Status_Data) > 0 & nrow(Status_Data) > 0){
+    
+    Fun_Result <- bind_rows(No_Status_Data,
+                            Status_Data)
+  }
+  
+  # If only No status data, then just return No Status Data
+  if(nrow(No_Status_Data) > 0 & nrow(Status_Data) == 0){
+    return(No_Status_Data)
+  }else{
+    return(Status_Data)
+  }
+}
+
+# Testing
+# Test_1 <- EstSppStatus(Species_List[1],CoorG)
+
+```
+
+### Data Species Status
+
+### Sub routine for Species Status
+
+```{r Spp_Status_Control_Pannel, eval = T, echo = F}
+
+# SAU relations between INDEX and Country's EEZs
+EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
+EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
+colnames(EEZ_CellID) <- c("EEZID","INDEX")
+
+Index_Code <- EEZIDs_List %>% 
+  left_join(EEZ_CellID) %>% 
+  rename(Territory = Name)
+
+# Gabriel's coordinate system
+CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>%
+  mutate(INDEX = seq(1,259200,1))
+
+# Removes everything before the number
+Step_One <- gsub(".*_","",list.files(paste(Data_Path,"/Distribution_Data/SAU_Distribution/",sep="")))
+
+# Species List
+Species_List <- gsub("\\..*","",Step_One)
+
+```
+
+```{r Spp_Status_Sub_Routine, eval = T, echo = F}
+# Needs to have trans species 
+Species_Status <- bind_rows(
+    mclapply(
+      Species_List,
+      FUN = EstSppStatus,
+      Coord = CoorG  # Gabriels coordinate system for read species dist
+    )
+  )
+
+# Save data
+# write.csv(Species_Status,
+#           paste(Results_Path,"Species_Status.csv",sep=""),
+#                 row.names = F)
+
+```
+
+## Estimate Transboundary Species
+
+This is the main step of the project. In this segment we estimate the number of transboundary species existing today in each of the worlds EEZs.
+
+The datasets SAU_D, OCC, and ESM are used as sppecies presence while SAU_C is used as a confirmation of that. The `Model Index` is the first treshold and estimates the uncertanty of models. Goes from 0 - 1 as follows:
+
+- 1 or 0; All models agree that in the presence of the species
+- 0.75; Three out of four models agree on speices presence
+- 0.50; Two out of four models agree on speices presence
+- 0.25; Only one model flags a speices presence
+- 0; All models agree there is no species there
+
+
+The `Area_Index` is the second treshold and estimates the proportion of each species distribution in each EEZ. It only take into consideration the distribution of the species within the two EEZs, rather than the complete distribution. Hence, is mirrord (e.g. if EEZ#1 is 0.40, EEZ#2 is 0.6)
+
+** NOTE THAT THE FUNCTION IS SETTED TO OUTPUT RESULTS FOR ALL MODELS **
 
 ### Function `EstTransIndex`
 
@@ -1024,7 +1023,7 @@ mclapply <- switch( Sys.info()[['sysname']],
 
 ### **Principal Routine**
 
-```{r Trans_Spp_Control_Pannel, eval = T, echo = F}
+```{r Trans_Spp_Control_Pannel, eval = F, echo = F}
 
 # Set Jurisdiction to EEZ or RFMO
 Jurisdiction <- "EEZ"
@@ -1124,7 +1123,7 @@ This function simply reads in the files and import them all as on large d.f
 GetTransResults=function(Spp){
 
   # Set the path for each file
-  Distpath <- paste(Results_Path,Spp,sep="")
+  Distpath <- paste(Results_Path,"Trans_Results/",Spp,sep="")
   
   # Loads all files in a df
   Load_Data <- bind_rows(lapply(Distpath, FUN=fread))
@@ -1139,14 +1138,16 @@ GetTransResults=function(Spp){
 
 There are quite a few inconsistencies between the names of territories within the SAU shapefile, the distribution data and the UN database. The following function cleans up the names, some of them manually some of the automatic. It also removes the "transboundary nature" of those species shared by two territories that belong to the same nation (e.g. Brazil mainland and Brazil (Fernando de Noronha) or US Gulf of Mexico and US East coast). Finally, there is an annoying thing coding issue between MAC and Windows related to characters so I have to also fix for that, manually.
 
-```{r funCleanResults, eval = T, echo = F}
+```{r funCleanResults, eval = F, echo = F}
 
 # Requires Clean_sau_eez_fes
 
 CleanResults <- function(Data){
 
 # Clean out countries that share with their own borders (e.g. Brazil mainland and Brazil (Fernando de Noronha))
-  Auto_Remove_Territories <- Data %>%   
+  Auto_Remove_Territories <- Data %>% 
+    filter(!is.na(Territory),
+           !is.na(Neighbour)) %>% 
     rename(FishingRegion=Territory) %>% 
     left_join(Clean_sau_eez_fes,
               by = "FishingRegion") %>% 
@@ -1343,11 +1344,10 @@ Sau_Revenue_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_cou
   summarise(Mean_Value = mean(value,na.rm=T))
 
 # Read Species Status Data (Sub-routine Species Status)
-Status_Data <- fread(paste(Data_Path,"Distribution_Data/Species_Status.csv", sep ="")) %>% 
-  rename(TaxonKey = Species)
+Status_Data <- fread(paste(Data_Path,"Distribution_Data/Species_Status.csv", sep =""))
 
 # List of species
-Spp <- list.files(paste(Results_Path,sep=""))[-829]
+Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
 
 # Load and clean transboundary results
 Results_Trans <- GetTransResults(Spp)
@@ -1386,7 +1386,7 @@ Tresholded_T_Data <- Clean_Results_Trans %>%
   filter(
     Area_Index >= Min_AI,
     Area_Index <= Max_AI,
-    Model_Index == MI
+    Model_Index >= MI
   )
 
 ### Non-transboundary Tresh 1
@@ -1449,7 +1449,7 @@ Total_trans_n <- Clean_Results_Trans %>%
   filter(
     Area_Index >= Min_AI,
     Area_Index <= Max_AI,
-    Model_Index == MI
+    Model_Index >= MI
   ) 
 
 length(unique(Total_trans_n$TaxonKey)) #674 spp
@@ -1535,21 +1535,21 @@ Plot <- ggplot() +
   # ) +
   ggtheme_map()
 
-Plot_Name <- paste(Jurisdiction,"_100_25_Bins_Value.png", sep = "") 
+Plot_Name <- paste("New_100_25_Bins_Value.png", sep = "") 
 
 ggsave(Plot_Name,
        plot = Plot,
        width = 16,
        height = 8,
        units = "in",
-       path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
+       path = Figures_Path
 )
 
 ```
 
 ### OHI-inspired Circular plot for Territories
 
-```{r Circular_Country_Data, eval = T, echo = F}
+```{r Circular_Country_Data, eval = F, echo = F}
 
 # -------------------------- #
 # Transboundary data
@@ -1588,7 +1588,7 @@ Discrete_Data_Plot <- Tresholded_D_Data %>%
 # -------------------------- #
 
 Status_Data_Plot <- Tresholded_T_Data %>% 
-  mutate(TaxonKey = as.character(TaxonKey)) %>% 
+  # mutate(TaxonKey = as.character(TaxonKey)) %>% 
   # rename(Territory = CT_fishing_entity) %>% 
   left_join(Status_Data, 
             by =c("Territory","TaxonKey")
@@ -1673,7 +1673,7 @@ ggplot(data) +
   
   # Add the stacked bar
   geom_bar(aes(x=as.factor(id), y=value, fill=observation), stat="identity", alpha=0.5) +
-  scale_fill_viridis(discrete=TRUE) +
+  # scale_fill_viridis(discrete=TRUE) +
   
   # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
   geom_segment(data=grid_data, aes(x = end, y = 0, xend = start, yend = 0), colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
@@ -1706,7 +1706,7 @@ ggplot(data) +
 
 ```
 
-```{r Territories_Circluar_Plot, eval = T, echo = T}
+```{r Territories_Circluar_Plot, eval = F, echo = T}
 
 # -------------------------- #
 # Data manipulation for plot
@@ -1727,7 +1727,7 @@ nObsType <- nlevels(as.factor(data$observation))
 to_add <- data.frame( matrix(NA, empty_bar*nlevels(Char)*nObsType, ncol(data)) )
 colnames(to_add) <- colnames(data)
 to_add$group <- rep(levels(Char), each=empty_bar*nObsType)
-to_add$individual <- rep(letters[1:6], each=empty_bar*nObsType)
+# to_add$individual <- rep(letters[1:6], each=empty_bar*nObsType)
 data <- bind_rows(data, to_add)
 data <- data %>% arrange(group, individual) %>% rowwise() %>%  mutate(id = as.numeric(as.factor(individual)))
 data$id <- as.numeric(as.factor(data$individual))
@@ -1743,7 +1743,8 @@ label_data$angle <- ifelse(angle < -90, angle+180, angle)
 # prepare a data frame for base lines
 base_data <-  data %>% 
   group_by(group) %>% 
-  summarize(start=min(id,na.rm=T), end=max(id,na.rm=T) - empty_bar) %>% 
+  summarize(start=min(id,na.rm=T), 
+            end=max(id,na.rm=T) - empty_bar) %>% 
   rowwise() %>% 
   mutate(title=mean(c(start, end)))
  
@@ -1760,8 +1761,8 @@ data <- data %>%
 
 ggplot(data) + 
   # Add the stacked bar
-  geom_bar(aes(x=as.factor(id), y=value, fill=observation), stat="identity", alpha=0.5) +
-  scale_fill_manual("Continent",
+  geom_bar(aes(x=as.factor(id), y=value, fill=observation,group=group), stat="identity", alpha=0.5) +
+  scale_fill_manual("Catch Trend",
                     values = c(wes_palette(n = 5, name = "Darjeeling1"),
                                wes_palette(n = 1, name = "Darjeeling2")
                     ),
@@ -2053,7 +2054,7 @@ ggsave(
 
 Create figures that are based in species (e.g. number of countries each species has)
 
-```{r Circular_Spp_Data, eval = T, echo =F}
+```{r Circular_Spp_Data, eval = F, echo =F}
 
 # Number of countries shared by each Species
 Species_Trans <- Tresholded_T_Data %>% 
@@ -2094,7 +2095,7 @@ Species_Data <- Tresholded_T_Data %>%
 
 ### OHI-inspired Circular plot Species
 
-```{r species_circluar_plot, eval = T, echo = T}
+```{r species_circluar_plot, eval = F, echo = T}
 
 Median_trans <- median(Species_Data$value)
 # hist(Species_Data$value)
