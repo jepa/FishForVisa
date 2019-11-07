@@ -29,6 +29,7 @@ packages <- c(
   "tidyr", # Data manipulation
   "ggplot2", #Nice grpahs and spatial analysis
   "wesanderson",
+  "tidyverse",
   "circlize", # For circular plot
   "ggimage", #for reading images to the circular plot
   # "cowplot",
@@ -553,6 +554,9 @@ This function estimates the exploitation status of a species based on catch data
 
 ```{r funEstSppStatus, eval = T, echo =F}
 
+Spp <- 600006
+Coord <- CoorG
+
 EstSppStatus <- function(Spp,Coord){
   
   # Load species' data
@@ -594,7 +598,7 @@ EstSppStatus <- function(Spp,Coord){
   No_Status_Data <- Tresholds_Data %>% 
     filter(Met_Criteria != "Yes") %>% 
     select(TaxonKey,Territory) %>% 
-    mutate(Status = "No Status")
+    mutate(Status = "No Trend")
   
   
   # Evaluate species that met the criteria
@@ -616,6 +620,8 @@ EstSppStatus <- function(Spp,Coord){
     filter(Year > Y_Max_Peak) %>% # Filter years after peak year
     group_by(TaxonKey,Territory) %>% 
     top_n(-1,RMean) %>% # find min value
+    group_by(TaxonKey,Y_Max_Peak,Territory,Max_Peak,RMean) %>%  # Solves for years with the same catch data (e.g. Cayman Isl 2013-2014)
+    summarise(Year = min(Year)) %>% 
     rename(Post_Max_Min = RMean,
            Y_Post_Max_Min = Year) %>% 
     left_join(Data,
@@ -627,32 +633,55 @@ EstSppStatus <- function(Spp,Coord){
                                   ifelse(RMean > (Max_Peak*0.50),"Max Exploited",
                                          ifelse(Year > Y_Max_Peak & ((RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50))),"Over Exploited",
                                                 ifelse(Year > Y_Max_Peak & RMean < (Max_Peak*0.10),"Collapsed",
-                                                       "No Status")
+                                                       "No Trend")
                                          )
                                   )
                            )
-    )) %>% 
-    filter(Year > 2004) %>% # last 10 years of data
-    group_by(TaxonKey,Territory,Status) %>% 
-    summarise(n_Status= n()) %>% 
-    group_by(TaxonKey,Territory) %>% 
-    top_n(1,n_Status) %>%
-    select(-n_Status)
+    )
+    ) 
+  
+  # Determine the final status using the top category over the last 10 years
+  Determine_Status_Data <- Status_Data %>% 
+    filter(Year > 2004) %>% # last 10 years of data (2005-2014)
+    group_by(TaxonKey,Territory,Status) %>%
+    summarise(n_Status= n()) %>%
+    group_by(TaxonKey,Territory) %>%
+    top_n(1,n_Status)
+  
+  # Fix cases where you have equal categories.
+  Duplicates <- Determine_Status_Data %>% 
+    ungroup() %>% 
+    janitor::get_dupes(Territory) %>% 
+    select(TaxonKey,Territory) %>% 
+    pull(Territory) %>% 
+    unique()
+  
+  # In this case we sue the last year's category
+  Duplicates_Status <- Status_Data %>% 
+  filter(Territory %in% Duplicates,
+         Year == 2014) %>%
+    ungroup() %>%
+    select(TaxonKey,Territory,Status)
+  
+  # Build Final Status database
+  Final_Status_Data <- Determine_Status_Data %>% 
+    filter(!Territory %in% Duplicates) %>% 
+    bind_rows(Duplicates_Status)
   
   # Function Return 
   
   # If both datasets have value RETURN BOTH
-  if(nrow(No_Status_Data) > 0 & nrow(Status_Data) > 0){
+  if(nrow(No_Status_Data) > 0 & nrow(Final_Status_Data) > 0){
     
     Fun_Result <- bind_rows(No_Status_Data,
-                            Status_Data)
+                            Final_Status_Data)
   }
   
   # If only No status data, then just return No Status Data
-  if(nrow(No_Status_Data) > 0 & nrow(Status_Data) == 0){
+  if(nrow(No_Status_Data) > 0 & nrow(Final_Status_Data) == 0){
     return(No_Status_Data)
   }else{
-    return(Status_Data)
+    return(Final_Status_Data)
   }
 }
 
@@ -699,10 +728,9 @@ Species_Status <- bind_rows(
   )
 
 # Save data
-write.csv(Species_Status,
-          paste(Results_Path,"Species_Status.csv",sep=""),
-                row.names = F)
-
+# readr::write_csv(Species_Status,
+#           "Species_Status.csv")
+# head(Species_Status)
 ```
 
 ## Estimate Transboundary Species
@@ -1343,7 +1371,7 @@ Sau_Revenue_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_cou
   summarise(Mean_Value = mean(value,na.rm=T))
 
 # Read Species Status Data (Sub-routine Species Status)
-Status_Data <- fread(paste(Data_Path,"Distribution_Data/Species_Status.csv", sep =""))
+Status_Data <- fread(paste(Results_Path,"Species_Status.csv", sep =""))
 # Status_Data <- Species_Status
 
 # List of species
@@ -1588,9 +1616,9 @@ ggsave(Plot_Name,
 # -------------------------- #
 
 Status_Data_Plot <- Tresholded_T_Data %>% 
-  # mutate(TaxonKey = as.character(TaxonKey)) %>%
+  mutate(TaxonKey = as.character(TaxonKey)) %>%
   # rename(Territory = CT_fishing_entity) %>% 
-  left_join(Status_Data, 
+  left_join(Species_Status, 
             by =c("Territory","TaxonKey")
   ) %>%
   mutate(Status = ifelse(is.na(Status),"No Status",Status)) %>% 
@@ -2857,6 +2885,39 @@ write.csv(Russia_id_912_913,
   
 head(x)
   
+
+```
+
+### Number of Collapsed USA species
+
+```{r Collapsed_USA, eval = F ,echo = T,warning = F,message = F}
+
+#  At the end, the ram legacy and the SAU are tide in results...
+
+
+USA_Collapsed <- Species_Status %>% 
+  filter(str_detect(Territory, pattern="USA")#,
+         # Status == "Collapsed"
+  ) %>% 
+  ungroup() %>% 
+  mutate(TaxonKey = as.numeric(TaxonKey)) %>%
+  left_join(Exploited_Species)
+         
+# Comparring to RAM legacy in the W pacific coast
+
+# Sabelfish match
+# Pacifc sardine no data ram
+# Chillipepper match
+# Lincod no match althou circular path in RAM
+# Dover no match by far...
+# Chub mackerel... match
+# Petral metch
+# Black Rockfish No mach...ish
+# Widow rockfish no match
+# Starry flounder no match
+# Rex sole no data RAM
+# Pacific ocean percCollapsed Vs Overfished
+# 
 
 ```
 
