@@ -554,7 +554,7 @@ This function estimates the exploitation status of a species based on catch data
 
 ```{r funEstSppStatus, eval = T, echo =F}
 
-Spp <- 600004
+Spp <- 601417
 
 EstSppStatus <- function(Spp,Coord){
   
@@ -578,7 +578,7 @@ EstSppStatus <- function(Spp,Coord){
     ungroup() %>% 
     mutate(Year = as.numeric(Year))
   
-  # Tresholds to evaluate stocks if these are not met, then soecies status = "No Status"
+   # Tresholds to evaluate stocks if these are not met, then soecies status = "No Status"
   Tresholds_Data <- Data %>% 
     arrange(Territory) %>% 
     group_by(TaxonKey,Territory, grp = cumsum(c(1, diff(Year) != 65))) %>% 
@@ -604,12 +604,15 @@ EstSppStatus <- function(Spp,Coord){
   
   # Get Variables to perform status metric
   Status_Data <- Data %>% 
+    # filter(Territory == "Israel (Red Sea)") %>%  # For testing
     anti_join(No_Status_Data, # Removes no status data
               by = c("TaxonKey","Territory")
     ) %>% 
     # Get Max catch and max catch year
     group_by(TaxonKey,Territory) %>% 
     top_n(1,RMean) %>% 
+    group_by(TaxonKey,Territory,RMean) %>%  # Solves for years with the same catch data (e.g. Cayman Isl all years)
+    summarise(Year = min(Year)) %>%
     rename(Max_Peak = RMean,
            Y_Max_Peak = Year) %>% 
     # Get Min catch after peak catch
@@ -1453,6 +1456,25 @@ Tresholded_D_Data <- Clean_Results_Trans %>%
   
 ```
 
+## Overall results
+
+```{r Data_per_Territory, eval = F, echo = F}
+
+# Number of Transboundary Species
+Total_trans_n <- Clean_Results_Trans %>% 
+  filter(
+    Area_Index >= Min_AI,
+    Area_Index <= Max_AI,
+    Model_Index >= MI
+  ) %>% 
+  pull(TaxonKey) %>% 
+  length(unique())
+
+
+
+```
+
+
 ## Results per Territory
 
 Determine the number of species per territory
@@ -1472,17 +1494,6 @@ Transboundary_Spp <- Tresholded_T_Data %>%
     Bins_Plot = cut(n_trans_spp,breaks = 4,
                     labels = c('super low', 'low', 'high','super high'))
   )
-
-# Number of Transboundary Species
-Total_trans_n <- Clean_Results_Trans %>% 
-  filter(
-    Area_Index >= Min_AI,
-    Area_Index <= Max_AI,
-    Model_Index >= MI
-  ) 
-
-length(unique(Total_trans_n$TaxonKey)) #633 spp at 100% and 25%
-
 
 
 # Get Catch data for mapping (Currently not used)
