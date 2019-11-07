@@ -25,11 +25,9 @@ ipak <- function(pkg){
 packages <- c(
   "readxl", # Read dataframe
   "data.table", # Read dataframe (Fast!)
-  "dplyr", # Data manipulation
-  "tidyr", # Data manipulation
-  "ggplot2", #Nice grpahs and spatial analysis
   "wesanderson",
-  "tidyverse",
+  "tidyverse", # for all data wrangling and ggplot
+  "janitor", # for data cleaning
   "circlize", # For circular plot
   "ggimage", #for reading images to the circular plot
   # "cowplot",
@@ -410,6 +408,8 @@ Once those tresholds are met, the status of the species is determined as follows
 
 *Notes* = 3 years average mean
 
+Finally we choose the reporting year based on the most frequent status in the last 10 years of data. In cases where there was a mach between status (e.g. Cayman Islands for species 6000006 had 5 *Max Exploited* and 5 *Overexploted*) then we report the status at the last year of data.
+
 ### Function `GetSppDist`
 
 This function reads in species distribution from the observation data, ESM models and SAU data.
@@ -554,8 +554,7 @@ This function estimates the exploitation status of a species based on catch data
 
 ```{r funEstSppStatus, eval = T, echo =F}
 
-Spp <- 600006
-Coord <- CoorG
+Spp <- 600004
 
 EstSppStatus <- function(Spp,Coord){
   
@@ -649,12 +648,14 @@ EstSppStatus <- function(Spp,Coord){
     top_n(1,n_Status)
   
   # Fix cases where you have equal categories.
-  Duplicates <- Determine_Status_Data %>% 
-    ungroup() %>% 
-    janitor::get_dupes(Territory) %>% 
-    select(TaxonKey,Territory) %>% 
-    pull(Territory) %>% 
-    unique()
+  suppressMessages( # supresses "No duplicate combinations found of: Territ"
+    Duplicates <- Determine_Status_Data %>% 
+      ungroup() %>% 
+      janitor::get_dupes(Territory) %>% 
+      select(TaxonKey,Territory) %>% 
+      pull(Territory) %>% 
+      unique()
+  )
   
   # In this case we sue the last year's category
   Duplicates_Status <- Status_Data %>% 
@@ -721,7 +722,7 @@ Species_List <- gsub("\\..*","",Step_One)
 # Needs to have trans species 
 Species_Status <- bind_rows(
     mclapply(
-      Species_List,
+      Species_List[1:2],
       FUN = EstSppStatus,
       Coord = CoorG  # Gabriels coordinate system for read species dist
     )
