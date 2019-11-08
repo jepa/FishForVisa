@@ -725,15 +725,16 @@ Species_List <- gsub("\\..*","",Step_One)
 # Needs to have trans species 
 Species_Status <- bind_rows(
     mclapply(
-      Species_List[1:2],
+      Species_List,
       FUN = EstSppStatus,
       Coord = CoorG  # Gabriels coordinate system for read species dist
     )
   )
 
 # Save data
-# readr::write_csv(Species_Status,
-#           "Species_Status.csv")
+readr::write_csv(Species_Status,
+                 paste(Results_Path,"Species_Status.csv",sep="")
+                 )
 # head(Species_Status)
 ```
 
@@ -1366,11 +1367,11 @@ World_sf <- st_read(dsn = path_world,
 # ---------------------------- #
 
 # Read Sau Catch Data
-Sau_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv", sep ="")) %>% 
+SAU_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv", sep ="")) %>% 
   filter(!is.na(Territory))
 
 # Read Sau Value Data (Thank you Tim!)
-Sau_Revenue_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>% 
+SAU_Revenue_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>% 
   group_by(fishing_entity_id,TaxonKey=taxon_key) %>% 
   summarise(Mean_Value = mean(value,na.rm=T))
 
@@ -1460,17 +1461,37 @@ Tresholded_D_Data <- Clean_Results_Trans %>%
 
 ```{r Data_per_Territory, eval = F, echo = F}
 
+# -------------------------- #
 # Number of Transboundary Species
-Total_trans_n <- Clean_Results_Trans %>% 
+# -------------------------- #
+
+Total_trans <- Clean_Results_Trans %>% 
   filter(
     Area_Index >= Min_AI,
     Area_Index <= Max_AI,
     Model_Index >= MI
-  ) %>% 
+  ) 
+
+Total_trans_n <- Total_trans %>% 
   pull(TaxonKey) %>% 
-  length(unique())
+  unique() %>% 
+  length()
+
+# -------------------------- #
+# Total Revenue
+# -------------------------- #
+
+Total_Trans_Rev <- SAU_Revenue_Data %>% 
+  filter(TaxonKey %in% Total_trans$TaxonKey) %>% 
+  group_by() %>% 
+  summarise(Total =sum(Mean_Value)/1000000)# total revenue within EEZs of the world from sau.org
 
 
+Per_Trans_Rev <- SAU_Revenue_Data %>% 
+  filter(TaxonKey %in% Total_trans$TaxonKey) %>% 
+  group_by() %>% 
+  summarise(Total =sum(Mean_Value)/1000000) %>%  # million
+  pull()/160000*100 
 
 ```
 
@@ -1628,9 +1649,9 @@ ggsave(Plot_Name,
 # -------------------------- #
 
 Status_Data_Plot <- Tresholded_T_Data %>% 
-  mutate(TaxonKey = as.character(TaxonKey)) %>%
+  # mutate(TaxonKey = as.character(TaxonKey)) %>%
   # rename(Territory = CT_fishing_entity) %>% 
-  left_join(Species_Status, 
+  left_join(Status_Data, 
             by =c("Territory","TaxonKey")
   ) %>%
   mutate(Status = ifelse(is.na(Status),"No Status",Status)) %>% 
