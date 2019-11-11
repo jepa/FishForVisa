@@ -554,7 +554,7 @@ This function estimates the exploitation status of a species based on catch data
 
 ```{r funEstSppStatus, eval = T, echo =F}
 
-Spp <- 601417
+# Spp <- 601417
 
 EstSppStatus <- function(Spp,Coord){
   
@@ -611,7 +611,7 @@ EstSppStatus <- function(Spp,Coord){
     # Get Max catch and max catch year
     group_by(TaxonKey,Territory) %>% 
     top_n(1,RMean) %>% 
-    group_by(TaxonKey,Territory,RMean) %>%  # Solves for years with the same catch data (e.g. Cayman Isl all years)
+    group_by(TaxonKey,Territory,RMean) %>%  # Solves for years with the same Max catch data (e.g. Cayman Isl all years)
     summarise(Year = min(Year)) %>%
     rename(Max_Peak = RMean,
            Y_Max_Peak = Year) %>% 
@@ -622,7 +622,7 @@ EstSppStatus <- function(Spp,Coord){
     filter(Year > Y_Max_Peak) %>% # Filter years after peak year
     group_by(TaxonKey,Territory) %>% 
     top_n(-1,RMean) %>% # find min value
-    group_by(TaxonKey,Y_Max_Peak,Territory,Max_Peak,RMean) %>%  # Solves for years with the same catch data (e.g. Cayman Isl 2013-2014)
+    group_by(TaxonKey,Y_Max_Peak,Territory,Max_Peak,RMean) %>%  # Solves for years with the same min after peak catch data (e.g. Cayman Isl 2013-2014)
     summarise(Year = min(Year)) %>% 
     rename(Post_Max_Min = RMean,
            Y_Post_Max_Min = Year) %>% 
