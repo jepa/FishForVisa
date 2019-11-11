@@ -554,9 +554,9 @@ This function estimates the exploitation status of a species based on catch data
 
 ```{r funEstSppStatus, eval = T, echo =F}
 
-# Spp <- 601417
-
-EstSppStatus <- function(Spp,Coord,Save_Path = "NA", Per_Taxa = F){
+Spp <- 601417
+Coord = CoorG
+EstSppStatus <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
   
   # Load species' data
   Data <- GetSppDist(Spp, Model = "SAU_C", Coord = Coord) %>% 
@@ -649,19 +649,22 @@ EstSppStatus <- function(Spp,Coord,Save_Path = "NA", Per_Taxa = F){
   
   if(Per_Taxa == T){
     
-    Save_path <- NA
+   # Select onlyZ 
+    Status_Data <- Status_Data %>%
+      ungroup() %>%
+      select(TaxonKey,Territory,Year, Status)
     
-    if(is.na(Save_path) == TRUE){
+    if(is.na(Save_Path) == TRUE){
       
       Save_Path <- Results_Path # standar result's path in my Drobo
     }
     
     # File name for each species
-    Name <- paste(Save_Path,"Stock_Status/",Spp,"_Status.csv",sep="")
+    Name <- paste(Save_Path,Spp,"_Status.csv",sep="")
     
     # Save file for each species
     write_csv(Status_Data,
-              Data_Name)
+              Name)
   }else{
     
     ### Determine the final status using the top category over the last 10 years
@@ -747,10 +750,12 @@ Species_List <- gsub("\\..*","",Step_One)
 # Needs to have trans species 
 Species_Status <- bind_rows(
     mclapply(
-      Species_List,
+   Species_List[1:2],
       FUN = EstSppStatus,
-      Coord = CoorG  # Gabriels coordinate system for read species dist
-    )
+      Coord = CoorG,  # Gabriels coordinate system for read species dist
+   Per_Taxa = T,
+   Save_Path = "Z:/Vicky/Stock_Status/"
+   )
   )
 
 # Save data
