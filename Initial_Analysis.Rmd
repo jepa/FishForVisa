@@ -554,31 +554,31 @@ This function estimates the exploitation status of a species based on catch data
 
 ```{r funEstSppStatus, eval = T, echo =F}
 
-Spp <- 601417
+# Spp <- 601417
 
-EstSppStatus <- function(Spp,Coord){
+EstSppStatus <- function(Spp,Coord,Save_Path = "NA", Per_Taxa = F){
   
   # Load species' data
   Data <- GetSppDist(Spp, Model = "SAU_C", Coord = Coord) %>% 
     set_names(c(seq(1950,2014,1),"INDEX","Species","Longitude","Latitude")) %>% 
     gather("Year","Value",`1950`:`2014`) %>%
     arrange(INDEX) %>% 
-    left_join(Index_Code,
+    left_join(Index_Code, # Match species catch with INDEX
               by = "INDEX") %>% 
     filter(!is.na(EEZID),
            Value > 0) %>% 
     group_by(TaxonKey=Species,Year,Territory) %>% # Estimates total catch per country
     summarise(Total_Catch = sum(Value,na.rm=T)) %>% 
-    group_by(TaxonKey,Territory,Year) %>% # Running mean as Pauly et la.
+    group_by(TaxonKey,Territory,Year) %>% # Running mean as Kleisner & Pauly 2012
     mutate(RMean = rollmean(x = Total_Catch, 3,
-                            align = "right",
+                            align = "left",
                             fill = Total_Catch)
     ) %>% 
     select(-Total_Catch) %>% 
     ungroup() %>% 
     mutate(Year = as.numeric(Year))
   
-   # Tresholds to evaluate stocks if these are not met, then soecies status = "No Status"
+  # Tresholds to evaluate stocks if these are not met, then soecies status = "No Status"
   Tresholds_Data <- Data %>% 
     arrange(Territory) %>% 
     group_by(TaxonKey,Territory, grp = cumsum(c(1, diff(Year) != 65))) %>% 
@@ -598,7 +598,6 @@ EstSppStatus <- function(Spp,Coord){
     filter(Met_Criteria != "Yes") %>% 
     select(TaxonKey,Territory) %>% 
     mutate(Status = "No Trend")
-  
   
   # Evaluate species that met the criteria
   
@@ -642,51 +641,74 @@ EstSppStatus <- function(Spp,Coord){
     )
     ) 
   
-  # Determine the final status using the top category over the last 10 years
-  Determine_Status_Data <- Status_Data %>% 
-    filter(Year > 2004) %>% # last 10 years of data (2005-2014)
-    group_by(TaxonKey,Territory,Status) %>%
-    summarise(n_Status= n()) %>%
-    group_by(TaxonKey,Territory) %>%
-    top_n(1,n_Status)
-  
-  # Fix cases where you have equal categories.
-  suppressMessages( # supresses "No duplicate combinations found of: Territ"
-    Duplicates <- Determine_Status_Data %>% 
-      ungroup() %>% 
-      janitor::get_dupes(Territory) %>% 
-      select(TaxonKey,Territory) %>% 
-      pull(Territory) %>% 
-      unique()
-  )
-  
-  # In this case we sue the last year's category
-  Duplicates_Status <- Status_Data %>% 
-  filter(Territory %in% Duplicates,
-         Year == 2014) %>%
-    ungroup() %>%
-    select(TaxonKey,Territory,Status)
-  
-  # Build Final Status database
-  Final_Status_Data <- Determine_Status_Data %>% 
-    filter(!Territory %in% Duplicates) %>% 
-    bind_rows(Duplicates_Status)
-  
+  #_______________#
   # Function Return 
+  #_______________#
   
-  # If both datasets have value RETURN BOTH
-  if(nrow(No_Status_Data) > 0 & nrow(Final_Status_Data) > 0){
+  ### Save the data for each species in all years if Per_taxa = T
+  
+  if(Per_Taxa == T){
     
-    Fun_Result <- bind_rows(No_Status_Data,
-                            Final_Status_Data)
-  }
-  
-  # If only No status data, then just return No Status Data
-  if(nrow(No_Status_Data) > 0 & nrow(Final_Status_Data) == 0){
-    return(No_Status_Data)
+    Save_path <- NA
+    
+    if(is.na(Save_path) == TRUE){
+      
+      Save_Path <- Results_Path # standar result's path in my Drobo
+    }
+    
+    # File name for each species
+    Name <- paste(Save_Path,"Stock_Status/",Spp,"_Status.csv",sep="")
+    
+    # Save file for each species
+    write_csv(Status_Data,
+              Data_Name)
   }else{
-    return(Final_Status_Data)
-  }
+    
+    ### Determine the final status using the top category over the last 10 years
+    
+    Determine_Status_Data <- Status_Data %>% 
+      filter(Year > 2004) %>% # last 10 years of data (2005-2014)
+      group_by(TaxonKey,Territory,Status) %>%
+      summarise(n_Status= n()) %>%
+      group_by(TaxonKey,Territory) %>%
+      top_n(1,n_Status)
+    
+    # Fix cases where you have equal categories.
+    suppressMessages( # supresses "No duplicate combinations found of: Territ"
+      Duplicates <- Determine_Status_Data %>% 
+        ungroup() %>% 
+        janitor::get_dupes(Territory) %>% 
+        select(TaxonKey,Territory) %>% 
+        pull(Territory) %>% 
+        unique()
+    )
+    
+    # In case we have a tide, we use the last year's category
+    Duplicates_Status <- Status_Data %>% 
+      filter(Territory %in% Duplicates,
+             Year == 2014) %>%
+      ungroup() %>%
+      select(TaxonKey,Territory,Status)
+    
+    # Build Final Status database
+    Final_Status_Data <- Determine_Status_Data %>% 
+      filter(!Territory %in% Duplicates) %>% 
+      bind_rows(Duplicates_Status)
+    
+    # If both datasets have value RETURN BOTH
+    if(nrow(No_Status_Data) > 0 & nrow(Final_Status_Data) > 0){
+      
+      Fun_Result <- bind_rows(No_Status_Data,
+                              Final_Status_Data)
+    }
+    
+    # If only No status data, then just return No Status Data
+    if(nrow(No_Status_Data) > 0 & nrow(Final_Status_Data) == 0){
+      return(No_Status_Data)
+    }else{
+      return(Final_Status_Data)
+    }
+  } # close if per taxa
 }
 
 # Testing
