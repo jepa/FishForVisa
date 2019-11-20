@@ -554,8 +554,9 @@ This function estimates the exploitation status of a species based on catch data
 
 ```{r funEstSppStatus, eval = T, echo =F}
 
-Spp <- 601417
-Coord = CoorG
+# Spp <- 601417
+# Coord = CoorG
+
 EstSppStatus <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
   
   # Load species' data
