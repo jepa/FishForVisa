@@ -30,26 +30,14 @@ packages <- c(
   "janitor", # for data cleaning
   "circlize", # For circular plot
   "ggimage", #for reading images to the circular plot
-  # "cowplot",
-  # "rgdal",
-  # "RColorBrewer",
-  # "knitr",
-  # "kableExtra",
   "ggrepel", # for nice plot labels
   "ggsflabel", # for nice sf_plots labels
-  # "gridExtra",
-  # "ggmap",
-  # "rgeos",
-  # "stringr",
-  # "stringer",
   "spdep", # for poly2nb
   "sf", #Spatial analysis 
   "sp", #Spatial analysis 
   "purrr",#Spatial analysis
   "rgdal", #Spatial analysis
   "tools", #Spatial analysis 
-  # "png", # For reading plots in chunk codes
-  # "grid" # For reading plots in chunk codes
   "parallel", # for parallelization
   "taxize", # For getting species names
   "rfishbase", # for species ecosystem affinity
@@ -105,6 +93,7 @@ ggtheme_plot <- function() {
 
 #### Set paths for computer ####
 
+Jursidiction <- "EEZ"
 
 # Set paths depending on machine Beast (jepa88), "carmelia" or Hall1000
 if(Sys.info()[7] == "jepa88"){
@@ -801,19 +790,20 @@ This is the main function of the project, the one that actually estimates if a s
 
 #### For testing 
 # Spp <- 600004  # Anchovie Equator, Chile and Peru
-# Spp <- 600107 # Tuna Many RFMOs
+Spp <- 600107 # Tuna Many RFMOs
+Spp <- 600004 # Argument 1 must have names (RFMO)
 # Spp <- 600464 # Discrete species 
 # Spp <- 600051 # One of Pierrs massive (wrong) discrete spp
 # x <- c(600464, # Discreat spp in one nation
       # 600059, # nowhere to be found spp
        # 601352, # Discrete spp in two nations
        # 600004) # transboundary spp
-# Model <- "All"
-# Coord <- CoorG
+Model <- "All"
+Coord <- CoorG
 # 
 # # For EEZ
-# Neighbours <- Neighbours_Data
-# Index_Code <- Index_Code
+Neighbours <- Neighbours_Data
+Index_Code <- Index_Code
  
 # __________________________________ #
 
@@ -891,7 +881,7 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
   n_Territory <- length(Discrete_Territory)
     
     # Reads dataset of Non transboundary species
-    Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep=""))
+    Non_Transboundary_Data <- fread(paste(Results_Path,"Trans_Results/Non_Transboundary_Data.csv",sep=""))
     
     # Set new data
     Current_Spp <- tibble(TaxonKey = as.integer(Spp),
@@ -902,7 +892,7 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
       bind_rows(Current_Spp)
     
     # Set a name for file and saves data
-    New_Non_Name <- paste(Results_Path,"Non_Transboundary_Data.csv",sep="")
+    New_Non_Name <- paste(Results_Path,"Trans_Results/Non_Transboundary_Data.csv",sep="")
     write.csv(New_Non, New_Non_Name, row.names = F)
     
   EstTransIndex=Current_Spp
@@ -962,11 +952,10 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
   if(nrow(Indexes) > 0 & Save == "Y"){
     
     File_Name <- paste(Spp,"_Transboundary.csv",sep = "")
-    Save_Path <- paste(Results_Path,File_Name,sep="")
+    Save_Path <- paste(Results_Path,"Trans_Results/",File_Name,sep="")
     
-    write.csv(Indexes,
-              Save_Path,
-              row.names = F)
+    write_csv(Indexes,
+              Save_Path)
     
   }
   
@@ -1098,7 +1087,7 @@ Step_One <- gsub(".*_","",list.files(paste(Data_Path,"/Distribution_Data/SAU_Dis
 Species_List <- gsub("\\..*","",Step_One)
 
 # Set Spceies list
-Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/exploited_species_list.csv",sep="")) %>%
+Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/Species/exploited_species_list.csv",sep="")) %>%
   filter(TaxonKey %in% Species_List)
 
 # Step to run function for species not computed
@@ -1159,7 +1148,12 @@ system.time(
   )
 )
 
-# Data on time for the Beast with 30 cores
+head(Dis_Trans)
+# Data for Hall with 8 cores on RFMOs
+# user    system   elapsed 
+# 11375.652  3726.515  8342.296 
+
+   # Data on time for the Beast with 30 cores
 # user   system  elapsed 
 # 8117.72  1991.91 10296.00 
 
@@ -1314,7 +1308,7 @@ In here we load and cleaned the multiple external datasets requred to produce th
 ```{r Load_Results_Data, eval = F}
 
 # Set Jurisdiction to EEZ or RFMO
-Jurisdiction <- "EEZ"
+Jurisdiction <- "RFMO"
 
 # Updates result's path for the jurisdiction
 Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
@@ -1417,7 +1411,7 @@ Results_Trans <- GetTransResults(Spp)
 Clean_Results_Trans <- CleanResults(Results_Trans)
 
 # Load and clean Discrete results
-Non_Transboundary_Data <- fread(paste(Results_Path,"/Non_Transboundary_Data.csv",sep="")) %>% 
+Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep="")) %>% 
   filter(!is.na(TaxonKey)) %>% 
   select(2:3)
 
@@ -1577,7 +1571,7 @@ Revenue_Country <- sau_eez_fes %>%
   filter(Total_USD > 0)
 ```
 
-### Map of Transboundary Species
+### EEZ Map of Transboundary Species
 
 Produce the map of transboundary species within each EEZ and the value in catch/revenue within each country
 
@@ -1633,6 +1627,69 @@ ggsave(Plot_Name,
        units = "in",
        path = Figures_Path
 )
+
+```
+
+### RFMO Map of Transboundary Species
+
+```{r Territory_Map, eval =F, echo =F}
+
+# Transboundary Species shapefile
+World_sf_si <- RFMOs_sf %>%
+  rename(Territory = Name) %>% 
+  st_transform(crs = 4326) %>% # 4326
+  st_simplify(preserveTopology = TRUE, dTolerance = 0.0001) %>%
+  left_join(Transboundary_Spp, by ="Territory") 
+
+# Total catch/Revenue shapefile
+World_sf_si_land <- World_land_sf %>%
+  st_transform(crs = 4326) %>% # 4326
+  st_simplify(preserveTopology = TRUE, dTolerance = 0.1)
+
+# Get the NA's to be grey
+# Grey_land <- World_sf_si_land %>% 
+#   filter(is.na(Bins))
+
+# Make map
+Plot <- ggplot() +
+  # geom_sf(data = World_sf_si_land) +
+  geom_sf(data = World_sf_si,
+          aes(fill =  reorder(Bins_Plot,n_trans_spp)),
+          colour = "grey20", 
+          size = 0.1
+          ) + # n_trans_spp or Bins
+  geom_sf_label(data = World_sf_si,
+                aes(label = Territory)) +
+  # geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80", colour = "grey50",size = 0.1) + # n_trans_spp or Bins
+  # scale_fill_gradientn(colours = pal,
+  #                      na.value = "white") +
+  # scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
+  # rev(wes_palette(n = 4, name = "Darjeeling2"))
+  # ),
+  # na.value = "white"
+  # ) +
+  scale_fill_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
+                                  "#00A08A",#"#00A08A", #green
+                                  "#F2AD00",#"#F2AD00", # Yellow
+                                  # "#F98400",#"#F98400", #Orange
+                                  "#FF0000"#,"#FF0000" #Red
+  ),
+  na.value = "grey"
+  ) +
+  # scale_fill_manual(values = rev(wes_palette(n = 5, name = "Darjeeling1")),
+  #                    na.value = "white"
+  # ) +
+  ggtheme_map()
+
+Plot_Name <- paste("RFMO_100_25_Bins.png", sep = "") 
+
+ggsave(Plot_Name,
+       plot = Plot,
+       width = 16,
+       height = 8,
+       units = "in"#,
+       # path = Figures_Path
+       )
 
 ```
 
@@ -1851,7 +1908,6 @@ data %>%
             inherit.aes = FALSE ) +
   coord_polar()
 
-
 # Save plot
 
 ggsave(
@@ -1930,7 +1986,7 @@ Species_Data$id <- seq(1, nrow(Species_Data))
 # Get the name and the y position of each label
 
 # Create labels for all but top 5
-label_data <- Countries_Data 
+label_data <- Species_Data 
 number_of_bar <- nrow(label_data)
 angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
 label_data$hjust <- ifelse( angle < -90, 1, 0)
@@ -1985,6 +2041,7 @@ median_data <- grid_data %>%
 
 Seq_axis_spp <- seq(20,100,20)
 Plot_Limit <- max(Species_Data$value,na.rm=T)
+Ticks_Color <- "black"
 
 ### ------------------- ###
 # Make the plot
@@ -2066,7 +2123,7 @@ ggplot(Species_Data,
                alpha=0.8, 
                size=0.6 , 
                inherit.aes = FALSE) +
-  ylim(-100,110) + # sets the circle the first value the central the last value how wide
+  ylim(-50,110) + # sets the circle the first value the central the last value how wide
   theme_minimal() +
   theme(
     legend.position = c(0.5,0.5),
@@ -2091,13 +2148,13 @@ ggplot(Species_Data,
 
 ggsave(
   plot = last_plot(),
-  width = 12,
-  height = 12,
+  width = 14,
+  height = 13,
   units = "in",
   filename = "Species_circular_over20.png",
-  path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
+  path = Figures_Path
 )
- 
+
 ```
 
 ### Species status (SAU methods)

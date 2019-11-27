@@ -379,7 +379,7 @@ write.csv(EEZ_Neighbour_List,
 # SAU RFMO shapefile
 
 # The path
-path_world <- paste(Data_Path,"Spatial_Data/RFMO/SAU_RFMO",sep="")
+path_world <- paste(Data_Path,"Spatial_Data/","RFMO","/SAU_RFMO",sep="")
 # #The File
 fnam_world <- "SAU_RFMO_Sept_2015.shx"
 # #Load it!
@@ -389,6 +389,18 @@ RFMOs_sf <- st_read(dsn = path_world,
   dplyr::rename(Name = RFMO_nm_s) %>% 
   st_set_crs(3832) %>% # Making sure is same proyection
   st_transform(3832) # to match shapefiles
+
+###
+head(RFMOs_sf)
+tail(RFMOs_sf)
+
+IPHC <- RFMOs_sf %>% 
+  filter(Name == "IPHC") %>% 
+  st_simplify(1)
+
+
+ggplot(IPHC) +
+  geom_sf()
 
 # Load coordinate system
 
@@ -975,7 +987,7 @@ mclapply <- switch( Sys.info()[['sysname']],
 ```{r EEZ_Control_Pannel, eval = T, echo = F}
 
 # Set Jurisdiction to EEZ or RFMO
-Jurisdiction <- "EEZ"
+Jurisdiction <- "RFMO"
 
 # Updates result's path for the jurisdiction
 Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
@@ -1026,6 +1038,7 @@ if(Jurisdiction == "EEZ"){
   
 }
 
+head(Neighbours_Data)
 # Creates dummy dataset for Non transboundary species
 write.csv(tibble(TaxonKey = "NA"), paste(Results_Path,"Trans_Results/Non_Transboundary_Data.csv",sep=""), row.names = F)
 
@@ -1051,7 +1064,7 @@ system.time(
       Coord = CoorG,  # Gabriels coordinate system for read species dist
       Index_Code = Index_Code, 
       Save = "Y",  # For saving
-      Catch = "Y",
+      Catch = "N",
       Jurisdiction_Type = Jurisdiction # For saving in proper path
     )
   )
