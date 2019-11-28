@@ -28,18 +28,18 @@ packages <- c(
   "wesanderson",
   "tidyverse", # for all data wrangling and ggplot
   "janitor", # for data cleaning
-  "circlize", # For circular plot
-  "ggimage", #for reading images to the circular plot
-  "ggrepel", # for nice plot labels
-  "ggsflabel", # for nice sf_plots labels
+  # "circlize", # For circular plot
+  # "ggimage", #for reading images to the circular plot
+  # "ggrepel", # for nice plot labels
+  # "ggsflabel", # for nice sf_plots labels
   "spdep", # for poly2nb
   "sf", #Spatial analysis 
   "sp", #Spatial analysis 
-  "purrr",#Spatial analysis
+  # "purrr",#Spatial analysis
   "rgdal", #Spatial analysis
   "tools", #Spatial analysis 
   "parallel", # for parallelization
-  "taxize", # For getting species names
+  # "taxize", # For getting species names
   "rfishbase", # for species ecosystem affinity
   "zoo" #for runing mean
 )
