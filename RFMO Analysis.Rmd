@@ -111,7 +111,7 @@ if(Sys.info()[7] == "jepa88"){
   Data_Path <- "Z:/JULIANO_NEYMAR/FishForVisa/"
   }
 if(Sys.info()[7] == "carmelia"){
-  Data_Path <- "~/GitHub/FishForVisa/Temporal_Data/"
+  Data_Path <- paste(here::here(),"/Temporal_Data", sep ="")
 }
 if(Sys.info()[7] == "hall1000"){
   Data_Path <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/"
@@ -379,7 +379,7 @@ write.csv(EEZ_Neighbour_List,
 # SAU RFMO shapefile
 
 # The path
-path_world <- paste(Data_Path,"Spatial_Data/","RFMO","/SAU_RFMO",sep="")
+path_world <- paste(Data_Path,"/Spatial_Data/","RFMO","/SAU_RFMO",sep="")
 # #The File
 fnam_world <- "SAU_RFMO_Sept_2015.shx"
 # #Load it!
@@ -396,11 +396,22 @@ tail(RFMOs_sf)
 
 IPHC <- RFMOs_sf %>% 
   filter(Name == "IPHC") %>% 
-  st_simplify(1)
+  st_simplify(preserveTopology = TRUE, dTolerance = 100)
 
 
 ggplot(IPHC) +
+  geom_sf() +
+  facet_wrap(~OBJECTID)
+
+head(IPHC)
+
+Test <- RFMOs_sf %>% 
+  group_by(OBJECTID, Name) %>% 
+  st_combine()
+
+ggplot(Test) +
   geom_sf()
+
 
 # Load coordinate system
 
