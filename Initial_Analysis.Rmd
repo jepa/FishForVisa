@@ -1202,19 +1202,19 @@ CleanResults <- function(Data){
   Auto_Remove_Territories <- Data %>% 
     filter(!is.na(Territory),
            !is.na(Neighbour)) %>% 
-    rename(FishingRegion=Territory) %>% 
+    rename(eez_name=Territory) %>% 
     left_join(Clean_sau_eez_fes,
-              by = "FishingRegion") %>% 
+              by = "eez_name") %>% 
     select(TaxonKey,
-           Territory= FishingRegion,
-           FishingRegion=Neighbour, 
+           Territory= eez_name,
+           eez_name=Neighbour, 
            Model_Index,
            Area_Index,
            CT_fishing_entity= fishing_entity) %>% 
     left_join(Clean_sau_eez_fes,
-              by = "FishingRegion") %>% 
+              by = "eez_name") %>% 
     select(1,2, 
-           Neighbour = FishingRegion,
+           Neighbour = eez_name,
            Model_Index:CT_fishing_entity,
            NT_fishing_entity= fishing_entity,
            everything()) %>% 
@@ -1308,51 +1308,57 @@ In here we load and cleaned the multiple external datasets requred to produce th
 ```{r Load_Results_Data, eval = F}
 
 # Set Jurisdiction to EEZ or RFMO
-Jurisdiction <- "RFMO"
+Jurisdiction <- "EEZ"
 
 # Updates result's path for the jurisdiction
 Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
 
 # Species list to get species names
-Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/Species/exploited_species_list.csv",sep=""))
-Spp_Clasification <- fread(paste(Data_Path,"Distribution_Data/Species/SppTaxonName.csv",sep=""))
+Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/Species/exploited_species_list.csv",sep="")) %>% 
+  clean_names()
+
+Spp_Clasification <- fread(paste(Data_Path,"Distribution_Data/Species/SppTaxonName.csv",sep="")) %>% 
+  clean_names()
 
 
 # Spatial Data needed to remove duplicates
-sau_eez_fes <- fread(paste(Data_Path,"Spatial_Data/sau_eez_fes.csv",sep=""))
+sau_eez_fes <- fread(paste(Data_Path,"Spatial_Data/sau_eez_fes.csv",sep="")) %>% 
+  clean_names()
 
 Clean_sau_eez_fes <- sau_eez_fes %>% 
-  gather("Type","FishingRegion",2,4) %>% 
+  gather("Type","fishing_region",2,4) %>% 
   left_join(sau_eez_fes,
             by = ("fishing_entity_id")
   ) %>% 
-  group_by(FishingRegion,fishing_entity) %>% 
+  group_by(eez_name,fishing_entity) %>% 
   summarise(n())
 
 # UN Regions dataset
 UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), header = TRUE) %>% 
-  group_by(Territory = Country.or.Area,
-           georegion = Region.Name) %>% 
+  clean_names() %>% 
+  group_by(fishing_entity = country_or_area,
+           georegion = region_name,
+           sub_region = sub_region_name) %>% 
   summarise(n=n()) %>% #merge china's 3 rows
   select(-n) %>% 
-  filter(Territory != "") %>%  # there are three rows with "developing" status as in, the code
+  filter(fishing_entity != "") %>%  # there are three rows with "developing" status as in, the code
   ungroup() %>% 
   # Change names to match SAU data and for shorter versions
   mutate(
-    Territory = gsub("\\s*\\([^\\)]+\\)","",Territory),
-    Territory = gsub("United Kingdom of Great Britain and Northern Ireland","United Kingdom",Territory),
-    Territory = gsub( "United States of America", "USA",Territory),
-    Territory = gsub("Democratic People's Republic of Korea", "Korea (North)",Territory),
-    Territory = gsub("Republic of Korea", "Korea (South)",Territory),
-    Territory = gsub("Iran (Islamic Republic of)", "Iran",Territory),
-    Territory = gsub("Democratic Republic of the Congo", "Congo (ex-Zaire)",Territory),
-    # Territory = gsub("Congo", "Congo, R. of",Territory),
-    Territory = gsub("United Republic of Tanzania", "Tanzania",Territory),
-    Territory = gsub("Cabo Verde", "Cape Verde",Territory),
-    Territory = gsub("Timor-Leste", "Timor Leste",Territory),
-    Territory = gsub(" and ", " & ",Territory),
-    # Territory = gsub("Puerto Rico (USA)", "Puerto Rico",Territory),
-    Territory = gsub("Taiwan", "Taiwan (China)",Territory)
+    fishing_entity = gsub("\\s*\\([^\\)]+\\)","",fishing_entity),
+    fishing_entity = gsub("United Kingdom of Great Britain and Northern Ireland","United Kingdom",fishing_entity),
+    fishing_entity = gsub( "United States of America", "USA",fishing_entity),
+    fishing_entity = gsub("Democratic People's Republic of Korea", "Korea (North)",fishing_entity),
+    fishing_entity = gsub("Republic of Korea", "Korea (South)",fishing_entity),
+    fishing_entity = gsub("Iran (Islamic Republic of)", "Iran",fishing_entity),
+    fishing_entity = gsub("Democratic Republic of the Congo", "Congo (ex-Zaire)",fishing_entity),
+    # fishing_entity = gsub("Congo", "Congo, R. of",fishing_entity),
+    fishing_entity = gsub("United Republic of Tanzania", "Tanzania",fishing_entity),
+    fishing_entity = gsub("Cabo Verde", "Cape Verde",fishing_entity),
+    fishing_entity = gsub("Timor-Leste", "Timor Leste",fishing_entity),
+    fishing_entity = gsub(" and ", " & ",fishing_entity),
+    # fishing_entity = gsub("Puerto Rico (USA)", "Puerto Rico",fishing_entity),
+    fishing_entity = gsub("Taiwan", "Taiwan (China)",fishing_entity)
   )
 
 # Manually change congo
@@ -1367,7 +1373,7 @@ fnam_world_land <- "ne_50m_admin_0_countries.shp"
 # Load it!
 World_land_sf <- st_read(dsn = path_world_land,
                          layer =file_path_sans_ext(fnam_world_land)) %>% 
-  rename(Territory = NAME) 
+  rename(fishing_entity = NAME) 
 
 # head(World_land_sf)
 
@@ -1382,23 +1388,26 @@ fnam_world <- "SAUEEZ_July2015.shp"
 # Load it!
 World_sf <- st_read(dsn = path_world,
                     layer =file_path_sans_ext(fnam_world)) %>% 
-  rename(Territory = Name)
+  rename(eez_name = Name)
 
 # ---------------------------- #
 # Transboundary Results ####
 # ---------------------------- #
 
 # Read Sau Catch Data
-SAU_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv", sep ="")) %>% 
-  filter(!is.na(Territory))
+# SAU_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv", sep ="")) %>% 
+  # filter(!is.na(Territory))
 
 # Read Sau Value Data (Thank you Tim!)
 SAU_Revenue_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>% 
-  group_by(fishing_entity_id,TaxonKey=taxon_key) %>% 
-  summarise(Mean_Value = mean(value,na.rm=T))
+  clean_names() %>% 
+  group_by(fishing_entity_id,taxon_key) %>% 
+  summarise(mean_value = mean(value,na.rm=T))
+  
 
 # Read Species Status Data (Sub-routine Species Status)
-Status_Data <- fread(paste(Results_Path,"Species_Status.csv", sep =""))
+Status_Data <- fread(paste(Results_Path,"Species_Status.csv", sep ="")) %>% 
+  clean_names()
 # Status_Data <- Species_Status
 
 # List of species
@@ -1408,12 +1417,16 @@ Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
 Results_Trans <- GetTransResults(Spp)
 
 # Clean results susing function CleanResultsfun
-Clean_Results_Trans <- CleanResults(Results_Trans)
+Clean_Results_Trans <- CleanResults(Results_Trans) %>% 
+  clean_names() %>% 
+  rename(eez_name = territory,
+         fishing_entity = ct_fishing_entity,
+         eez_neighbour = neighbour)
 
 # Load and clean Discrete results
-Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep="")) %>% 
-  filter(!is.na(TaxonKey)) %>% 
-  select(2:3)
+# Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep="")) %>% 
+#   filter(!is.na(TaxonKey)) %>% 
+#   select(2:3)
 
 ```
 
@@ -1439,43 +1452,43 @@ MI <- 100 # Model Index
 
 Tresholded_T_Data <- Clean_Results_Trans %>% 
   filter(
-    Area_Index >= Min_AI,
-    Area_Index <= Max_AI,
-    Model_Index >= MI
+    area_index >= Min_AI,
+    area_index <= Max_AI,
+    model_index >= MI
   )
 
 ### Non-transboundary Tresh 1
-Clean_Non_Transboundary_Data <- Non_Transboundary_Data %>% 
-  rename(eez_name = Territory) %>% 
-  left_join(sau_eez_fes) %>% 
-  group_by(Territory = fishing_entity) %>% 
-  summarise(value = length(unique(TaxonKey)),
-            Taxons = paste(unique(TaxonKey),collapse = ";"))
+# Clean_Non_Transboundary_Data <- Non_Transboundary_Data %>% 
+#   rename(eez_name = Territory) %>% 
+#   left_join(sau_eez_fes) %>% 
+#   group_by(Territory = fishing_entity) %>% 
+#   summarise(value = length(unique(TaxonKey)),
+#             Taxons = paste(unique(TaxonKey),collapse = ";"))
 
 ## Determine as Trans. those species that are both trans and discrete for a nation (Tresh 2 and 3)
-Tresholded_D_Data <- Clean_Results_Trans %>% 
-  filter(Model_Index == MI) %>% 
-  mutate(Species_Type = ifelse(Area_Index > Max_AI,"Discrete",
-                               ifelse(Area_Index < Min_AI,NA,
-                                      "Transboundary"))
-  ) %>% 
-  filter(!is.na(Species_Type)) %>% 
-  group_by(CT_fishing_entity,Species_Type,TaxonKey) %>%
-  summarise(n=n()) %>%
-  spread(Species_Type,n) %>% 
-  mutate(Discrete = ifelse(!is.na(Discrete) & !is.na(Transboundary),NA,Discrete)) %>% 
-  gather("Species_Type","value", Discrete:Transboundary) %>% 
-  filter(!is.na(value),
-         Species_Type == "Discrete") %>% 
-  group_by(Territory = CT_fishing_entity) %>% 
-  summarise(value = length(unique(TaxonKey)),
-            Taxons = paste(unique(TaxonKey),collapse = ";")) %>% 
-  #  Include discrete species of Trsh. 1
-  bind_rows(Clean_Non_Transboundary_Data) %>%
-  # Data cleaning (group by territory and include georegions for plot)
-  rename(FishingRegion=Territory) %>% 
-  left_join(Clean_sau_eez_fes) %>% 
-  group_by(Territory = fishing_entity)
+# Tresholded_D_Data <- Clean_Results_Trans %>% 
+#   filter(Model_Index == MI) %>% 
+#   mutate(Species_Type = ifelse(Area_Index > Max_AI,"Discrete",
+#                                ifelse(Area_Index < Min_AI,NA,
+#                                       "Transboundary"))
+#   ) %>% 
+#   filter(!is.na(Species_Type)) %>% 
+#   group_by(CT_fishing_entity,Species_Type,TaxonKey) %>%
+#   summarise(n=n()) %>%
+#   spread(Species_Type,n) %>% 
+#   mutate(Discrete = ifelse(!is.na(Discrete) & !is.na(Transboundary),NA,Discrete)) %>% 
+#   gather("Species_Type","value", Discrete:Transboundary) %>% 
+#   filter(!is.na(value),
+#          Species_Type == "Discrete") %>% 
+#   group_by(Territory = CT_fishing_entity) %>% 
+#   summarise(value = length(unique(TaxonKey)),
+#             Taxons = paste(unique(TaxonKey),collapse = ";")) %>% 
+#   #  Include discrete species of Trsh. 1
+#   bind_rows(Clean_Non_Transboundary_Data) %>%
+#   # Data cleaning (group by territory and include georegions for plot)
+#   rename(FishingRegion=Territory) %>% 
+#   left_join(Clean_sau_eez_fes) %>% 
+#   group_by(Territory = fishing_entity)
   
 ```
 
@@ -1489,13 +1502,13 @@ Tresholded_D_Data <- Clean_Results_Trans %>%
 
 Total_trans <- Clean_Results_Trans %>% 
   filter(
-    Area_Index >= Min_AI,
-    Area_Index <= Max_AI,
-    Model_Index >= MI
+    area_index >= Min_AI,
+    area_index <= Max_AI,
+    model_index >= MI
   ) 
 
 Total_trans_n <- Total_trans %>% 
-  pull(TaxonKey) %>% 
+  pull(taxon_key) %>% 
   unique() %>% 
   length()
 
@@ -1504,15 +1517,14 @@ Total_trans_n <- Total_trans %>%
 # -------------------------- #
 
 Total_Trans_Rev <- SAU_Revenue_Data %>% 
-  filter(TaxonKey %in% Total_trans$TaxonKey) %>% 
+  filter(taxon_key %in% Total_trans$taxon_key) %>% 
   group_by() %>% 
-  summarise(Total =sum(Mean_Value)/1000000)# total revenue within EEZs of the world from sau.org
-
+  summarise(Total =sum(mean_value)/1000000)# total revenue within EEZs of the world from sau.org
 
 Per_Trans_Rev <- SAU_Revenue_Data %>% 
-  filter(TaxonKey %in% Total_trans$TaxonKey) %>% 
+  filter(taxon_key %in% Total_trans$taxon_key) %>% 
   group_by() %>% 
-  summarise(Total =sum(Mean_Value)/1000000) %>%  # million
+  summarise(Total =sum(mean_value)/1000000) %>%  # million
   pull()/160000*100 
 
 ```
@@ -1526,11 +1538,11 @@ Determine the number of species per territory
 
 # Data per Territory
 Transboundary_Spp <- Tresholded_T_Data %>% 
-  group_by(Territory) %>% 
+  group_by(eez_name) %>% 
   summarise(
-    n_trans_spp = length(unique(TaxonKey)),
-    n_Neighbours = length(unique(Neighbour)),
-    Trans_Rate = n_trans_spp/n_Neighbours
+    n_trans_spp = length(unique(taxon_key)),
+    n_neighbours = length(unique(eez_neighbour)),
+    trans_Rrate = n_trans_spp/n_neighbours
   ) %>% 
   mutate(
     Bins = cut(n_trans_spp,breaks = 4),
@@ -1552,23 +1564,68 @@ Transboundary_Spp <- Tresholded_T_Data %>%
 
 # Get Catch and Revenue data for mapping 
 
-Tresholded_T_Data_x <- Tresholded_T_Data %>% 
-  select(TaxonKey, Territory=CT_fishing_entity)
-
 Revenue_Country <- sau_eez_fes %>% 
-  group_by(fishing_entity_id, Territory = fishing_entity) %>% 
+  group_by(fishing_entity_id, fishing_entity) %>% 
   summarise(n=n()) %>% 
   select(-n) %>% 
-  left_join(Tresholded_T_Data_x) %>% 
-  left_join(Sau_Revenue_Data) %>% 
-  group_by(Territory) %>% 
-  summarise(Total_USD = (sum(Mean_Value,na.rm=T))/1000000) %>% # Million of USD
-  mutate(Territory = ifelse(Territory == "USA","United States of America",Territory),
+  full_join(Tresholded_T_Data,
+            by = "fishing_entity") %>% 
+  group_by(fishing_entity_id,
+           fishing_entity,
+           taxon_key) %>% 
+  summarise(n()) %>% 
+  left_join(SAU_Revenue_Data,
+            by = c("fishing_entity_id","taxon_key")) %>% 
+  group_by(fishing_entity) %>% 
+  summarise(Total_USD = (sum(mean_value,na.rm=T))/1000000) %>% # Million of USD
+  mutate(fishing_entity = ifelse(fishing_entity == "USA","United States of America",fishing_entity),
          Bins = cut(Total_USD,breaks = 4),
          Bins_Plot = cut(Total_USD,breaks = 4,
                          labels = c('super low', 'low','high','super high'))
   ) %>% 
   filter(Total_USD > 0)
+
+
+```
+
+```{r Data_per_Continent, eval = F, echo = F}
+
+Continent_Data <- Revenue_Country %>% 
+  left_join(UN_Regions,
+            by = "fishing_entity") %>% 
+  mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
+  group_by(sub_region) %>% 
+  summarise_if(is.numeric,sum,na.rm=T)
+
+
+Continent_Data_Trans <- Tresholded_T_Data %>% 
+  left_join(UN_Regions,
+            by = "fishing_entity") %>% 
+  mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
+  group_by(sub_region) %>% 
+  summarise(
+    n_trans_spp = length(unique(taxon_key))
+  ) %>% 
+  left_join(Continent_Data) %>% 
+  mutate(id = seq(1,nrow(Continent_Data_Trans)))
+
+### Prepare data for plot
+
+number_of_bar <- nrow(Continent_Data_Trans)
+
+label_data <- Continent_Data_Trans %>% 
+  arrange(Total_USD) %>% # soo it looks like a nice snail :)
+  mutate(
+    id = seq(1,nrow(Continent_Data_Trans)),
+    angle = 90 -360 * (id-0.5)/number_of_bar,
+    hjust = ifelse(angle < -90,1,0),
+    angleb = ifelse(angle < -90, (angle +180), angle)
+  ) %>% 
+  mutate(
+    sub_region = ifelse(str_detect(sub_region,"Latin"),"Latin America &\nthe Caribbean",paste(sub_region))
+  )
+
+
 ```
 
 ### EEZ Map of Transboundary Species
@@ -1581,20 +1638,20 @@ Produce the map of transboundary species within each EEZ and the value in catch/
 World_sf_si <- World_sf %>%
   st_transform(crs = 4326) %>% # 4326
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
-  left_join(Transboundary_Spp, by ="Territory") 
+  left_join(Transboundary_Spp, by ="eez_name") 
 
 # Total catch/Revenue shapefile
 World_sf_si_land <- World_land_sf %>%
   st_transform(crs = 4326) %>% # 4326
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>% 
-  left_join(Revenue_Country, by ="Territory")
+  left_join(Revenue_Country, by ="fishing_entity")
 
 # Get the NA's to be grey
 Grey_land <- World_sf_si_land %>% 
   filter(is.na(Bins))
 
 # Make map
-Plot <- ggplot() +
+Map <- ggplot() +
   geom_sf(data = World_sf_si_land,aes(fill = reorder(Bins_Plot,Total_USD)), colour = "grey80",size = 0.1) +
   geom_sf(data = World_sf_si,aes(fill =  reorder(Bins_Plot,n_trans_spp)),colour = "grey20", size = 0.1) + # n_trans_spp or Bins
   geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80", colour = "grey50",size = 0.1) + # n_trans_spp or Bins
@@ -1617,6 +1674,117 @@ Plot <- ggplot() +
   #                    na.value = "white"
   # ) +
   ggtheme_map()
+
+####___________________________###
+### Now create the Two circluar bar plots
+####___________________________###
+
+ 
+# Revenue Plot
+# Set plot limits
+min_lim <- min(Continent_Data_Trans$Total_USD)
+max_lim <-max(Continent_Data_Trans$Total_USD)
+
+# Set color pal
+pal <- wes_palette("Zissou1",100,type = "continuous")
+  
+Rev_Plot <- ggplot(data = Continent_Data_Trans, 
+       aes(x=reorder(id,Total_USD),
+           y=Total_USD, 
+           fill=Total_USD
+           )
+       ) +    
+  ylim(-1500, max_lim+10)+
+  geom_bar(stat="identity") +
+  theme_minimal() +
+  theme(
+    # legend.position = c(0.80,0.50),
+    legend.position = "",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(0,-10,-5,-10,"cm")
+  )  +
+  # Base line
+  geom_segment(aes(x = 1, y = 1, xend = 17, yend = 17),  
+               colour = "black", size=0.1, inherit.aes = FALSE) +
+  coord_polar(start = 0) + 
+  geom_text(data=label_data, 
+            aes(x=id,
+                y=Total_USD+10,
+                # label=round(Total_USD_Billion),
+                label=sub_region,
+                hjust=hjust), 
+            color="black",
+            fontface="bold",
+            size=2, 
+            angle= label_data$angleb, 
+            inherit.aes = FALSE) +
+  scale_fill_gradientn("Billion USD",
+                       colours = pal)
+
+### Catch plot
+
+Catch_Plot <- ggplot(data = Continent_Data_Trans, 
+       aes(x=reorder(id,Total_USD),
+           y=Total_USD, 
+           fill=Total_USD
+           )
+       ) +    
+  ylim(-1500, max_lim+10)+
+  geom_bar(stat="identity") +
+  theme_minimal() +
+  theme(
+    # legend.position = c(0.80,0.50),
+    legend.position = "",
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(0,-10,-5,-10,"cm")
+  )  +
+  # Base line
+  geom_segment(aes(x = 1, y = 1, xend = 17, yend = 17),  
+               colour = "black", size=0.1, inherit.aes = FALSE) +
+  coord_polar(start = 0) + 
+  geom_text(data=label_data, 
+            aes(x=id,
+                y=Total_USD+10,
+                # label=round(Total_USD_Billion),
+                label=sub_region,
+                hjust=hjust), 
+            color="black",
+            fontface="bold",
+            size=2, 
+            angle= label_data$angleb, 
+            inherit.aes = FALSE) +
+  scale_fill_gradientn("Tons",
+                       colours = pal)
+
+
+## Joining everything in one ploit
+
+# library(ggpubr)
+# library(cowplot)
+
+plot <- ggdraw() +
+  # map
+  draw_plot(Map, x = 0, y = 0.4, width = 1, height = 0.6) +
+  # Revenue circular
+  draw_plot(Rev_Plot, x = 0.05, y = 0.1, width = 0.5, height = 0.4) +
+  # Catch circular
+  draw_plot(Catch_Plot, x = 0.5, y = 0.1, width = 0.5, height = 0.4) +
+  
+  # Labeks
+  draw_plot_label(label = c("A", "B", "C"), 
+                  size = 30,
+                  x = c(0.1, 0.1, 0.56), 
+                  y = c(1, 0.45, 0.45)
+  )
+
+save_plot("Plot2.png",
+          plot,
+          base_height = 8,
+          base_width = 13)
 
 Plot_Name <- paste("New_100_25_Bins_Value.png", sep = "") 
 
