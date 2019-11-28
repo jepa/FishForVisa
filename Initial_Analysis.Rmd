@@ -1457,39 +1457,6 @@ Tresholded_T_Data <- Clean_Results_Trans %>%
     model_index >= MI
   )
 
-### Non-transboundary Tresh 1
-# Clean_Non_Transboundary_Data <- Non_Transboundary_Data %>% 
-#   rename(eez_name = Territory) %>% 
-#   left_join(sau_eez_fes) %>% 
-#   group_by(Territory = fishing_entity) %>% 
-#   summarise(value = length(unique(TaxonKey)),
-#             Taxons = paste(unique(TaxonKey),collapse = ";"))
-
-## Determine as Trans. those species that are both trans and discrete for a nation (Tresh 2 and 3)
-# Tresholded_D_Data <- Clean_Results_Trans %>% 
-#   filter(Model_Index == MI) %>% 
-#   mutate(Species_Type = ifelse(Area_Index > Max_AI,"Discrete",
-#                                ifelse(Area_Index < Min_AI,NA,
-#                                       "Transboundary"))
-#   ) %>% 
-#   filter(!is.na(Species_Type)) %>% 
-#   group_by(CT_fishing_entity,Species_Type,TaxonKey) %>%
-#   summarise(n=n()) %>%
-#   spread(Species_Type,n) %>% 
-#   mutate(Discrete = ifelse(!is.na(Discrete) & !is.na(Transboundary),NA,Discrete)) %>% 
-#   gather("Species_Type","value", Discrete:Transboundary) %>% 
-#   filter(!is.na(value),
-#          Species_Type == "Discrete") %>% 
-#   group_by(Territory = CT_fishing_entity) %>% 
-#   summarise(value = length(unique(TaxonKey)),
-#             Taxons = paste(unique(TaxonKey),collapse = ";")) %>% 
-#   #  Include discrete species of Trsh. 1
-#   bind_rows(Clean_Non_Transboundary_Data) %>%
-#   # Data cleaning (group by territory and include georegions for plot)
-#   rename(FishingRegion=Territory) %>% 
-#   left_join(Clean_sau_eez_fes) %>% 
-#   group_by(Territory = fishing_entity)
-  
 ```
 
 ## Overall results
@@ -1566,24 +1533,25 @@ Transboundary_Spp <- Tresholded_T_Data %>%
 
 Revenue_Country <- sau_eez_fes %>% 
   group_by(fishing_entity_id, fishing_entity) %>% 
-  summarise(n=n()) %>% 
+  summarise(n=n()) %>% # Get all of the fishing entity and id
   select(-n) %>% 
   full_join(Tresholded_T_Data,
             by = "fishing_entity") %>% 
   group_by(fishing_entity_id,
            fishing_entity,
            taxon_key) %>% 
-  summarise(n()) %>% 
+  summarise(n()) %>% # get each taxa per nation
   left_join(SAU_Revenue_Data,
             by = c("fishing_entity_id","taxon_key")) %>% 
-  group_by(fishing_entity) %>% 
+  group_by(fishing_entity) %>% # Estimate the amount of dollars of each nation 
   summarise(Total_USD = (sum(mean_value,na.rm=T))/1000000) %>% # Million of USD
-  mutate(fishing_entity = ifelse(fishing_entity == "USA","United States of America",fishing_entity),
+  mutate(fishing_entity = ifelse(fishing_entity == "USA","United States of America",
+                                 ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)),
          Bins = cut(Total_USD,breaks = 4),
          Bins_Plot = cut(Total_USD,breaks = 4,
                          labels = c('super low', 'low','high','super high'))
   ) %>% 
-  filter(Total_USD > 0)
+  filter(Total_USD > 0) 
 
 
 ```
@@ -1781,12 +1749,14 @@ plot <- ggdraw() +
                   y = c(1, 0.45, 0.45)
   )
 
-save_plot("Plot2.png",
+Plot_Name <- paste("100_25_Bins_Value_Region.png", sep = "") 
+
+save_plot(Plot_Name,
           plot,
           base_height = 8,
           base_width = 13)
 
-Plot_Name <- paste("New_100_25_Bins_Value.png", sep = "") 
+
 
 ggsave(Plot_Name,
        plot = Plot,
@@ -3206,6 +3176,69 @@ USA_Collapsed <- Species_Status %>%
 # 
 
 ```
+
+### Fixing Russia Moneeeeey
+
+```{r russia}
+
+# Shapefile names
+Russia_Sf <- World_land_sf %>% 
+  filter(str_detect(fishing_entity,"Russia")) %>% 
+  pull(fishing_entity)
+
+"Russia"
+
+Russia_Trans <- Revenue_Country %>% 
+  filter(str_detect(fishing_entity,"Russia")) %>% 
+  pull(fishing_entity)
+
+"Russian Federation"
+### Laptev and Chukchi are the issue, No Alaska'?
+
+
+### Wake
+Wake_ssf <- World_sf %>% 
+  filter(str_detect(eez_name,"Wake")) %>% 
+  pull(eez_name)
+
+"Wake Isl. (USA)"
+
+Wake_Trans <- Transboundary_Spp %>% 
+  filter(str_detect(eez_name,"Wake")) %>% 
+  pull(eez_name)
+
+"NA"
+
+Wake_Tresh <- Tresholded_T_Data %>% 
+  filter(str_detect(eez_name,"Wake")) %>% 
+  pull(eez_name)
+  
+"NA"
+
+Wake_Raw <- Clean_Results_Trans %>% 
+  filter(str_detect(eez_name,"Wake"))
+
+#### Son todas under 25%.... Por eso
+
+
+#### Macquarie Island
+Macquarie_Raw <- Clean_Results_Trans %>% 
+  filter(str_detect(eez_name,"Macquarie"))
+
+# Under 25% Bye
+
+### Minomi 
+
+Neighbours_Data %>% 
+  filter(str_detect(Territory,"Japan")) %>% 
+  pull(Territory) %>% 
+  unique()
+
+# Not in our shaopefile
+
+
+```
+
 
 # Extra Analysis
 ## Extra Analysis; Functions
