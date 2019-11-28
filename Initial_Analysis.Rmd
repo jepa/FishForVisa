@@ -755,6 +755,79 @@ readr::write_csv(Species_Status,
 # head(Species_Status)
 ```
 
+## Create Transboundary Catch Database
+
+### Function `EstCatch`
+
+This function just creates a database of total catch per species within each EEZ
+
+```{r EstCatch, eval = F, echo = T}
+
+EstCatch <- function(Spp, Coord, Index_Code){
+  
+  SppDist <- GetSppDist(Spp,Model="All",Coord) %>% 
+    filter(
+      Model == "SAU_C",
+      Value > 0) %>% 
+    left_join(Index_Code,
+              by = "INDEX") %>% 
+    group_by(eez_name = Territory,
+             taxon_key = TaxonKey) %>% 
+    summarise(total_catch = sum(Value))
+  
+  return(SppDist)
+  
+}
+
+# EstCatch(Spp,Coord,Index_Code)
+
+```
+
+```{r control_panel, eval = F, echo = T}
+
+# Removes everything before the number
+Step_One <- gsub(".*_","",list.files(paste(Data_Path,"/Distribution_Data/SAU_data_per_species/",sep="")))
+
+# Species List
+Species_List <- gsub("\\..*","",Step_One)
+
+CoorG <- read.csv(paste(Data_Path,"Spatial_Data/coordinates_gab.csv",sep="")) %>%
+  mutate(INDEX = seq(1,259200,1))
+
+# SAU relations between INDEX and Country's EEZs
+EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
+EEZ_CellID <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/EEZ_CellID.xlsx",sep=""))
+colnames(EEZ_CellID) <- c("EEZID","INDEX")
+
+Index_Code <- EEZIDs_List %>% 
+  left_join(EEZ_CellID) %>% 
+  rename(Territory = Name)
+
+```
+
+```{r catch, eval = F, echo = T}
+# Notes, needs GetSppDist
+# Note, It averages the LAST 10 years oe ach gridcell and then adds them together
+
+system.time(
+  SAU_Catch_Data <- bind_rows(
+    mclapply(
+      Species_List,
+      FUN = EstCatch,
+      Coord = CoorG,  # Gabriels coordinate system for read species dist
+      Index_Code = Index_Code
+    )
+  )
+)
+
+# Save dataframe for future
+Save_Path <- paste(Data_Path,"Distribution_Data/sau_catch_country_taxon.csv",sep="")
+write_csv(SAU_Catch_Data,
+          Save_Path)
+
+
+```
+
 ## Estimate Transboundary Species
 
 This is the main step of the project. In this segment we estimate the number of transboundary species existing today in each of the worlds EEZs.
@@ -790,20 +863,20 @@ This is the main function of the project, the one that actually estimates if a s
 
 #### For testing 
 # Spp <- 600004  # Anchovie Equator, Chile and Peru
-Spp <- 600107 # Tuna Many RFMOs
-Spp <- 600004 # Argument 1 must have names (RFMO)
+# Spp <- 600107 # Tuna Many RFMOs
+# Spp <- 600004 # Argument 1 must have names (RFMO)
 # Spp <- 600464 # Discrete species 
 # Spp <- 600051 # One of Pierrs massive (wrong) discrete spp
 # x <- c(600464, # Discreat spp in one nation
       # 600059, # nowhere to be found spp
        # 601352, # Discrete spp in two nations
        # 600004) # transboundary spp
-Model <- "All"
-Coord <- CoorG
+# Model <- "All"
+# Coord <- CoorG
 # 
 # # For EEZ
-Neighbours <- Neighbours_Data
-Index_Code <- Index_Code
+# Neighbours <- Neighbours_Data
+# Index_Code <- Index_Code
  
 # __________________________________ #
 
@@ -1347,7 +1420,7 @@ UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), he
   mutate(
     fishing_entity = gsub("\\s*\\([^\\)]+\\)","",fishing_entity),
     fishing_entity = gsub("United Kingdom of Great Britain and Northern Ireland","United Kingdom",fishing_entity),
-    fishing_entity = gsub( "United States of America", "USA",fishing_entity),
+    # fishing_entity = gsub( "United States of America", "USA",fishing_entity),
     fishing_entity = gsub("Democratic People's Republic of Korea", "Korea (North)",fishing_entity),
     fishing_entity = gsub("Republic of Korea", "Korea (South)",fishing_entity),
     fishing_entity = gsub("Iran (Islamic Republic of)", "Iran",fishing_entity),
@@ -1358,7 +1431,8 @@ UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), he
     fishing_entity = gsub("Timor-Leste", "Timor Leste",fishing_entity),
     fishing_entity = gsub(" and ", " & ",fishing_entity),
     # fishing_entity = gsub("Puerto Rico (USA)", "Puerto Rico",fishing_entity),
-    fishing_entity = gsub("Taiwan", "Taiwan (China)",fishing_entity)
+    fishing_entity = gsub("Taiwan", "Taiwan (China)",fishing_entity),
+    fishing_entity = gsub("Russian Federation", "Russia",fishing_entity)
   )
 
 # Manually change congo
@@ -1590,7 +1664,10 @@ label_data <- Continent_Data_Trans %>%
     angleb = ifelse(angle < -90, (angle +180), angle)
   ) %>% 
   mutate(
-    sub_region = ifelse(str_detect(sub_region,"Latin"),"Latin America &\nthe Caribbean",paste(sub_region))
+    sub_region = ifelse(str_detect(sub_region,"Latin"),"Latin America &\nthe Caribbean",
+                        ifelse(sub_region =="Northern America","Northern\nAmerica",
+                        paste(sub_region))
+    )
   )
 
 
@@ -1738,25 +1815,23 @@ plot <- ggdraw() +
   # map
   draw_plot(Map, x = 0, y = 0.4, width = 1, height = 0.6) +
   # Revenue circular
-  draw_plot(Rev_Plot, x = 0.05, y = 0.1, width = 0.5, height = 0.4) +
+  draw_plot(Rev_Plot, x = 0.1, y = 0.1, width = 0.5, height = 0.4) +
   # Catch circular
-  draw_plot(Catch_Plot, x = 0.5, y = 0.1, width = 0.5, height = 0.4) +
+  draw_plot(Catch_Plot, x = 0.45, y = 0.1, width = 0.5, height = 0.4) +
   
   # Labeks
   draw_plot_label(label = c("A", "B", "C"), 
                   size = 30,
-                  x = c(0.1, 0.1, 0.56), 
+                  x = c(0.1, 0.1, 0.5), 
                   y = c(1, 0.45, 0.45)
   )
 
-Plot_Name <- paste("100_25_Bins_Value_Region.png", sep = "") 
+# Plot_Name <- paste("100_25_Bins_Value_Region.png", sep = "") 
 
-save_plot(Plot_Name,
+save_plot("Plot.png",
           plot,
           base_height = 8,
           base_width = 13)
-
-
 
 ggsave(Plot_Name,
        plot = Plot,
