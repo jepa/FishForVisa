@@ -63,7 +63,7 @@ ggtheme_map <- function(base_size = 9, Region = "NA") {
     axis.title       = element_blank(),
     legend.key       = element_rect(colour = NA, fill = NA, size = 4),
     legend.position = "bottom",
-    legend.key.width =unit(6,"line")
+    legend.key.width =unit(5,"line")
   )
 }
 
@@ -755,7 +755,7 @@ readr::write_csv(Species_Status,
 # head(Species_Status)
 ```
 
-## Create Transboundary Catch Database
+## Get Catch Data
 
 ### Function `EstCatch`
 
@@ -783,6 +783,8 @@ EstCatch <- function(Spp, Coord, Index_Code){
 
 ```
 
+### Sub routine for catch data
+
 ```{r control_panel, eval = F, echo = T}
 
 # Removes everything before the number
@@ -805,7 +807,7 @@ Index_Code <- EEZIDs_List %>%
 
 ```
 
-```{r catch, eval = F, echo = T}
+```{r subroutine_get_catch_data, eval = F, echo = T}
 # Notes, needs GetSppDist
 # Note, It averages the LAST 10 years oe ach gridcell and then adds them together
 
@@ -1393,7 +1395,6 @@ Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/Species/exploited_
 Spp_Clasification <- fread(paste(Data_Path,"Distribution_Data/Species/SppTaxonName.csv",sep="")) %>% 
   clean_names()
 
-
 # Spatial Data needed to remove duplicates
 sau_eez_fes <- fread(paste(Data_Path,"Spatial_Data/sau_eez_fes.csv",sep="")) %>% 
   clean_names()
@@ -1469,8 +1470,7 @@ World_sf <- st_read(dsn = path_world,
 # ---------------------------- #
 
 # Read Sau Catch Data
-# SAU_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/Sau_Catch_Data.csv", sep ="")) %>% 
-  # filter(!is.na(Territory))
+SAU_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_country_taxon.csv", sep =""))
 
 # Read Sau Value Data (Thank you Tim!)
 SAU_Revenue_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>% 
@@ -1568,6 +1568,20 @@ Per_Trans_Rev <- SAU_Revenue_Data %>%
   summarise(Total =sum(mean_value)/1000000) %>%  # million
   pull()/160000*100 
 
+# -------------------------- #
+# Total Catch
+# -------------------------- #
+
+Total_Trans_Catch <- SAU_Catch_Data %>% 
+  filter(taxon_key %in% Total_trans$taxon_key) %>% 
+  group_by() %>% 
+  summarise(Total =sum(total_catch)/1000000) %>%  # total revenue within EEZs of the world from sau.org
+  pull()
+
+Global_Catch <- 108 # million (estimated from sau.com)
+
+Per_Catch <- (Total_Trans_Catch/Global_Catch)*100
+
 ```
 
 
@@ -1592,16 +1606,22 @@ Transboundary_Spp <- Tresholded_T_Data %>%
   )
 
 
-# Get Catch data for mapping (Currently not used)
+# Get Catch data for mapping (Supplemental materials)
 
-# Catch_Country <- Sau_Catch_Data %>% 
-#   group_by(FishingRegion=Territory) %>% 
-#   summarise(Total_Catch = round(sum(Mean_Catch,na.rm=T),2)) %>% 
-#   filter(!(is.na(FishingRegion))) %>% 
-#   left_join(Clean_sau_eez_fes) %>% 
-#   group_by(Territory = fishing_entity) %>% 
-#   summarise(Total_Catch = sum(Total_Catch,na.rm=T)) %>% 
-#   mutate(Territory = gsub("USA","United States of America",Territory))
+Catch_Country <- SAU_Catch_Data_b %>%
+  group_by(eez_name) %>%
+  summarise(eez_catch = round(sum(total_catch,na.rm=T),2)) %>%
+  left_join(Clean_sau_eez_fes,
+            by = "eez_name") %>%
+  group_by(fishing_entity) %>%
+  summarise(fishing_entity_catch = sum(eez_catch,na.rm=T)/1000000) %>% # Million
+  mutate(fishing_entity = ifelse(fishing_entity == "USA","United States of America",
+                                 ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)),
+         Bins = cut(fishing_entity_catch,breaks = 4),
+         Bins_Plot = cut(fishing_entity_catch,breaks = 4,
+                         labels = c('super low', 'low','high','super high'))
+  ) %>% 
+  filter(fishing_entity_catch > 0)
 
 # Get Catch and Revenue data for mapping 
 
@@ -1632,12 +1652,20 @@ Revenue_Country <- sau_eez_fes %>%
 
 ```{r Data_per_Continent, eval = F, echo = F}
 
+### Catch Data
+
+# Catch_Country
+
+### Revenue Data
 Continent_Data <- Revenue_Country %>% 
+  left_join(Catch_Country,
+             by = "fishing_entity") %>% 
   left_join(UN_Regions,
             by = "fishing_entity") %>% 
   mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
   group_by(sub_region) %>% 
   summarise_if(is.numeric,sum,na.rm=T)
+
 
 
 Continent_Data_Trans <- Tresholded_T_Data %>% 
@@ -1651,11 +1679,19 @@ Continent_Data_Trans <- Tresholded_T_Data %>%
   left_join(Continent_Data) %>% 
   mutate(id = seq(1,nrow(Continent_Data_Trans)))
 
+# Fix names for plot
+Continent_Data_Trans$sub_region <- Continent_Data_Trans$sub_region %>% 
+  gsub("Northern","N.",.) %>% 
+  gsub("Southern","S.",.) %>% 
+  gsub("Western","W.",.) %>% 
+  gsub("Eastern","E.",.)
+
+
 ### Prepare data for plot
 
 number_of_bar <- nrow(Continent_Data_Trans)
 
-label_data <- Continent_Data_Trans %>% 
+label_data_rev <- Continent_Data_Trans %>% 
   arrange(Total_USD) %>% # soo it looks like a nice snail :)
   mutate(
     id = seq(1,nrow(Continent_Data_Trans)),
@@ -1664,9 +1700,24 @@ label_data <- Continent_Data_Trans %>%
     angleb = ifelse(angle < -90, (angle +180), angle)
   ) %>% 
   mutate(
-    sub_region = ifelse(str_detect(sub_region,"Latin"),"Latin America &\nthe Caribbean",
+    sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
                         ifelse(sub_region =="Northern America","Northern\nAmerica",
-                        paste(sub_region))
+                               paste(sub_region))
+    )
+  )
+
+label_data_catch <- Continent_Data_Trans %>% 
+  arrange(fishing_entity_catch) %>% # soo it looks like a nice snail :)
+  mutate(
+    id = seq(1,nrow(Continent_Data_Trans)),
+    angle = 90 -360 * (id-0.5)/number_of_bar,
+    hjust = ifelse(angle < -90,1,0),
+    angleb = ifelse(angle < -90, (angle +180), angle)
+  ) %>% 
+  mutate(
+    sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
+                        ifelse(sub_region =="Northern America","Northern\nAmerica",
+                               paste(sub_region))
     )
   )
 
@@ -1677,7 +1728,7 @@ label_data <- Continent_Data_Trans %>%
 
 Produce the map of transboundary species within each EEZ and the value in catch/revenue within each country
 
-```{r Territory_Map, eval =F, echo =F}
+```{r Territory_Map_Round, eval =F, echo =F}
 
 # Transboundary Species shapefile
 World_sf_si <- World_sf %>%
@@ -1694,6 +1745,10 @@ World_sf_si_land <- World_land_sf %>%
 # Get the NA's to be grey
 Grey_land <- World_sf_si_land %>% 
   filter(is.na(Bins))
+
+# Create labels for legend
+Labels_Trans <- c(paste(unique(Transboundary_Spp$Bins)),"NA")
+Labels_Rev <- unique(Revenue_Country$Bins)
 
 # Make map
 Map <- ggplot() +
@@ -1718,43 +1773,88 @@ Map <- ggplot() +
   # scale_fill_manual(values = rev(wes_palette(n = 5, name = "Darjeeling1")),
   #                    na.value = "white"
   # ) +
-  ggtheme_map()
+  ggtheme_map() +
+  # Transboundary labels
+  annotate("text", 
+           x =(c(-95,-36,21,80,146)+4),
+           y = -93.5,
+           label = Labels_Trans, 
+           color="black", 
+           size=3, 
+           angle=0, 
+           # fontface="bold",
+           hjust=0) +
+  # Revenue labels
+  annotate("text", 
+           x =c(-100,-48,12,69),
+           y = -110,
+           label = Labels_Rev, 
+           color="black", 
+           size=3, 
+           angle=0, 
+           # fontface="bold",
+           hjust=0) +
+  # Legend Titles
+  annotate("text", 
+           x =-190,
+           y = -93.5,
+           label = "Transboundary Spp. (n)", 
+           color="black", 
+           size=3, 
+           angle=0, 
+           fontface="bold",
+           hjust=0) +
+  annotate("text", 
+           x =-190,
+           y = -110,
+           label = "Revenue (Million USD)", 
+           color="black", 
+           size=3, 
+           angle=0, 
+           fontface="bold",
+           hjust=0) +
+  theme(
+    legend.box.margin = margin(t = -54, l = 130),
+    legend.text = element_blank()#,
+  )
+
+# Map
+
+
 
 ####___________________________###
 ### Now create the Two circluar bar plots
 ####___________________________###
 
- 
+
 # Revenue Plot
 # Set plot limits
-min_lim <- min(Continent_Data_Trans$Total_USD)
-max_lim <-max(Continent_Data_Trans$Total_USD)
+max_lim <- max(Continent_Data_Trans$Total_USD)
 
 # Set color pal
 pal <- wes_palette("Zissou1",100,type = "continuous")
-  
+
 Rev_Plot <- ggplot(data = Continent_Data_Trans, 
-       aes(x=reorder(id,Total_USD),
-           y=Total_USD, 
-           fill=Total_USD
-           )
-       ) +    
+                   aes(x=reorder(id,Total_USD),
+                       y=Total_USD, 
+                       fill=Total_USD
+                   )
+) +    
   ylim(-1500, max_lim+10)+
   geom_bar(stat="identity") +
   theme_minimal() +
   theme(
-    # legend.position = c(0.80,0.50),
-    legend.position = "",
+    legend.position = c(0.74,0.60),
     axis.text = element_blank(),
     axis.title = element_blank(),
     panel.grid = element_blank(),
-    plot.margin = margin(0,-10,-5,-10,"cm")
+    plot.margin = margin(0,-10,-6,-10,"cm")
   )  +
   # Base line
   geom_segment(aes(x = 1, y = 1, xend = 17, yend = 17),  
                colour = "black", size=0.1, inherit.aes = FALSE) +
   coord_polar(start = 0) + 
-  geom_text(data=label_data, 
+  geom_text(data=label_data_rev, 
             aes(x=id,
                 y=Total_USD+10,
                 # label=round(Total_USD_Billion),
@@ -1765,35 +1865,40 @@ Rev_Plot <- ggplot(data = Continent_Data_Trans,
             size=2, 
             angle= label_data$angleb, 
             inherit.aes = FALSE) +
-  scale_fill_gradientn("Billion USD",
-                       colours = pal)
+  scale_fill_gradientn("",
+                       colours = pal) +
+  guides(fill = guide_colorbar(label.position = "left")
+  )
 
 ### Catch plot
 
+max_lim <- max(Continent_Data_Trans$fishing_entity_catch)
+
 Catch_Plot <- ggplot(data = Continent_Data_Trans, 
-       aes(x=reorder(id,Total_USD),
-           y=Total_USD, 
-           fill=Total_USD
-           )
-       ) +    
-  ylim(-1500, max_lim+10)+
+                     aes(x=reorder(id,fishing_entity_catch),
+                         y=fishing_entity_catch, 
+                         fill=fishing_entity_catch
+                     )
+) +    
+  ylim(-1.5, max_lim+1) +
   geom_bar(stat="identity") +
   theme_minimal() +
   theme(
-    # legend.position = c(0.80,0.50),
-    legend.position = "",
+    legend.position = c(0.1,0.60),
+    # legend.position = "right",
     axis.text = element_blank(),
     axis.title = element_blank(),
     panel.grid = element_blank(),
-    plot.margin = margin(0,-10,-5,-10,"cm")
+    plot.margin = margin(0,-10,-6,-5,"cm")
+    # plot.margin = margin(0,0,-5,0,"cm")
   )  +
   # Base line
-  geom_segment(aes(x = 1, y = 1, xend = 17, yend = 17),  
+  geom_segment(aes(x = 0, y = 1, xend = 17, yend = 17),
                colour = "black", size=0.1, inherit.aes = FALSE) +
   coord_polar(start = 0) + 
-  geom_text(data=label_data, 
+  geom_text(data=label_data_catch, 
             aes(x=id,
-                y=Total_USD+10,
+                y=fishing_entity_catch+0.1,
                 # label=round(Total_USD_Billion),
                 label=sub_region,
                 hjust=hjust), 
@@ -1802,9 +1907,10 @@ Catch_Plot <- ggplot(data = Continent_Data_Trans,
             size=2, 
             angle= label_data$angleb, 
             inherit.aes = FALSE) +
-  scale_fill_gradientn("Tons",
+  scale_fill_gradientn("",
                        colours = pal)
 
+# Catch_Plot
 
 ## Joining everything in one ploit
 
@@ -1813,33 +1919,30 @@ Catch_Plot <- ggplot(data = Continent_Data_Trans,
 
 plot <- ggdraw() +
   # map
-  draw_plot(Map, x = 0, y = 0.4, width = 1, height = 0.6) +
+  draw_plot(Map, x = 0, y = 0.45, width = 1, height = 0.58) +
   # Revenue circular
-  draw_plot(Rev_Plot, x = 0.1, y = 0.1, width = 0.5, height = 0.4) +
+  draw_plot(Rev_Plot, x = 0.1, y = 0.07, width = 0.5, height = 0.4) +
   # Catch circular
-  draw_plot(Catch_Plot, x = 0.45, y = 0.1, width = 0.5, height = 0.4) +
+  draw_plot(Catch_Plot, x = 0.45, y = 0.07, width = 0.5, height = 0.4) +
   
   # Labeks
-  draw_plot_label(label = c("A", "B", "C"), 
-                  size = 30,
-                  x = c(0.1, 0.1, 0.5), 
-                  y = c(1, 0.45, 0.45)
+  draw_plot_label(label = c("A", "B"), 
+                  size = 20,
+                  x = c(0, 0), 
+                  y = c(1, 0.45)
+  ) +
+  draw_plot_label(label = c("Revenue (USD) | Catch (Tones)","(Million)"), 
+                  size = 8,
+                  x = c(0.333,0.493), 
+                  y = c(0.30,0.28)
   )
 
-# Plot_Name <- paste("100_25_Bins_Value_Region.png", sep = "") 
 
-save_plot("Plot.png",
+
+save_plot(paste(Figures_Path,"100_25_Bins_Value_Region.png",sep=""),
           plot,
           base_height = 8,
-          base_width = 13)
-
-ggsave(Plot_Name,
-       plot = Plot,
-       width = 16,
-       height = 8,
-       units = "in",
-       path = Figures_Path
-)
+          base_width = 8)
 
 ```
 
