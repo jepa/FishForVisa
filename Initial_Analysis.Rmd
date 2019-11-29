@@ -1357,16 +1357,26 @@ CleanResults <- function(Data){
               by = c("Territory","Neighbour")
     ) %>% 
     filter(Same_Nation == "No") %>% 
-    select(-8,-9) %>% 
+    select(-8,-9)
+  
     # Fix coding issues between MAC and Windows
-    mutate(
-    Territory = gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",Territory),
-    Territory = gsub("C<f4>te d'Ivoire","Côte d'Ivoire",Territory),
-    Territory = gsub("R<e9>union (France)","Réunion",Territory),
-    Neighbour = gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",Neighbour),
-    Neighbour = gsub("C<f4>te d'Ivoire","Côte d'Ivoire",Neighbour),
-    Neighbour = gsub(" R<e9>union (France)","Réunion",Neighbour)
-    )
+  
+  Clean_Results$Territory <- Clean_Results$Territory %>% 
+    gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",.) %>% 
+    gsub("C<f4>te d'Ivoire","Côte d'Ivoire",.) %>% 
+    gsub("R<e9>union (France)","Réunion",.)
+  
+  Clean_Results$Neighbour <- Clean_Results$Neighbour %>% 
+    gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",.) %>% 
+    gsub("C<f4>te d'Ivoire","Côte d'Ivoire",.) %>% 
+    gsub(" R<e9>union (France)","Réunion",.)
+  
+  Clean_Results$CT_fishing_entity <- Clean_Results$CT_fishing_entity %>% 
+    gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",.) %>% 
+    gsub("C<f4>te d'Ivoire","Côte d'Ivoire",.) %>% 
+    gsub(" R<e9>union (France)","Réunion",.)
+  
+  
   
   return(Clean_Results)
 
@@ -1608,13 +1618,13 @@ Transboundary_Spp <- Tresholded_T_Data %>%
 
 # Get Catch data for mapping (Supplemental materials)
 
-Catch_Country <- SAU_Catch_Data_b %>%
+Catch_Country <- SAU_Catch_Data %>%
   group_by(eez_name) %>%
   summarise(eez_catch = round(sum(total_catch,na.rm=T),2)) %>%
   left_join(Clean_sau_eez_fes,
             by = "eez_name") %>%
   group_by(fishing_entity) %>%
-  summarise(fishing_entity_catch = sum(eez_catch,na.rm=T)/1000000) %>% # Million
+  summarise(fishing_entity_catch = sum(eez_catch,na.rm=T)/1000000) %>% # Million tones
   mutate(fishing_entity = ifelse(fishing_entity == "USA","United States of America",
                                  ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)),
          Bins = cut(fishing_entity_catch,breaks = 4),
@@ -1665,7 +1675,6 @@ Continent_Data <- Revenue_Country %>%
   mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
   group_by(sub_region) %>% 
   summarise_if(is.numeric,sum,na.rm=T)
-
 
 
 Continent_Data_Trans <- Tresholded_T_Data %>% 
@@ -1938,11 +1947,13 @@ plot <- ggdraw() +
   )
 
 
-
-save_plot(paste(Figures_Path,"100_25_Bins_Value_Region.png",sep=""),
-          plot,
-          base_height = 8,
-          base_width = 8)
+save_plot(
+  # paste(Figures_Path,"100_25_Bins_Value_Region.png",sep=""),
+  "Plot.png",
+  plot,
+  base_height = 8,
+  base_width = 8
+)
 
 ```
 
