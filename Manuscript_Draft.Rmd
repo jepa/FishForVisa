@@ -5,10 +5,10 @@ date: "Affiliations: ^1^Institute for the Oceans and Fisheries, University of Br
 subtitle: "DRAFT DO NOT SHARE"
 # subtitle: "Fish do not need Visas (16/40 character maximum)"
 output:
-  pdf_document:
-    fig_caption: yes
   word_document:
     # reference_docx: ./Manuscript_Instructions/science_template.docx
+  pdf_document:
+    fig_caption: yes
 geometry: margin=1in
 editor_options:
   chunk_output_type: inline
@@ -92,17 +92,18 @@ We combined multiple species distribution data-sources and developed a series of
 
 <!-- **Results and discussion** (~500/1000 words) -->
 
-We estimate a total of 633 transboundary species in the world, more than double the number previously estimated [@Teh:2015gd] (Fig. 1). We also find that fisheries on these species contribute substantially to both landings and revenue. Between 2010 and 2016, fleets targeting shared stocks within EEZs landed an average of **X** tonnes, representing **X%** of the global catch (within EEZs), and generating USD 79.7 million in fishing revenue, equivalent to 49.8% of total revenue. These values are higher than previously estimated [@Teh]. The importance of these species exceeds in EEZs like the United States where 116 species are responsible for up to 12.20 million USD and Peru where 28 species are responsible for USD 5.2 million (Fig 1). 
+We estimate a total of 633 transboundary species in the world, more than double the number previously estimated [@Teh:2015gd] (Fig. 1A). We also find that fisheries on these species contribute substantially to both landings and revenue. Between 2005 and 2014, fleets targeting shared stocks within EEZs landed an average of 69 million tonnes, representing around 64% of the global catch (within EEZs), and generating USD 79.7 million in fishing revenue, equivalent to 49.8% of total revenue. These values are higher than previously estimated [@Teh]. Transboundary species are particularly important in terms of catch and revenue in regions of the world like Eastern Asia and Latin America and the Caribbean (Fig 1B). Particular in Northern America (Bermuda, Canada, Greenland, and the US), a moderate amount of catch (3.4 thousand tons) are worth 11.7 billion USD, highlighting the importance of transboundary species to the economy of the region. This is the case of the US where 116 species are responsible for up to 12.20 million USD and Peru where 28 species are responsible for USD 5.2 million (Fig 1A). 
 
-We found transboundary fisheries to be of substantial economic importance in regions with historic fisheries-related conflicts. The Asian region with a total number of **xxx** transboundary species contributing to **xx**% to the region's total landings and **xx**% of total revenue has experienced 43.0% of all documented international fisheries conflicts since 2000 [@Spijkers:2019cz]. The European Union, Norway, Iceland, and the Faroe Islands have been at odds over the size and relative allocation of total allowable catches (TACs) for mackerel since 2007 [@Spijkers:2017ij], a species that is transboundary and contributes **xx** to landings and **xx** in revenue to the countries involved in the dispute. The Mediterranean, a region that has experienced conflicts since the 1980s [@Kliot:1989kv], is home to a large number of transboundary stocks that contribute **xx**% to total landings and **xx**% of revenue of countries along the Sea's rim. The identification of current transboundary species is a first step towards establishing joint management plans for marine resources [@Link:2010ei], key not only to sustain fisheries over the long term, but also to avoid international conflict.
 
-```{r Call_Map, eval = F, fig.width=6, fig.height=4, echo=FALSE, fig.pos= "H", fig.cap="Number of transboundary species by EEZ and their production by country"}
+```{r Call_Map, eval = F, fig.width=6, fig.height=4, echo=FALSE, fig.pos= "H", fig.cap="A) Number of transboundary species per EEZ and they contribution to countries fishing revenue. The number of species is represented in the EEZ while the revenue is represented in the land polygon. B) Regional revenue (left) and catch (right) contribution of tranbsoundary species."}
 
 img <- readPNG(here("./Figures/Fig1.png"))
 grid.raster(img)
 ```
 
-![**Number of transboundary species by EEZ and their revenue by country**](./Figures/Fig1.png)
+![**A) Number of transboundary species per EEZ and they contribution to countries fishing revenue. The number of species is represented in the EEZ while the revenue is represented in the land polygon. B) Regional revenue (left) and catch (right) contribution of tranbsoundary species.**](./Figures/Fig1.png)
+
+We found transboundary fisheries to be of substantial economic importance in regions with historic fisheries-related conflicts. The Asian region with a total number of **310** transboundary species contributing  **20'.4 million tons** to the region's total landings and **19.3 billion USD** in revenue has experienced 43.0% of all documented international fisheries conflicts since 2000 [@Spijkers:2019cz]. The European Union, Norway, Iceland, and the Faroe Islands have been at odds over the size and relative allocation of total allowable catches (TACs) for mackerel since 2007 [@Spijkers:2017ij], a species that is transboundary and contributes **xx** to landings and **xx** in revenue to the countries involved in the dispute. The Mediterranean, a region that has experienced conflicts since the 1980s [@Kliot:1989kv], is home to a large number of transboundary stocks contributing over 6 million tones worth over **8 billion USD** to countries along the Sea's rim. The identification of current transboundary species is a first step towards establishing joint management plans for marine resources [@Link:2010ei], key not only to sustain fisheries over the long term, but also to avoid international conflict.
 
 The two regions of the world that share the most species (the North East and Central Atlantic) have developed quite different approaches to managing shared stocks. In the North East Atlantic, fisheries are managed by the European Union and quotas allocated by species and regulatory area, with some of them (e.g., Iceland and Norway) characterized as having good fisheries management [@Melnychuk:2017gh]. On the other hand, fisheries along the west coast of Africa could benefit from improvements [@Melnychuk:2017gh]. Ironically, this region has long been exploited by foreign fleets, including European, sometimes illegally [@Belhabib:2015bl], with questionable fishing rights systems [@Mills:2004dj], and unfair fisheries agreements [@Kaczynski & Fluharty 2002]. Thus, having joint management plans for shared stocks between neighbors will not be enough to achieve sustainable goal 14, Life Below Water [@SDG]. Countries need to work together towards a more equitable system of global fishing rights.
 
@@ -228,7 +229,7 @@ Finally, in order to have a more robust result and do not determine a transbound
 We estimated the economic contribution of transboundary species for each country using global ex-vessel price [@Tai2017]. The data includes ex-vessel price from multiple sources and a structured interpolation method (e.g. similar countries, species) to fill in data gaps [@Sumaila:2015uc]. The contribution of transboundary species was done by aggregating the catch of each species that happened within the EEZ of the countries sharing that species. For this study, we did not include catch from areas beyond national jurisdiction. Finally, we use the catch data to determine the exploitation category of each species within a EEZ. Although this method has previously used to estimate stock status [@Grainger:1996tk; @Kleisner:2011wn], the categories presented here are intended to be seen as catch trends, and not status of each species. We only assessed species within each EEZ that had at least ten years of data between the first and last reported landings with at least five consecutive data years. Three categories were drawn from the method depending on the year's catch, the maximum catch over time and the minimum catch after the catch peak (**Table XX**). Finally, we reported the predominant category over the last ten years of catch data (2004-2014).
 
 
-```{r Status_Table, eval = T, echo = F}
+```{r Status_Table, eval = F, echo = F}
 
 ### Original version
 
@@ -266,7 +267,7 @@ Rules <- c(
 
 data.frame(Stock_Status,
            Rules) %>% 
-  kable(, booktabs = T,
+  kable("latex", booktabs = T,
         caption = "Rules to determine the status of each transboundary species") %>%
   kable_styling(full_width = F) %>%
   column_spec(1,width = "3cm") %>% #wraps text in column2
