@@ -28,6 +28,7 @@ packages <- c(
   "wesanderson",
   "tidyverse", # for all data wrangling and ggplot
   "janitor", # for data cleaning
+  "tidytext" # to order the facet wrap https://juliasilge.com/blog/reorder-within/
   # "circlize", # For circular plot
   # "ggimage", #for reading images to the circular plot
   # "ggrepel", # for nice plot labels
@@ -84,9 +85,9 @@ ggtheme_plot <- function() {
     axis.title = element_text(size = 14),
     legend.key = element_rect(colour = NA, fill = NA),
     legend.position  = "right",
-    legend.title = element_text(size = 14),
-    legend.text = element_text(size = 12),
-    strip.text.x = element_text(size = 12, colour = "black"),
+    legend.title = element_text(size = 14, face = "bold"),
+    legend.text = element_text(size = 16),
+    strip.text.x = element_text(size = 12, colour = "black", face = "bold"),
     strip.text = element_text(size = 12)
   )
 }
@@ -1508,7 +1509,8 @@ Clean_Results_Trans <- CleanResults(Results_Trans) %>%
   clean_names() %>% 
   rename(eez_name = territory,
          fishing_entity = ct_fishing_entity,
-         eez_neighbour = neighbour)
+         eez_neighbour = neighbour) %>% 
+  mutate(fishing_entity = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",paste(fishing_entity)))
 
 # Load and clean Discrete results
 # Non_Transboundary_Data <- fread(paste(Results_Path,"Non_Transboundary_Data.csv",sep="")) %>% 
@@ -2166,7 +2168,7 @@ Status_Data_Plot <- Tresholded_T_Data %>%
   summarise(Total_trans = sum(value,na.rm=T)) %>% 
   mutate(value = ifelse(Total_trans > 100,100,Total_trans)) %>% 
   filter(!is.na(individual),
-         !str_detect(individual, "(")
+         !str_detect(individual, ".\\(.") # remove associated territories
          )%>% 
   select(individual,observation,group,value) %>% 
   arrange(group,value) %>% 
@@ -2258,7 +2260,7 @@ data %>%
                fill=observation),
            stat="identity", 
            alpha=0.5) +
-  scale_fill_manual("Catch Trend",
+  scale_fill_manual("Catch Category",
                     values = c(
                       "#9986A5", # Developing / Rebulding / Cat A / blue
                       "#79402E", #Max exp. / Cat B / green
@@ -2352,7 +2354,7 @@ Create figures that are based in species (e.g. number of countries each species 
 Species_Trans <- Tresholded_T_Data %>% 
   group_by(taxon_key) %>% 
   summarise(
-    n_countries = length(unique(Territory))
+    n_countries = length(unique(fishing_entity))
   ) %>% 
   left_join(Exploited_Species) %>%
   left_join(Spp_Clasification)
@@ -2361,7 +2363,7 @@ Species_Trans <- Tresholded_T_Data %>%
 
 # Use rfishbase to get species environment
 Species_list <- Species_Trans %>% 
-  mutate(scientific_name = paste(Genus,Species)) %>% 
+  mutate(scientific_name = paste(genus,species)) %>% 
   pull(scientific_name)
 
 Species_environ_list <- rbind(species(Species_list, #species from rfishbase package
@@ -2370,24 +2372,71 @@ Species_environ_list <- rbind(species(Species_list, #species from rfishbase pack
   mutate(scientific_name = Species_list)
 
 Species_Data <- Tresholded_T_Data %>% 
-  group_by(TaxonKey) %>% 
-  summarise(n_trans_spp = length(unique(Territory))) %>% 
+  group_by(taxon_key) %>% 
+  summarise(n_trans_spp = length(unique(fishing_entity))) %>% 
   left_join(Exploited_Species) %>%
-  rename(scientific_name = TaxonName) %>% 
+  rename(scientific_name = taxon_name) %>% 
   left_join(Species_environ_list) %>%
-  mutate(DemersPelag = ifelse(is.na(DemersPelag),"Other",paste(DemersPelag)),
+  mutate(DemersPelag = ifelse(is.na(DemersPelag),"Other",
+                              ifelse(DemersPelag %in% c("bathypelagic","benthopelagic"), "bathy-bento-pelagic",paste(DemersPelag)
+                                     )
+                              ),
          n_trans_spp = ifelse(n_trans_spp > 100, 100, n_trans_spp),
-         Category == ifelse(DemersPelag %in% c("Developing","Rebuilding","Category A"),
-                            ifelse(DemersPelag == "Max Exploitation","Category B",
-                                   ifelse(DemersPelag %in% c("Overfished","Collapsed","Category C"),"Category C", "No Category")
-                            )
-         )
-  ) %>% 
+         DemersPelag = str_to_title(DemersPelag)
+         ) %>% 
   select(individual=scientific_name,
          value = n_trans_spp,
          group = DemersPelag) %>% 
   arrange(group,value) %>% 
   filter(value > 20)  # remove all species under 20 (way too many to plot!)
+
+
+#### Exosystem based plots
+
+Top_5_Ecosystem <- Species_Data %>% 
+  rename(taxon_name = individual) %>% 
+  group_by(group) %>% 
+  top_n(5,value) 
+
+
+# If you want to show revenue
+# Country_Spp_Data <- sau_eez_fes %>% 
+#   group_by(fishing_entity_id,fishing_entity) %>% 
+#   summarise(n=n()) %>% 
+#   select(-n) %>% 
+#   left_join(SAU_Revenue_Data) %>% 
+#   left_join(Tresholded_T_Data) %>% 
+#   left_join(Exploited_Species) %>% 
+#   left_join(Top_5_Ecosystem) %>% # includes the groups
+#   filter(taxon_name %in% Top_5_Ecosystem$taxon_name) %>% 
+#   group_by(fishing_entity,group) %>% 
+#   summarise(top_catch = sum(mean_value)/1000000) %>%  # Million
+#   group_by(group) %>% 
+#   top_n(5)
+  
+
+  # If you want to show catch  
+Country_Spp_Data <- Tresholded_T_Data %>%
+  left_join(Exploited_Species) %>%
+  left_join(Top_5_Ecosystem) %>% # includes the groups
+  filter(taxon_name %in% Top_5_Ecosystem$taxon_name) %>%
+  mutate(taxon_key = as.character(taxon_key)) %>%
+  left_join(SAU_Catch_Data,
+            by = c("eez_name","taxon_key")
+  ) %>%
+  group_by(fishing_entity,group) %>%
+  summarise(top_catch = sum(total_catch)) %>%
+  group_by(group) %>%
+  top_n(5) %>% 
+  mutate(
+    fishing_entity = ifelse(fishing_entity == "Korea (South)", "S. Korea",
+                            ifelse(fishing_entity == "Russian Federation","Russia",
+                                   ifelse(fishing_entity == "Papua New Guinea", "N.Guinea",
+                                          ifelse(fishing_entity == "Solomon Isl.", "Solomon",fishing_entity)))
+    )
+  )
+
+
 
 ```
 
@@ -2472,7 +2521,7 @@ Ticks_Color <- "black"
 ### ------------------- ###
 # Make the plot
 ### ------------------- ###
-ggplot(Species_Data, 
+Spp_circular <- ggplot(Species_Data, 
        aes(x=as.factor(id), 
            y=value,
            fill=group)
@@ -2524,20 +2573,22 @@ ggplot(Species_Data,
             color="black",
             fontface="italic",
             alpha=1,
-            size=2.5,
+            size=3,
             angle= label_data_rest$angle,
             inherit.aes = FALSE) +
   # Bold top 3 
   geom_text(data=Top_label_data,
             aes(x=id, y=101,
                 label=individual,
-                hjust=hjust), 
-            color="black",
+                hjust=hjust,
+                color = group), 
+            # color="black",
             fontface="bold.italic",
             alpha=1,
-            size=2.5,
+            size=3,
             angle= Top_label_data$angle,
-            inherit.aes = FALSE) +
+            inherit.aes = FALSE,
+            show.legend = FALSE) +
   # Add base line information
   geom_segment(data=base_data, 
                aes(x = start, 
@@ -2552,39 +2603,97 @@ ggplot(Species_Data,
   ylim(-50,110) + # sets the circle the first value the central the last value how wide
   theme_minimal() +
   theme(
-    legend.position = c(0.5,0.5),
+    legend.position = c(1,0.11),
+    legend.text = element_text(size = 13),
+    legend.title = element_text(size = 14, face = "bold"),
     axis.text = element_blank(),
     axis.title = element_blank(),
     panel.grid = element_blank(),
-    plot.margin = unit(rep(-1,4), "cm") 
+    # plot.margin = unit(c(-3.5, -3.5, -4, -4), "cm") #top, right, bottom, left
+    plot.margin = unit(rep(-3.5,4),"cm")
   ) +
   coord_polar() + 
   scale_fill_manual("Ecosystem Preference",
                     values = c(wes_palette(n = 4, name = "GrandBudapest1"),
-                               wes_palette(n = 4, name = "GrandBudapest2")
+                               wes_palette(n = 3, name = "GrandBudapest2")
                     ),
                     na.value = "white"
   ) +
   scale_colour_manual("Ecosystem Preference",
                       values = c(wes_palette(n = 4, name = "GrandBudapest1"),
-                                 wes_palette(n = 4, name = "GrandBudapest2")
+                                 wes_palette(n = 3, name = "GrandBudapest2")
                       ),
                       na.value = "white"
   )
 
-ggsave(
-  plot = last_plot(),
-  width = 14,
-  height = 13,
-  units = "in",
-  filename = "Species_circular_over20.png",
-  path = Figures_Path
+
+#### Ecosystem  preference based plots
+
+Ecosystem_plots <- Country_Spp_Data %>%
+  ungroup() %>% 
+  mutate(name = reorder_within(fishing_entity,top_catch,group)) %>% # to order the facet wrap
+  ggplot() +
+  geom_bar(
+    aes(
+      x = name,
+      y = top_catch/1000,
+      fill = group
+    ), 
+    stat = "identity"
+  ) +
+  labs(x = "",
+       y = "Catch (Thousand tonnes)") +
+  scale_fill_manual("",
+                    values = c(wes_palette(n = 4, name = "GrandBudapest1"),
+                               wes_palette(n = 3, name = "GrandBudapest2")
+                    ),
+                    na.value = "white"
+  ) +
+  facet_wrap(~group,
+             nrow=2,
+             scales = "free") +
+  ggtheme_plot() +
+  scale_x_reordered() +
+  theme(legend.position = "",
+        axis.text.x = element_text(size = 11,
+                               angle = 0,
+                               face = "plain"),
+          strip.background = element_blank(),
+  strip.text.x = element_blank()
+  )
+
+
+
+### Combined plot
+
+spp_plot <- ggdraw() +
+  # Circular plot
+  draw_plot(Spp_circular, x = 0, y = 0.305, width = 1, height = 0.60) +
+  # Environmental maps
+  draw_plot(Ecosystem_plots, x = 0.02, y = -0.029, width = 0.95, height = 0.26) +
+  # Labeks
+  draw_plot_label(label = c("A", "B"), 
+                  size = 30,
+                  x = c(0, 0), 
+                  y = c(1, 0.27)
+  ) 
+
+
+save_plot(
+  paste(Figures_Path,"spp_circular_catch_country.png",sep=""),
+  # "spp_plot.png",
+  spp_plot,
+  base_height = 14,
+  base_width = 14
 )
 
 ```
 
-# Sensitivity Analysis
 
+
+
+
+# Sensitivity Analysis
 
 ```{r Sensitivity_Area_Treshold, eval = T, echo = F}
 
