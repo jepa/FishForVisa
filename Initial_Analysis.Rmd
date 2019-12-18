@@ -28,7 +28,7 @@ packages <- c(
   "wesanderson",
   "tidyverse", # for all data wrangling and ggplot
   "janitor", # for data cleaning
-  "tidytext" # to order the facet wrap https://juliasilge.com/blog/reorder-within/
+  "tidytext", # to order the facet wrap https://juliasilge.com/blog/reorder-within/
   # "circlize", # For circular plot
   # "ggimage", #for reading images to the circular plot
   # "ggrepel", # for nice plot labels
@@ -1517,6 +1517,15 @@ Clean_Results_Trans <- CleanResults(Results_Trans) %>%
 #   filter(!is.na(TaxonKey)) %>% 
 #   select(2:3)
 
+
+# Vulnerabillity Data from William
+cc_vul <- fread(paste(Data_Path,"Species_Data/vulspp310817.csv", sep ="")) %>% 
+  rename(taxon_key = V1,
+         ccvul = V2)
+
+fish_vul <- fread(paste(Data_Path,"Species_Data/FishSenIndex.csv", sep ="")) %>% 
+  clean_names()
+
 ```
 
 ## Determine Tresholds
@@ -2690,8 +2699,68 @@ save_plot(
 ```
 
 
+# Vulnerabillity Assesment
+
+```{r Vulnerabillity, eval = T, echo = F}
+
+trans_vul <- Tresholded_T_Data %>% 
+  group_by(taxon_key) %>% 
+  summarise(
+    n_countries = length(unique(eez_name))
+  ) %>% 
+  left_join(cc_vul) %>% 
+  left_join(fish_vul) %>% 
+  ggplot() +
+  geom_point(
+    aes(
+      x = fishvul,
+      y = n_countries
+    )
+  )
+
+# climate change vulnerabillity?
+modcc <- lm(n_countries~ccvul, data = trans_vul)
+modcc
+summary(modcc)
 
 
+# fishing vulnerabillity?
+modfis <- lm(n_countries~fishvul, trans_vul)
+modfis
+summary(modfis)
+
+# Together? 
+
+modccfis <- lm(n_countries~fishvul + ccvul, trans_vul)
+modccfis
+summary(modccfis)
+
+
+### What about... Catch Status...
+
+
+taxon_status <- Tresholded_T_Data %>% 
+  group_by(taxon_key) %>% 
+  summarise(
+    n_countries = length(unique(eez_name))
+  ) %>% 
+  left_join(Status_Data)
+
+
+
+modcs <- lm(n_countries~status, taxon_status)
+modcs
+summary(modcs)
+
+ggplot(taxon_status) +
+  geom_boxplot(
+    aes(
+      x = status,
+      y = n_countries
+    )
+  )
+
+```
 
 # Sensitivity Analysis
 
