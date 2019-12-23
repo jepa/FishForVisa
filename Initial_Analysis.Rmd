@@ -29,7 +29,7 @@ packages <- c(
   "tidyverse", # for all data wrangling and ggplot
   "janitor", # for data cleaning
   "tidytext", # to order the facet wrap https://juliasilge.com/blog/reorder-within/
-  # "circlize", # For circular plot
+  "cowplot", # for figures 1 and 3
   # "ggimage", #for reading images to the circular plot
   # "ggrepel", # for nice plot labels
   # "ggsflabel", # for nice sf_plots labels
@@ -390,11 +390,11 @@ In the original method the authors analyze stocks, while we analyze at the speci
 
 Once those tresholds are met, the status of the species is determined as follows:
 
-- Rebuilding (Recovering)	Year of landing > year of post-max. min. landing AND post-max. min. landing < 10% of max. landing AND landing is 10-50% of max. landing
-- Developing	Year of landing < year of max. landing AND landing is < or = 50% of max. landing OR year of max. landing = final year of landing
-- Exploited	Landing > 50% of max. landing
-- Over exploited	Year of landing > year of max. landing AND landing is between 10-50% of max. landing
-- Collapsed	Year of landing > year of max. landing AND landing is < 10% of max. landing
+- Rebuilding (Recovering),	Year of landing > year of post-max. min. landing AND post-max. min. landing < 10% of max. landing AND landing is 10-50% of max. landing
+- Developing,	Year of landing < year of max. landing AND landing is < or = 50% of max. landing OR year of max. landing = final year of landing
+- Max Exploited,	Landing > 50% of max. landing
+- Over exploited,	Year of landing > year of max. landing AND landing is between 10-50% of max. landing
+- Collapsed,	Year of landing > year of max. landing AND landing is < 10% of max. landing
 
 *Notes* = 3 years average mean
 
@@ -1242,6 +1242,48 @@ head(Dis_Trans)
    
 ```
 
+
+# RFMO Analysis
+
+```{r RFMO_Data, eval = F}
+
+RFMO_Data <- read.delim("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Spatial_Data/RFMO/RFMO_procedure_outcome.csv")
+
+x <- RFMO_Data %>% 
+  mutate(
+    x = gsub("<.*?>", "", RFMO_Data$primary_species),
+    y = gsub("[\\(\\)]", "", regmatches(x, gregexpr("\\(.*?\\)", x)))
+  )
+
+# Save to remove "" and pass to colomuns in excell
+# write.csv(x,
+#           "rfmos.csv")           
+
+rfmos <- read.csv("~/Github/FishForVisa/rfmos.csv")
+  View(rfmos)
+
+list <- rfmos$Taxa
+
+clean_rfmos <- rfmos %>% 
+  gather("taxa","taxon_name",y:X.21) %>% 
+  filter(taxon_name != "") %>% 
+  select(RFMO_name = name,
+         contracting_parties,
+         area,
+         taxon_name)
+
+# write_csv(clean_rfmos,
+#           "clean_rfmos.csv")    
+
+
+### Join with exploited species
+
+clean_rfmos <- clean_rfmos %>% 
+  left_join(Exploited_Species)
+
+```
+
+
 # Results
 
 ## Functions needed
@@ -1273,7 +1315,7 @@ There are quite a few inconsistencies between the names of territories within th
 ```{r funCleanResults, eval = F, echo = F}
 
 # Requires Clean_sau_eez_fes
-
+# Data <- Results_Trans
 CleanResults <- function(Data){
 
 # Clean out countries that share with their own borders (e.g. Brazil mainland and Brazil (Fernando de Noronha))
@@ -1367,25 +1409,23 @@ CleanResults <- function(Data){
   Clean_Results$Territory <- Clean_Results$Territory %>% 
     gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",.) %>% 
     gsub("C<f4>te d'Ivoire","Côte d'Ivoire",.) %>% 
-    gsub("R<e9>union (France)","Réunion",.)
+    gsub("R<e9>union (France)","Réunion",.) 
   
   Clean_Results$Neighbour <- Clean_Results$Neighbour %>% 
     gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",.) %>% 
     gsub("C<f4>te d'Ivoire","Côte d'Ivoire",.) %>% 
-    gsub(" R<e9>union (France)","Réunion",.)
+    gsub("R<e9>union (France)","Réunion",.) 
   
   Clean_Results$CT_fishing_entity <- Clean_Results$CT_fishing_entity %>% 
     gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",.) %>% 
     gsub("C<f4>te d'Ivoire","Côte d'Ivoire",.) %>% 
-    gsub(" R<e9>union (France)","Réunion",.)
+    gsub("R<e9>union (France)","Réunion",.) 
   
   
   
   return(Clean_Results)
 
 }
-
-# x <- Clean_Results(Discrete_Data)
 
 ```
 
@@ -1396,7 +1436,8 @@ In here we load and cleaned the multiple external datasets requred to produce th
 ```{r Load_Results_Data, eval = F}
 
 # Set Jurisdiction to EEZ or RFMO
-Jurisdiction <- "EEZ"
+# Jurisdiction <- "EEZ"
+Jurisdiction <- "RFMO"
 
 # Updates result's path for the jurisdiction
 Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
@@ -1418,7 +1459,26 @@ Clean_sau_eez_fes <- sau_eez_fes %>%
             by = ("fishing_entity_id")
   ) %>% 
   group_by(eez_name,fishing_entity) %>% 
-  summarise(n())
+  summarise(n()) %>% 
+  ungroup() %>% 
+  ### Manually Fix names for estimating catch
+  mutate(eez_name = ifelse(eez_name =="Greece (without Crete)","Greece",
+                           ifelse(eez_name =="Greenland (Denmark)","Greenland",
+                                  ifelse(eez_name =="United Kingdom (UK)","United Kingdom",
+                                         ifelse(fishing_entity =="Italy","Italy",
+                                                ifelse(eez_name =="Chile (mainland)","Chile",
+                                                       ifelse(fishing_entity =="Brazil","Brazil",
+                                                              ifelse(eez_name == "Ecuador (mainland)", "Ecuador",
+                                                                     ifelse(eez_name =="Portugal (mainland)","Portugal",
+                                                                            ifelse(fishing_entity == "Korea (North)","Korea (North)",
+                                                                                   paste(eez_name))
+                                                                            )
+                                                                     )
+                                                              )))))),
+         fishing_entity = ifelse(fishing_entity == "Viet Nam","Vietnam",fishing_entity
+         )
+  )
+
 
 # UN Regions dataset
 UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), header = TRUE) %>% 
@@ -1434,7 +1494,7 @@ UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), he
   mutate(
     fishing_entity = gsub("\\s*\\([^\\)]+\\)","",fishing_entity),
     fishing_entity = gsub("United Kingdom of Great Britain and Northern Ireland","United Kingdom",fishing_entity),
-    # fishing_entity = gsub( "United States of America", "USA",fishing_entity),
+    fishing_entity = gsub( "United States of America", "USA",fishing_entity),
     fishing_entity = gsub("Democratic People's Republic of Korea", "Korea (North)",fishing_entity),
     fishing_entity = gsub("Republic of Korea", "Korea (South)",fishing_entity),
     fishing_entity = gsub("Iran (Islamic Republic of)", "Iran",fishing_entity),
@@ -1446,7 +1506,11 @@ UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), he
     fishing_entity = gsub(" and ", " & ",fishing_entity),
     # fishing_entity = gsub("Puerto Rico (USA)", "Puerto Rico",fishing_entity),
     fishing_entity = gsub("Taiwan", "Taiwan (China)",fishing_entity),
-    fishing_entity = gsub("Russian Federation", "Russia",fishing_entity)
+    fishing_entity = gsub("Côte d’Ivoire", "Côte d'Ivoire",fishing_entity),
+    # fishing_entity = gsub("Russian Federation", "Russia",fishing_entity)
+    fishing_entity = gsub("Viet Nam", "Vietnam",fishing_entity),
+    fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),,
+    fishing_entity = gsub("Marshall Islands", "Solomon Isl.",fishing_entity),
   )
 
 # Manually change congo
@@ -1461,7 +1525,17 @@ fnam_world_land <- "ne_50m_admin_0_countries.shp"
 # Load it!
 World_land_sf <- st_read(dsn = path_world_land,
                          layer =file_path_sans_ext(fnam_world_land)) %>% 
-  rename(fishing_entity = NAME) 
+  rename(fishing_entity = NAME) %>% 
+  mutate(
+    fishing_entity = gsub("Russia", "Russian Federation",fishing_entity),
+    fishing_entity = gsub( "United States of America", "USA",fishing_entity),
+    fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),
+    fishing_entity = gsub("Marshall Islands", "Solomon Isl.",fishing_entity),
+    fishing_entity = gsub("Dem. Rep. Congo", "Congo, R. of",fishing_entity),
+    fishing_entity = ifelse(fishing_entity=="Congo", "Congo (ex-Zaire)",paste(fishing_entity))
+         )
+
+# View(unique(World_land_sf$fishing_entity))
 
 # head(World_land_sf)
 
@@ -1477,6 +1551,10 @@ fnam_world <- "SAUEEZ_July2015.shp"
 World_sf <- st_read(dsn = path_world,
                     layer =file_path_sans_ext(fnam_world)) %>% 
   rename(eez_name = Name)
+
+# View(unique(World_sf$eez_name))
+
+
 
 # ---------------------------- #
 # Transboundary Results ####
@@ -1663,9 +1741,9 @@ Revenue_Country <- sau_eez_fes %>%
   group_by(fishing_entity) %>% # Estimate the amount of dollars of each nation 
   summarise(Total_USD = (sum(mean_value,na.rm=T))/1000000) %>% # Million of USD
   ungroup() %>% 
-  mutate(fishing_entity = ifelse(fishing_entity == "USA","United States of America",
-                                 ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)
-                                 ),
+  mutate(#fishing_entity = ifelse(fishing_entity == "USA","United States of America",
+                                 # ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)
+                                 # ),
          Bins = cut(Total_USD,breaks = Rev_Breaks, dig.lab = 5 ),
          Bins_Plot = cut(Total_USD,breaks = Rev_Breaks,
                          labels = c('super low', 'low','median','high','super high'),
@@ -1712,7 +1790,10 @@ Subregion_Data <- Revenue_Country %>%
             by = "fishing_entity") %>% 
   mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
   group_by(sub_region) %>% 
-  summarise_if(is.numeric,sum,na.rm=T)
+  summarise_if(is.numeric,c(sum = sum,
+                            m = mean,
+                            sd = sd),
+               na.rm=T)
 
 
 Subregion_Data_Trans <- Tresholded_T_Data %>% 
@@ -1739,7 +1820,7 @@ Subregion_Data_Trans$sub_region <- Subregion_Data_Trans$sub_region %>%
 number_of_bar <- nrow(Subregion_Data_Trans)
 
 label_data_rev <- Subregion_Data_Trans %>% 
-  arrange(Total_USD) %>% # soo it looks like a nice snail :)
+  arrange(Total_USD_sum) %>% # soo it looks like a nice snail :)
   mutate(
     id = seq(1,nrow(Subregion_Data_Trans)),
     angle = 90 -360 * (id-0.5)/number_of_bar,
@@ -1754,7 +1835,7 @@ label_data_rev <- Subregion_Data_Trans %>%
   )
 
 label_data_catch <- Subregion_Data_Trans %>% 
-  arrange(fishing_entity_catch) %>% # soo it looks like a nice snail :)
+  arrange(fishing_entity_catch_sum) %>% # soo it looks like a nice snail :)
   mutate(
     id = seq(1,nrow(Subregion_Data_Trans)),
     angle = 90 -360 * (id-0.5)/number_of_bar,
@@ -1768,14 +1849,6 @@ label_data_catch <- Subregion_Data_Trans %>%
     )
   )
 
-
-```
-
-### EEZ Map of Transboundary Species
-
-Produce the map of transboundary species within each EEZ and the value in catch/revenue within each country
-
-```{r Territory_Map_Round, eval =F, echo =F}
 
 # Transboundary Species shapefile
 World_sf_si <- World_sf %>%
@@ -1795,6 +1868,16 @@ World_sf_si_land <- World_land_sf %>%
 Grey_land <- World_sf_si_land %>% 
   filter(is.na(Bins))
 
+
+
+```
+
+### EEZ Map of Transboundary Species
+
+Produce the map of transboundary species within each EEZ and the value in catch/revenue within each country
+
+```{r Territory_Map_Round, eval =F, echo =F}
+
 # Create labels for legend
 Bins_Trans <- Transboundary_Spp %>% 
   arrange(Bins) %>% 
@@ -1807,9 +1890,6 @@ Bins_Rev <- Revenue_Country %>%
   unique()
 
 Labels_Trans <- c("(1-29]",paste(Bins_Trans[2:5]))
-# Labels_Trans <- c(paste(unique(Transboundary_Spp$Bins)),"NA")
-# Labels_Rev <- unique(Revenue_Country$Bins)
-
 Labels_Rev <- c("(1-10]",paste(Bins_Rev[2:5]))
 
 # Make map
@@ -1817,25 +1897,14 @@ Map <- ggplot() +
   geom_sf(data = World_sf_si_land,aes(fill = reorder(Bins_Plot,Total_USD)), colour = "grey80",size = 0.1) +
   geom_sf(data = World_sf_si,aes(fill =  reorder(Bins_Plot,n_trans_spp)),colour = "grey20", size = 0.1) + # n_trans_spp or Bins
   geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80", colour = "grey50",size = 0.1) + # n_trans_spp or Bins
-  # scale_fill_gradientn(colours = pal,
-  #                      na.value = "white") +
-  # scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
-  # rev(wes_palette(n = 4, name = "Darjeeling2"))
-  # ),
-  # na.value = "white"
-  # ) +
   scale_fill_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
                                   "#00A08A",#"#00A08A", #green
                                   "#F2AD00",#"#F2AD00", # Yellow
                                   "#F98400",#"#F98400", #Orange
                                   "#FF0000"#,"#FF0000" #Red
   ),
-  # na.value = "white"
   na.translate = F
   ) +
-  # scale_fill_manual(values = rev(wes_palette(n = 5, name = "Darjeeling1")),
-  #                    na.value = "white"
-  # ) +
   ggtheme_map() +
   # Transboundary labels
   annotate("text", 
@@ -1878,55 +1947,68 @@ Map <- ggplot() +
            hjust=0) +
   theme(
     legend.box.margin = margin(t = -54, l = 130),
-    legend.text = element_blank()#,
+    legend.text = element_blank(),
   ) +
   guides(fill = guide_legend(nrow = 1))
-
-# ggsave("Map.png",
-#        Map,
-#         width = 10,
-#          height = 10,
-         # units = "in")
-# Map
-
 
 
 ####___________________________###
 ### Now create the Two circluar bar plots
 ####___________________________###
 
-
 # Revenue Plot
-# Set plot limits
-max_lim <- max(Subregion_Data_Trans$Total_USD)
 
 # Set color pal
 pal <- wes_palette("Zissou1",100,type = "continuous")
 
-Rev_Plot <- ggplot(data = Subregion_Data_Trans, 
-                   aes(x=reorder(id,Total_USD),
-                       y=Total_USD, 
-                       fill=Total_USD
-                   )
+# Set plot limits
+max_lim <- max(Subregion_Data_Trans$Total_USD_sum) +10
+
+Rev_Plot <- ggplot(
+  # Regional plots
+  data = Subregion_Data_Trans, 
+  aes(
+    x=reorder(id,Total_USD_sum),
+    y=Total_USD_sum, 
+    fill=Total_USD_sum
+  )
 ) +    
-  ylim(-1500, max_lim+10)+
+  ylim(-1500, max_lim) +
   geom_bar(stat="identity") +
+  # Regional averages
+  geom_point(data = Subregion_Data_Trans,
+             aes(
+               x=reorder(id,Total_USD_sum),
+               y=Total_USD_m
+             ),
+             colour = "black",
+             alpha = 0.5
+  ) +
+  # Regional sds
+  geom_errorbar(
+    aes(
+      ymin=ifelse(Total_USD_m-Total_USD_sd <= 0,0,Total_USD_m-Total_USD_sd), # sets lower to 0
+      ymax=Total_USD_m+Total_USD_sd
+    ), 
+    width=.2,
+    position=position_dodge(.9),
+    alpha = 0.5) +
+  # Looking good
   theme_minimal() +
   theme(
-    legend.position = c(0.74,0.60),
+    legend.position = c(0.73,0.60),
     axis.text = element_blank(),
     axis.title = element_blank(),
     panel.grid = element_blank(),
     plot.margin = margin(0,-10,-6,-10,"cm")
   )  +
   # Base line
-  geom_segment(aes(x = 1, y = 1, xend = 17, yend = 17),  
-               colour = "black", size=0.1, inherit.aes = FALSE) +
+  # geom_segment(aes(x = 1, y = 1, xend = 17, yend = 17),  
+  #              colour = "black", size=0.1, inherit.aes = FALSE) +
   coord_polar(start = 0) + 
   geom_text(data=label_data_rev, 
             aes(x=id,
-                y=Total_USD+10,
-                # label=round(Total_USD_Billion),
+                y=Total_USD_sum+10,
                 label=sub_region,
                 hjust=hjust), 
             color="black",
@@ -1935,40 +2017,59 @@ Rev_Plot <- ggplot(data = Subregion_Data_Trans,
             angle= label_data_rev$angleb, 
             inherit.aes = FALSE) +
   scale_fill_gradientn("",
-                       colours = pal) +
+                       colours = pal,
+                       limits = c(0,16500),
+                       breaks = seq(0,16000,4000)) +
   guides(fill = guide_colorbar(label.position = "left")
   )
 
-### Catch plot
 
-max_lim <- max(Subregion_Data_Trans$fishing_entity_catch)
+###____________###
+### Catch plot
+###____________###
+max_lim <- max(Subregion_Data_Trans$fishing_entity_catch_sum) +1
 
 Catch_Plot <- ggplot(data = Subregion_Data_Trans, 
-                     aes(x=reorder(id,fishing_entity_catch),
-                         y=fishing_entity_catch, 
-                         fill=fishing_entity_catch
+                     aes(x=reorder(id,fishing_entity_catch_sum),
+                         y=fishing_entity_catch_sum, 
+                         fill=fishing_entity_catch_sum
                      )
 ) +    
-  ylim(-1.5, max_lim+1) +
+  ylim(-2.1, max_lim) +
   geom_bar(stat="identity") +
+  # Regional averages
+  geom_point(data = Subregion_Data_Trans,
+             aes(
+               x=reorder(id,fishing_entity_catch_sum),
+               y=fishing_entity_catch_m
+             ),
+             colour = "black",
+             alpha = 0.5
+  ) +
+  # Regional sd's
+  geom_errorbar(
+    aes(
+      ymin=ifelse(fishing_entity_catch_m-fishing_entity_catch_sd <= 0,0,fishing_entity_catch_m-fishing_entity_catch_sd),
+      ymax=fishing_entity_catch_m+fishing_entity_catch_sd
+    ), 
+    width=.2,
+    position=position_dodge(.9),
+    alpha = 0.5) +
   theme_minimal() +
   theme(
     legend.position = c(0.1,0.60),
-    # legend.position = "right",
     axis.text = element_blank(),
     axis.title = element_blank(),
     panel.grid = element_blank(),
     plot.margin = margin(0,-10,-6,-5,"cm")
-    # plot.margin = margin(0,0,-5,0,"cm")
   )  +
   # Base line
-  geom_segment(aes(x = 0, y = 1, xend = 17, yend = 17),
-               colour = "black", size=0.1, inherit.aes = FALSE) +
+  # geom_segment(aes(x = 0, y = 1, xend = 17, yend = 17),
+  #              colour = "black", size=0.1, inherit.aes = FALSE) +
   coord_polar(start = 0) + 
   geom_text(data=label_data_catch, 
             aes(x=id,
-                y=fishing_entity_catch+0.1,
-                # label=round(Total_USD_Billion),
+                y=fishing_entity_catch_sum+0.1,
                 label=sub_region,
                 hjust=hjust), 
             color="black",
@@ -1977,23 +2078,21 @@ Catch_Plot <- ggplot(data = Subregion_Data_Trans,
             angle= label_data_catch$angleb, 
             inherit.aes = FALSE) +
   scale_fill_gradientn("",
-                       colours = pal)
-
-# Catch_Plot
+                       limits = c(0,16.5),
+                       breaks = seq(0,16,4),
+                       colours = pal
+                       
+  ) 
 
 ## Joining everything in one ploit
-
-# library(ggpubr)
-# library(cowplot)
 
 plot <- ggdraw() +
   # map
   draw_plot(Map, x = 0, y = 0.45, width = 1, height = 0.58) +
   # Revenue circular
-  draw_plot(Rev_Plot, x = 0.1, y = 0.07, width = 0.5, height = 0.4) +
+  draw_plot(Rev_Plot, x = 0.1, y = 0.08, width = 0.5, height = 0.4) +
   # Catch circular
-  draw_plot(Catch_Plot, x = 0.45, y = 0.07, width = 0.5, height = 0.4) +
-  
+  draw_plot(Catch_Plot, x = 0.45, y = 0.08, width = 0.5, height = 0.4) +
   # Labeks
   draw_plot_label(label = c("A", "B"), 
                   size = 20,
@@ -2002,14 +2101,14 @@ plot <- ggdraw() +
   ) +
   draw_plot_label(label = c("Revenue (USD) | Catch (Tones)","(Million)"), 
                   size = 8,
-                  x = c(0.333,0.493), 
-                  y = c(0.30,0.28)
+                  x = c(0.330,0.485), 
+                  y = c(0.31,0.29)
   )
 
 
 save_plot(
-  # paste(Figures_Path,"100_25_Bins_Value_Region.png",sep=""),
-  "Plot.png",
+  paste(Figures_Path,"100_25_Bins_Value_Region.png",sep=""),
+  # "Plot.png",
   plot,
   base_height = 8,
   base_width = 8
@@ -2021,14 +2120,11 @@ save_plot(
 
 ```{r Map_Particulars, eval =F, echo =F}
 
-PeRu <- c("Peru", "Russian Federation","Russia", "Chile", "United States of America","USA")
+PeRu <- c("Peru", "Russian Federation", "Chile", "USA")
 
 Total_PeRu <- Revenue_Country %>% 
   filter(fishing_entity %in% PeRu) %>% 
-  select(1:2) %>% 
-  mutate(fishing_entity = ifelse(fishing_entity == "Russia","Russian Federation",
-                                 ifelse(fishing_entity == "United States of America","USA",fishing_entity))
-  )
+  select(1:2)
 
 Rev_PeRu <- sau_eez_fes %>% 
   filter(fishing_entity %in% PeRu) %>% 
@@ -2059,16 +2155,75 @@ Rev_PeRu %>%
 
 ```
 
+### Statistical differences
+
+We used a one-way ANOVA to determine significant differences within regions for transboundary fisheries catches and revenue with a Tukey's HSD post-hoc test.
+
+```{r statistics_fig1, eval = F, echo = T}
+
+### Using ANOVA to estimate significan differences within regions for revenue and catch of transboundary species
+
+### Prepare Data
+Subregion_Data_stats <- Revenue_Country %>% 
+  left_join(Catch_Country,
+             by = "fishing_entity") %>% 
+  left_join(UN_Regions,
+            by = "fishing_entity") %>% 
+  mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
+  select(fishing_entity,sub_region,Total_USD,fishing_entity_catch)
+
+# Revenue ANOVA
+Rev_aov <- aov(Total_USD~sub_region, data = Subregion_Data_stats)
+Rev_aov
+summary(Rev_aov)
+
+# Df    Sum Sq Mean Sq F value  Pr(>F)    
+# sub_region   16  75628526 4726783    4.91 4.2e-08 ***
+# Residuals   157 151140183  962676       
+
+#### There are significant differences. But between what?
+
+#  Post-hoc analysis
+TukeyHSD(Rev_aov)
+
+# Northern America sig than everyone except for Eastern Asia
+# Eastern Asia sig with everyone except with Eastern Europe and North Am.
+
+### Catch ANOVA
+
+Catch_aov <- aov(fishing_entity_catch~sub_region, data = Subregion_Data_stats)
+Catch_aov
+
+summary(Catch_aov)
+
+# sub_region   16  50.63   3.164   3.767 7.2e-06 ***
+# Residuals   155 130.22   0.840                    
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+#  Post-hoc analysis
+TukeyHSD(Catch_aov)
+```
+
 ### RFMO Map of Transboundary Species
 
 ```{r Territory_Map, eval =F, echo =F}
 
+head(RFMOs_sf)
+
 # Transboundary Species shapefile
 World_sf_si <- RFMOs_sf %>%
-  rename(Territory = Name) %>% 
+  rename(eez_name = Name) %>% 
   st_transform(crs = 4326) %>% # 4326
-  st_simplify(preserveTopology = TRUE, dTolerance = 0.0001) %>%
-  left_join(Transboundary_Spp, by ="Territory") 
+  # st_simplify(preserveTopology = TRUE, dTolerance = 0.0001) %>%
+  left_join(Transboundary_Spp, by ="eez_name") 
+
+
+ICC <- World_sf_si %>% 
+  filter(eez_name == "ICCAT")
+
+
 
 # Total catch/Revenue shapefile
 World_sf_si_land <- World_land_sf %>%
@@ -2081,36 +2236,34 @@ World_sf_si_land <- World_land_sf %>%
 
 # Make map
 Plot <- ggplot() +
-  # geom_sf(data = World_sf_si_land) +
   geom_sf(data = World_sf_si,
-          aes(fill =  reorder(Bins_Plot,n_trans_spp)),
-          colour = "grey20", 
+          aes(
+            fill =  reorder(Bins_Plot,n_trans_spp),
+            colour = reorder(Bins_Plot,n_trans_spp)
+          ), 
           size = 0.1
           ) + # n_trans_spp or Bins
-  geom_sf_label(data = World_sf_si,
-                aes(label = Territory)) +
-  # geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80", colour = "grey50",size = 0.1) + # n_trans_spp or Bins
-  # scale_fill_gradientn(colours = pal,
-  #                      na.value = "white") +
-  # scale_fill_manual(values = c(rev(wes_palette(n = 4, name = "Darjeeling1")),
-  # rev(wes_palette(n = 4, name = "Darjeeling2"))
-  # ),
-  # na.value = "white"
-  # ) +
+  # geom_sf(data = World_sf_si_land) +
   scale_fill_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
                                   "#00A08A",#"#00A08A", #green
                                   "#F2AD00",#"#F2AD00", # Yellow
-                                  # "#F98400",#"#F98400", #Orange
+                                  "#F98400",#"#F98400", #Orange
                                   "#FF0000"#,"#FF0000" #Red
   ),
   na.value = "grey"
   ) +
-  # scale_fill_manual(values = rev(wes_palette(n = 5, name = "Darjeeling1")),
-  #                    na.value = "white"
-  # ) +
-  ggtheme_map()
+  scale_colour_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
+                                    "#00A08A",#"#00A08A", #green
+                                    "#F2AD00",#"#F2AD00", # Yellow
+                                    "#F98400",#"#F98400", #Orange
+                                    "#FF0000"#,"#FF0000" #Red
+  ),
+  na.value = "grey"
+  ) +
+  ggtheme_map() +
+  facet_wrap(~eez_name)
 
-Plot_Name <- paste("RFMO_100_25_Bins.png", sep = "") 
+Plot_Name <- paste("RFMO_100_25_Bins_facet.png", sep = "") 
 
 ggsave(Plot_Name,
        plot = Plot,
@@ -2171,15 +2324,11 @@ Status_Data_Plot <- Tresholded_T_Data %>%
   summarise(value = length(unique(taxon_key))) %>% 
   left_join(UN_Regions, by ="fishing_entity") %>%
   mutate(Georegion = ifelse(is.na(georegion),"Other",paste(georegion))) %>% 
-  group_by(individual = fishing_entity,
-           group = Georegion,
-           observation = status) %>% 
-  summarise(Total_trans = sum(value,na.rm=T)) %>% 
-  mutate(value = ifelse(Total_trans > 100,100,Total_trans)) %>% 
-  filter(!is.na(individual),
-         !str_detect(individual, ".\\(.") # remove associated territories
-         )%>% 
-  select(individual,observation,group,value) %>% 
+  mutate(value = ifelse(value > 100,100,value)) %>% 
+  filter(!is.na(fishing_entity),
+         !str_detect(fishing_entity, ".\\(.") # remove associated territories
+         ) %>% 
+  select(individual = fishing_entity,observation = status,group = Georegion,value) %>% 
   arrange(group,value) %>% 
   mutate(value = ifelse(observation %in% c("Collapsed","Over Exploited"),value*-1,value),
          observation = ifelse(observation %in% c("Developing","Rebuilding"),"Category A",
@@ -2187,7 +2336,41 @@ Status_Data_Plot <- Tresholded_T_Data %>%
                                    ifelse(observation %in% c("Over Exploited","Collapsed","Category C"),"Category C", "No Category")
                             )
          )
-         )
+         ) %>% 
+  group_by(individual,observation,group) %>% 
+  summarise(value = sum(value))
+
+
+Status_Plot_Data <- tibble(
+  fishing_entity = rep(unique(Status_Data_Plot$individual),4),
+  observation = rep(unique(Status_Data_Plot$observation),153)
+) %>% 
+  left_join(UN_Regions) %>% 
+  rename(individual = fishing_entity) %>% 
+  full_join(Status_Data_Plot,
+            by = c("individual","observation")
+            ) %>% 
+  mutate(value = ifelse(is.na(value),0,value)#,
+         # group = ifelse(is.na(group),"Other",group)
+         ) %>% 
+  select(individual,observation,group=georegion,value) %>% 
+  filter(group != "other")
+
+
+
+
+# Summary for manuscipt
+
+Status_Data_Plot %>% 
+  mutate(value = ifelse(value <0, value*-1,value)) %>% 
+  group_by(observation) %>% 
+  summarise(tot=sum(value),
+            mean(value),
+            sd(value)) %>% 
+  arrange(desc(tot)) %>% 
+  view()
+
+
 ```
 
 
@@ -2198,39 +2381,40 @@ Status_Data_Plot <- Tresholded_T_Data %>%
 # -------------------------- #
 
 # Set a number of 'empty bar' to add at the end of each Georegion
-Char <- as.factor(Status_Data_Plot$group) # Set groups to factors
+Char <- as.factor(Status_Plot_Data$group) # Set groups to factors
 
 
 ##### COPY PASTE
 
 # Transform data in a tidy format (long format)
-data <- Status_Data_Plot
+# data <- Status_Data_Plot
 
 # Set a number of 'empty bar' to add at the end of each group
 empty_bar <- 2
-nObsType <- nlevels(as.factor(Status_Data_Plot$observation))
-to_add <- data.frame(matrix(NA, empty_bar*nlevels(Char)*nObsType, ncol(Status_Data_Plot)) )
-colnames(to_add) <- colnames(Status_Data_Plot)
+nObsType <- nlevels(as.factor(Status_Plot_Data$observation))
+to_add <- data.frame(matrix(NA, empty_bar*nlevels(Char)*nObsType, ncol(Status_Plot_Data)) )
+colnames(to_add) <- colnames(Status_Plot_Data)
 to_add$group <- rep(levels(Char), each=empty_bar*nObsType)
-to_add$value <- NA
-to_add$observation <- NA
+Status_Plot_Data <- rbind(Status_Plot_Data, to_add) # Problem converts to list
+# Status_data <- bind_rows(data,to_add)
+Status_Plot_Data <- Status_Plot_Data %>% arrange(group, individual)
+Status_Plot_Data$id <- rep( seq(1, nrow(Status_Plot_Data)/nObsType) , each=nObsType)
+
+# to_add$value <- NA
+# to_add$observation <- NA
 # to_add$individual <- to_add$group
 
-data <- Status_Data_Plot %>% 
-  bind_rows(to_add) %>% 
-  ungroup() %>% 
-  mutate(individual = forcats::fct_explicit_na(individual),
-         group = forcats::fct_explicit_na(group)) %>%
-  group_by(group,individual) %>% 
-  mutate(id = as.integer(individual),
-         order = as.integer(group))
+# Status_data <- Status_Data_Plot %>%
+#   bind_rows(to_add) %>%
+#   ungroup() %>%
+#   mutate(individual = forcats::fct_explicit_na(individual),
+#          group = forcats::fct_explicit_na(group)) %>%
+#   group_by(group,individual) %>%
+#   mutate(id = as.integer(individual),
+#          order = as.integer(group))
   
-# data$id <- as.integer(data$individual,na.rm=T)
-
-
-
 # Get the name and the y position of each label
-label_data <- data %>% 
+label_data <- Status_Plot_Data %>% 
   # filter(value > 0) %>% 
   group_by(id, individual) %>% 
   summarize(tot=sum(value,na.rm=T))
@@ -2245,7 +2429,7 @@ label_data <- label_data %>%
 
 
 # prepare a data frame for base lines
-base_data <-  data %>% 
+base_data <-  Status_Plot_Data %>% 
   group_by(group) %>% 
   summarize(start=min(id,na.rm=T), 
             end=max(id,na.rm=T) - empty_bar,
@@ -2260,9 +2444,7 @@ grid_data$start <- grid_data$start - 1
 grid_data <- grid_data[-1,]
 
 
-
-data %>% 
-  # filter(observation != "Np Status") %>% 
+Status_Plot_Data %>%
   ggplot() + 
   geom_bar(aes(x=id,
                y=value, 
@@ -2279,58 +2461,66 @@ data %>%
                     na.value = "white"
   ) +
   # Add a val=100/75/50/25 lines. I do it at the beginning to make sur barplots are OVER it.
-  geom_segment(data=grid_data, aes(x = end, y = 0, xend = start, yend = 0), colour = "black", alpha=1, size=1 , inherit.aes = FALSE ) +
-  geom_segment(data=grid_data, aes(x = end, y = 50, xend = start, yend = 50), linetype = "dashed", colour = "grey", alpha=1, size=0.3, inherit.aes = FALSE ) +
-  geom_segment(data=grid_data, aes(x = end, y = 100, xend = start, yend = 100), colour = "grey", alpha=1, size=0.3, inherit.aes = FALSE ) +
-  geom_segment(data=grid_data, aes(x = end, y = -50, xend = start, yend = -50), linetype = "dashed", colour = "grey", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 0, xend = start, yend = 0), colour = "black", alpha=1, size=0.3 , inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 50, xend = start, yend = 50), colour = "black", alpha=1, size=0.3, inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, y = 100, xend = start, yend = 100), colour = "black", alpha=1, size=0.3, inherit.aes = FALSE ) +
+  geom_segment(data=grid_data, aes(x = end, 
+                                   y = -50, 
+                                   xend = start, 
+                                   yend = -50), colour = "black", alpha=1, size=0.3 , inherit.aes = FALSE ) +
   # Add text showing the value of each 100/75/50/25 lines
   ggplot2::annotate("text", 
                     # x = rep(max(data$id),3),
-                    x =c(1,0.2,1,0.8),
+                    x =c(0,0,0.2,0.2),
                     y = c(-50, 0, 50, 100),
                     label = c("50","0", "50", "100") , 
                     color="black", 
-                    size=5.5, 
+                    size=5, 
                     angle=0, 
                     # fontface="bold",
                     hjust=1) +
-  
-  ylim(-100,101) +
+  # Add labels on top of each bar
+  geom_text(data=label_data,
+            aes(
+              x = id,
+              y = 101,
+              label=individual,
+              hjust=hjust),
+            color="black",
+            # fontface="bold",
+            alpha=1,
+            size=4,
+            angle= label_data$angle,
+            inherit.aes = FALSE ) +
+  # Continents labels
+  geom_text(data=base_data,
+            aes(x = title,
+                y = 85, 
+                label=group), 
+            hjust=c(1,1,1,0,0,0),
+            colour = "black",
+            # alpha=0, 
+            size=5,
+            fontface="bold",
+            inherit.aes = FALSE) +
+  ylim(-100,105) +
   theme_minimal() +
-  theme(
-    legend.position = c(0.93,0.14),
+  theme(legend.position = c(0.93,0.14),
     legend.key.size = unit(1,"cm"),
     legend.title = element_text(size = 16),
     legend.text = element_text(size = 14),
     axis.text = element_blank(),
     axis.title = element_blank(),
     panel.grid = element_blank(),
-    plot.margin = unit(rep(-1,4), "cm") 
-  ) +
-  # Add labels on top of each bar
-  geom_text(data=label_data,
-            aes(
-              x = id,
-              # x=reorder(id,order),
-                # y=max(tot,na.rm=T),
-                # y=tot +1,
-                y = 101,
-                label=individual,
-                hjust=hjust),
-            color="black",
-            fontface="bold",
-            alpha=1,
-            size=3,
-            angle= label_data$angle,
-            inherit.aes = FALSE ) +
+    plot.margin = unit(rep(-1,4), "cm")) +
   coord_polar()
 
 # Save plot
 
 ggsave(
     plot = last_plot(),
-    width = 16,
-    height = 14,
+    width = 17,
+    height = 15,
     units = "in",
     filename = "Territory_circular_status.png",
     path = Figures_Path
@@ -2338,6 +2528,34 @@ ggsave(
  
 
 ```
+
+```{r statistics_fig2, eval = F, echo = T}
+
+Status_Data_Stats <- Status_Data_Plot %>% 
+  filter(observation != "No Category")
+
+
+# Differences between groups
+Stat_con_aov <- aov(value~group, data = Status_Data_Stats)
+Stat_con_aov
+summary(Stat_con_aov)
+
+#  Df Sum Sq Mean Sq F value Pr(>F)
+# group         5   3148   629.6    1.24  0.289 # NO SIG
+# Residuals   443 224996   507.9    
+
+Stat_Cat_aov <- aov(value~observation, data = Status_Data_Stats)
+Stat_Cat_aov
+summary(Stat_Cat_aov)
+#              Df Sum Sq Mean Sq F value Pr(>F)    
+# observation   2 134952   67476   322.9 <2e-16 ***
+# Residuals   446  93192     209    
+
+TukeyHSD(Stat_Cat_aov)
+
+```
+
+
 
 ## Analysis per Species
 
@@ -2429,7 +2647,7 @@ Country_Spp_Data <- Tresholded_T_Data %>%
   left_join(Exploited_Species) %>%
   left_join(Top_5_Ecosystem) %>% # includes the groups
   filter(taxon_name %in% Top_5_Ecosystem$taxon_name) %>%
-  mutate(taxon_key = as.character(taxon_key)) %>%
+  # mutate(taxon_key = as.character(taxon_key)) %>%
   left_join(SAU_Catch_Data,
             by = c("eez_name","taxon_key")
   ) %>%
@@ -2444,9 +2662,6 @@ Country_Spp_Data <- Tresholded_T_Data %>%
                                           ifelse(fishing_entity == "Solomon Isl.", "Solomon",fishing_entity)))
     )
   )
-
-
-
 ```
 
 ### OHI-inspired Circular plot Species
@@ -2575,6 +2790,7 @@ Spp_circular <- ggplot(Species_Data,
                fill=group),
            stat="identity",
            alpha=0.5) +
+  # Species names
   geom_text(data=label_data_rest,
             aes(x=id, y=101,
                 label=individual,
@@ -2589,9 +2805,10 @@ Spp_circular <- ggplot(Species_Data,
   geom_text(data=Top_label_data,
             aes(x=id, y=101,
                 label=individual,
-                hjust=hjust,
-                color = group), 
-            # color="black",
+                hjust=hjust#,
+                # color = group
+                ),
+            color="black",
             fontface="bold.italic",
             alpha=1,
             size=3,
@@ -2736,29 +2953,74 @@ modccfis
 summary(modccfis)
 
 
-### What about... Catch Status...
+## Using a MANOVA to test the significant effect of fishvul and ccvul to catchstatus
 
+# Prepare data
 
-taxon_status <- Tresholded_T_Data %>% 
-  group_by(taxon_key) %>% 
-  summarise(
-    n_countries = length(unique(eez_name))
-  ) %>% 
-  left_join(Status_Data)
+Status_Per_Species <- Tresholded_T_Data %>% 
+  left_join(Status_Data, 
+            by =c("eez_name","taxon_key")
+  ) %>%
+  mutate(status = ifelse(is.na(status),"No Status",status)) %>% 
+  group_by(taxon_key,status) %>% 
+  summarise(value = length(unique(fishing_entity))) %>% 
+  mutate(Categories = ifelse(status %in% c("Developing","Rebuilding"),"Category A",
+                            ifelse(status == "Max Exploited","Category B",
+                                   ifelse(status %in% c("Over Exploited","Collapsed","Category C"),"Category C", "No Category")
+                            )
+                         )
+         ) %>% 
+  left_join(cc_vul) %>% 
+  left_join(fish_vul) %>% 
+  filter(status != "No Category",
+         Categories != "No Category")
 
+# Test for assumptions
+ # - Data Normally distributed (YES)
 
+qqnorm(Status_Per_Species$ccvul) # yes
+qqnorm(Status_Per_Species$fishvul) # yes
 
-modcs <- lm(n_countries~status, taxon_status)
-modcs
-summary(modcs)
-
-ggplot(taxon_status) +
-  geom_boxplot(
+ggplot(Status_Per_Species) +
+  geom_histogram(
     aes(
-      x = status,
-      y = n_countries
+      # x = fishvul # Yes
+      # x = ccvul #yes
     )
-  )
+  ) +
+  facet_wrap(~status)
+
+
+# -  n for each group > total of dependent variables (YES)
+# - All groups have common variance-covariance – usually fine if sample sizes for each group are the same or very similar. Otherwise, Box’s M can be used to test. (YES, SAMPLE SIZES ARE THE SAME)
+# - Homoscedasticity
+# - There is a moderate linear correlation between the dependent variables (if too weak, or too strong, a series of one-way ANOVAs may be more appropriate) (NO!)
+
+man_vul <- manova(cbind(ccvul,fishvul)~status,data = Status_Per_Species)
+summary(man_vul)
+
+summary.aov(man_vul)
+
+## Since we don't have linear correlation between dependent variables, we test anovas
+
+### fishvul ANOVA
+
+Fishvul_aov <- aov(fishvul~Categories, data = Status_Per_Species)
+summary(Fishvul_aov)
+
+#   Df Sum Sq Mean Sq F value Pr(>F)
+# Categories     2   2698  1349.2   2.286  0.102 # NO SIG
+# Residuals   1392 821450   590.1               
+# 294 observations deleted due to missingness
+
+
+### ccvul ANOVA (N)
+
+Ccvul_aov <- aov(ccvul~Categories, data = Status_Per_Species)
+summary(Ccvul_aov)
+# Df Sum Sq Mean Sq F value Pr(>F)
+# Categories     2   1798   899.0   2.181  0.113 # NO SIG
+# Residuals   1686 695057   412.3   
 
 ```
 
