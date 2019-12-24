@@ -1509,7 +1509,7 @@ UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), he
     fishing_entity = gsub("Côte d’Ivoire", "Côte d'Ivoire",fishing_entity),
     # fishing_entity = gsub("Russian Federation", "Russia",fishing_entity)
     fishing_entity = gsub("Viet Nam", "Vietnam",fishing_entity),
-    fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),,
+    fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),
     fishing_entity = gsub("Marshall Islands", "Solomon Isl.",fishing_entity),
   )
 
@@ -1580,7 +1580,7 @@ Status_Data <- fread(paste(Results_Path,"Species_Status.csv", sep ="")) %>%
 Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
 
 # Load and clean transboundary results
-Results_Trans <- GetTransResults(Spp)
+# Results_Trans <- GetTransResults(Spp)
 
 # Clean results susing function CleanResultsfun
 Clean_Results_Trans <- CleanResults(Results_Trans) %>% 
@@ -1603,6 +1603,29 @@ cc_vul <- fread(paste(Data_Path,"Species_Data/vulspp310817.csv", sep ="")) %>%
 
 fish_vul <- fread(paste(Data_Path,"Species_Data/FishSenIndex.csv", sep ="")) %>% 
   clean_names()
+
+
+### RFMO species list
+
+RFMO_Species <- read.csv(paste(Data_Path,"Spatial_Data/RFMO/clean_rfmos.csv", sep ="")) %>% 
+  clean_names() %>% 
+  left_join(Exploited_Species,
+            by = c("taxon_name"))
+
+# The path
+path_world <- paste(Data_Path,"/Spatial_Data/","RFMO","/SAU_RFMO",sep="")
+# #The File
+fnam_world <- "SAU_RFMO_Sept_2015.shx"
+# #Load it!
+# 
+RFMOs_sf <- st_read(dsn = path_world,
+                      layer =file_path_sans_ext(fnam_world)) %>% 
+  dplyr::rename(Name = RFMO_nm_s) %>% 
+  st_set_crs(3832) %>% # Making sure is same proyection
+  st_transform(3832) # to match shapefiles
+
+Clean_Results_Trans <- Clean_Results_Trans %>% 
+  filter(taxon_key %in% RFMO_Species$taxon_key)
 
 ```
 
@@ -1628,6 +1651,10 @@ Tresholded_T_Data <- Clean_Results_Trans %>%
     area_index <= Max_AI,
     model_index >= MI
   )
+
+length(unique(Tresholded_T_Data$eez_name))
+
+
 
 ```
 
@@ -1660,11 +1687,13 @@ Total_Trans_Rev <- SAU_Revenue_Data %>%
   group_by() %>% 
   summarise(Total =sum(mean_value)/1000000)# total revenue within EEZs of the world from sau.org
 
+
 Per_Trans_Rev <- SAU_Revenue_Data %>% 
   filter(taxon_key %in% Total_trans$taxon_key) %>% 
   group_by() %>% 
   summarise(Total =sum(mean_value)/1000000) %>%  # million
   pull()/160000*100 
+
 
 # -------------------------- #
 # Total Catch
@@ -1751,6 +1780,22 @@ Revenue_Country <- sau_eez_fes %>%
                          )
   ) %>% 
   filter(Total_USD > 0) 
+
+
+
+####  Data for Jessica
+
+# Data per Territory
+# Transboundary_Jess <- Tresholded_T_Data %>% 
+#   group_by(fishing_entity) %>% 
+#   summarise(
+#     n_trans_spp = length(unique(taxon_key)),
+#     # n_neighbours = length(unique(nt_fishing_entity)),
+#     # trans_Rrate = n_trans_spp/n_neighbours
+#   )
+
+# write_csv(Transboundary_Jess,
+#           "transboundary_species_dec19.csv")
 
 
 ```
@@ -2153,6 +2198,17 @@ Rev_PeRu %>%
   summarise(sum(Ratio))
   
 
+### Total from the top 5
+
+Top5 <- c("Peru", "Russian Federation", "Chile", "USA","China")
+
+Total_PeRu <- Revenue_Country %>% 
+  filter(fishing_entity %in% PeRu) %>% 
+  select(1:2) %>% 
+  group_by() %>% 
+  summarise(sum(Total_USD)) %>% 
+  pull()/79745
+
 ```
 
 ### Statistical differences
@@ -2210,25 +2266,39 @@ TukeyHSD(Catch_aov)
 
 ```{r Territory_Map, eval =F, echo =F}
 
+lenght(unique(Clean_Results_Transboundary$taxon_key))
+
+
+Transboundary_Spp %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = reorder(eez_name,-n_trans_spp),
+      y = n_trans_spp
+    ),
+    stat = "identity"
+  ) +
+  coord_flip()
+
 head(RFMOs_sf)
 
 # Transboundary Species shapefile
 World_sf_si <- RFMOs_sf %>%
   rename(eez_name = Name) %>% 
   st_transform(crs = 4326) %>% # 4326
-  # st_simplify(preserveTopology = TRUE, dTolerance = 0.0001) %>%
+  # st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
   left_join(Transboundary_Spp, by ="eez_name") 
 
 
-ICC <- World_sf_si %>% 
-  filter(eez_name == "ICCAT")
-
+# ICCAT <-World_sf_si %>% 
+#   filter(eez_name == "ICCAT")
+# 
 
 
 # Total catch/Revenue shapefile
 World_sf_si_land <- World_land_sf %>%
-  st_transform(crs = 4326) %>% # 4326
-  st_simplify(preserveTopology = TRUE, dTolerance = 0.1)
+  st_transform(crs = 4326) #%>% # 4326
+  # st_simplify(preserveTopology = TRUE, dTolerance = 0.1)
 
 # Get the NA's to be grey
 # Grey_land <- World_sf_si_land %>% 
@@ -2236,34 +2306,39 @@ World_sf_si_land <- World_land_sf %>%
 
 # Make map
 Plot <- ggplot() +
+  geom_sf(data = World_sf_si_land) +
   geom_sf(data = World_sf_si,
           aes(
-            fill =  reorder(Bins_Plot,n_trans_spp),
-            colour = reorder(Bins_Plot,n_trans_spp)
+            fill =  n_trans_spp#,
+            # colour = reorder(Bins_Plot,n_trans_spp)
           ), 
           size = 0.1
           ) + # n_trans_spp or Bins
-  # geom_sf(data = World_sf_si_land) +
-  scale_fill_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
-                                  "#00A08A",#"#00A08A", #green
-                                  "#F2AD00",#"#F2AD00", # Yellow
-                                  "#F98400",#"#F98400", #Orange
-                                  "#FF0000"#,"#FF0000" #Red
-  ),
-  na.value = "grey"
-  ) +
-  scale_colour_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
-                                    "#00A08A",#"#00A08A", #green
-                                    "#F2AD00",#"#F2AD00", # Yellow
-                                    "#F98400",#"#F98400", #Orange
-                                    "#FF0000"#,"#FF0000" #Red
-  ),
-  na.value = "grey"
-  ) +
-  ggtheme_map() +
-  facet_wrap(~eez_name)
+  # geom_sf_label(data = World_sf_si,
+  #               aes(label = eez_name)
+  #               ) +
+  scale_fill_gradientn("Number of Shared Species",
+    colours = wes_palette("Zissou1", 100, type = "continuous")) +
+  # scale_fill_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
+  #                                 "#00A08A",#"#00A08A", #green
+  #                                 "#F2AD00",#"#F2AD00", # Yellow
+  #                                 "#F98400",#"#F98400", #Orange
+  #                                 "#FF0000"#,"#FF0000" #Red
+  # ),
+  # na.value = "grey"
+  # ) +
+  # scale_colour_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
+  #                                   "#00A08A",#"#00A08A", #green
+  #                                   "#F2AD00",#"#F2AD00", # Yellow
+  #                                   "#F98400",#"#F98400", #Orange
+  #                                   "#FF0000"#,"#FF0000" #Red
+  # ),
+  # na.value = "grey"
+  # ) +
+  ggtheme_map()
 
-Plot_Name <- paste("RFMO_100_25_Bins_facet.png", sep = "") 
+
+Plot_Name <- paste("RFMO_100_25.png", sep = "") 
 
 ggsave(Plot_Name,
        plot = Plot,
@@ -2356,7 +2431,8 @@ Status_Plot_Data <- tibble(
   select(individual,observation,group=georegion,value) %>% 
   filter(group != "other")
 
-
+# Number of coastal nations
+length(unique(Status_Data_Plot$individual))
 
 
 # Summary for manuscipt
@@ -2915,6 +2991,24 @@ save_plot(
 
 ```
 
+## Statistics on species
+
+```{r Spp_Stats, eval = T, echo = F}
+
+head(Species_Data)
+
+# Differences between groups
+Stat_spp_aov <- aov(value~group, data = Species_Data)
+Stat_spp_aov
+summary(Stat_spp_aov)
+# Df Sum Sq Mean Sq F value   Pr(>F)    
+# group         5  24836    4967   14.67 5.52e-11 *** (YUP)
+# Residuals   109  36915     339                     
+
+TukeyHSD(Stat_spp_aov)
+
+
+```
 
 # Vulnerabillity Assesment
 
