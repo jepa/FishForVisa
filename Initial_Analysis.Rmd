@@ -33,7 +33,7 @@ packages <- c(
   # "ggimage", #for reading images to the circular plot
   # "ggrepel", # for nice plot labels
   # "ggsflabel", # for nice sf_plots labels
-  "spdep", # for poly2nb
+  # "spdep", # for poly2nb old
   "sf", #Spatial analysis 
   "sp", #Spatial analysis 
   # "purrr",#Spatial analysis
@@ -1750,7 +1750,7 @@ Revenue_Country <- sau_eez_fes %>%
            taxon_key) %>% 
   summarise(n()) %>% # get each taxa per nation
   left_join(SAU_Revenue_Data,
-            by = c("fishing_entity_id","taxon_key")) %>% 
+            by = c("fishing_entity","fishing_entity_id","taxon_key")) %>% 
   group_by(fishing_entity) %>% # Estimate the amount of dollars of each nation 
   summarise(Total_USD = (sum(mean_value,na.rm=T))/1000000) %>% # Million of USD
   ungroup() %>% 
@@ -1810,6 +1810,24 @@ Continent_Data_Trans <- Tresholded_T_Data %>%
 ### Catch Data
 
 # Catch_Country
+
+Catch_Breaks <- c(-1,10,100,1000,5000,10000)
+
+Catch_Country <- SAU_Catch_Data %>%
+  group_by(eez_name) %>%
+  summarise(eez_catch = round(sum(total_catch,na.rm=T),2)) %>%
+  left_join(Clean_sau_eez_fes,
+            by = "eez_name") %>%
+  group_by(fishing_entity) %>%
+  summarise(fishing_entity_catch = sum(eez_catch,na.rm=T)/1000) %>% # thousand tones
+  mutate(
+    # fishing_entity = ifelse(fishing_entity == "USA","United States of America",
+  #                                ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)),
+         Bins = cut(fishing_entity_catch,breaks = Catch_Breaks),
+         Bins_Plot = cut(fishing_entity_catch,breaks = Catch_Breaks,
+                         labels = c('super low', 'low','median','high','super high'))
+  ) %>% 
+  filter(fishing_entity_catch > 0)
 
 ### Revenue Data
 Subregion_Data <- Revenue_Country %>% 
@@ -2729,8 +2747,9 @@ ggsave(
     width = 17,
     height = 15,
     units = "in",
-    filename = "Territory_circular_status.png",
-    path = Figures_Path
+    filename = "Plot.png"
+    # filename = "Territory_circular_status.png",
+    # path = Figures_Path
   )
  
 
@@ -2844,7 +2863,8 @@ Species_Data <- Tresholded_T_Data %>%
                         ifelse(individual == "Scomberomorus commerson", "S. commerson",
                                individual)
     )
-  )
+  ) %>% 
+  filter(!group %in% c("Bathydemersal","Pelagic"))
 
 #### Ecosystem based plots
 
@@ -2852,7 +2872,6 @@ Top_5_Ecosystem <- Species_Data %>%
   rename(taxon_name = individual) %>% 
   group_by(group) %>% 
   top_n(5,value) 
-
 
 # If you want to show revenue
 # Country_Spp_Data <- sau_eez_fes %>% 
@@ -2875,7 +2894,6 @@ Country_Spp_Data <- Tresholded_T_Data %>%
   left_join(Exploited_Species) %>%
   left_join(Top_5_Ecosystem) %>% # includes the groups
   filter(taxon_name %in% Top_5_Ecosystem$taxon_name) %>%
-  # mutate(taxon_key = as.character(taxon_key)) %>%
   left_join(SAU_Catch_Data,
             by = c("eez_name","taxon_key")
   ) %>%
@@ -2890,6 +2908,8 @@ Country_Spp_Data <- Tresholded_T_Data %>%
                                           ifelse(fishing_entity == "Solomon Isl.", "Solomon",fishing_entity)))
     )
   )
+
+
 ```
 
 ### OHI-inspired Circular plot Species
@@ -3071,14 +3091,14 @@ Spp_circular <- ggplot(Species_Data,
   ) +
   coord_polar() + 
   scale_fill_manual("Ecosystem Preference",
-                    values = c(wes_palette(n = 4, name = "GrandBudapest1"),
-                               wes_palette(n = 3, name = "GrandBudapest2")
+                    values = c(wes_palette(n = 5, name = "Darjeeling1"),
+                               wes_palette(n = 3, name = "Darjeeling2")
                     ),
                     na.value = "white"
   ) +
   scale_colour_manual("Ecosystem Preference",
-                      values = c(wes_palette(n = 4, name = "GrandBudapest1"),
-                                 wes_palette(n = 3, name = "GrandBudapest2")
+                      values = c(wes_palette(n = 5, name = "Darjeeling1"),
+                               wes_palette(n = 3, name = "Darjeeling2")
                       ),
                       na.value = "white"
   )
@@ -3100,8 +3120,8 @@ Ecosystem_plots <- Country_Spp_Data %>%
   labs(x = "",
        y = "Catch (Thousand tonnes)") +
   scale_fill_manual("",
-                    values = c(wes_palette(n = 4, name = "GrandBudapest1"),
-                               wes_palette(n = 3, name = "GrandBudapest2")
+                    values = c(wes_palette(n = 5, name = "Darjeeling1"),
+                               wes_palette(n = 3, name = "Darjeeling2")
                     ),
                     na.value = "white"
   ) +
@@ -3203,8 +3223,11 @@ MI <- 100 # Model Index
 
 ####_____End Select Tresholds_______ ###
 
-Area_Index_Level <- seq(.1,0.5,0.1)
+Area_Index_Level <- c(seq(.1,0.5,0.1),0.25)
+result <- c(40,35,28,18,4,31.5)
 
+
+plot(result~Area_Index_Level)
 
 p <- list()
 i = NULL
@@ -3213,14 +3236,14 @@ for(i in 1:length(Area_Index_Level)){
   
   data <- Clean_Results_Trans %>% 
     filter(
-      Area_Index >= Area_Index_Level[i],
-      Area_Index <= 1-Area_Index_Level[i],
-      Model_Index == MI
+      area_index >= Area_Index_Level[i],
+      area_index <= 1-Area_Index_Level[i],
+      model_index == MI
     ) %>% 
-    group_by(Territory) %>% 
+    group_by(eez_name) %>% 
     summarise(
-      n_trans_spp = length(unique(TaxonKey)),
-      n_Neighbours = length(unique(Neighbour)),
+      n_trans_spp = length(unique(taxon_key)),
+      n_Neighbours = length(unique(eez_neighbour)),
       Trans_Rate = n_trans_spp/n_Neighbours
     )
   
@@ -3230,16 +3253,16 @@ for(i in 1:length(Area_Index_Level)){
   p[[i]] <- ggplot(data) +
     geom_histogram(aes(n_trans_spp),
                    binwidth = 10, 
-                   colour = "white"
+                   colour = "white",
+                   fill = ifelse(i!= 6,"grey80","grey20")
     ) +
     labs(
       x = "Transboundary species (n)",
       y = "Frequency of EEZs",
-      title= paste("Using a",(Area_Index_Level[i]*100),"% area treshold. (Median",Median_data,")")
+      title= paste((Area_Index_Level[i]*100),"% area treshold"," (Median ",Median_data,")",sep="")
     ) +
     # ggtitle(paste("Using a",(Area_Index_Level[i]*100),"% area treshold. (Median",Median_data,")")) +
     ggtheme_plot()
-  
 }
 
 ggsave(
