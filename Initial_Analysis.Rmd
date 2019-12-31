@@ -2676,11 +2676,14 @@ Status_Plot_Data %>%
                fill=observation),
            stat="identity", 
            alpha=0.5) +
+  # scale_fill_manual("Catch Category",
+  #                   values = c(rev(wes_palette(n = 5, name = "Rushmore1")),"grey")
+  #                   ) +
   scale_fill_manual("Catch Category",
                     values = c(
-                      "#9986A5", # Developing / Rebulding / Cat A / blue
-                      "#79402E", #Max exp. / Cat B / green
-                      "#CCBA72", # collapsed / Overexp. / Cat. C / Red
+                      "#046C9A", # Developing / Rebulding / Cat A / blue
+                      "#0B775E", #Max exp. / Cat B / green
+                      "#F2300F", # collapsed / Overexp. / Cat. C / Red
                       "#8D8680"
                     ),
                     na.value = "white"
@@ -2747,9 +2750,9 @@ ggsave(
     width = 17,
     height = 15,
     units = "in",
-    filename = "Plot.png"
-    # filename = "Territory_circular_status.png",
-    # path = Figures_Path
+    # filename = "Plot.png"
+    filename = "Territory_circular_status.png",
+    path = Figures_Path
   )
  
 
