@@ -1,9 +1,9 @@
 ---
-title: "Fish do not need Visas: the transboundary nature of the world’s exploited marine fish species"
+title: "Fish do not need Visas: the transboundary nature of the world’s exploited marine fish species (79/96 characters)"
 author: "Authors: Juliano Palacios-Abrantes^1^, Gabriel Reygondeau^1,2^, Colette Wabnitz^1,3^ and William W.L. Cheung^1^"
 date: "Affiliations: ^1^Institute for the Oceans and Fisheries, University of British Columbia, Vancouver, Canada, ^2^Yale University, New Haven, Connecticut, USA, ^3^Stockholm Resilience Centre, Stockholm University, Stockholm, Sweden"
-subtitle: "DRAFT DO NOT SHARE"
-# subtitle: "Fish do not need Visas (16/40 character maximum)"
+# subtitle: "DRAFT DO NOT SHARE"
+subtitle: "Most neighbour nations share marine species (38/40 characters)"
 output:
   word_document:
     # reference_docx: ./Manuscript_Instructions/science_template.docx
@@ -44,42 +44,46 @@ ipak(packages)
 
 ```
 
-<!-- # Instructions for submission -->
+# Instructions for submission
 
-<!-- - Journal: *Science*  -->
+- Journal: *Science*
 <!-- - Information to authors (https://www.sciencemag.org/authors/science-information-authors) -->
 <!-- - There are two types of article: -->
 
-<!-- -- **Reports** (up to ~2500 words including references, notes and captions–corresponds to ~3 printed pages in the journal) present important new research results of broad significance. Reports should include an abstract, an introductory paragraph, up to four figures or tables, and about 30 references.  -->
+-- **Reports** (up to ~2500 words including references, notes and captions–corresponds to ~3 printed pages in the journal) present important new research results of broad significance. Reports should include an abstract, an introductory paragraph, up to four figures or tables, and about 30 references.
 
-<!-- Policy Forums (1000 to 2000 words, 1-2 figures, and up to 15 references) presents issues related to the intersections between science and society that have policy implications. -->
-
-
-<!-- In both cases Materials and Methods should be included in supplementary material -->
+<!-- Materials and Methods should be included in supplementary material -->
 
 <!-- --- Instructions for preparing an initial manuscript https://www.sciencemag.org/authors/instructions-preparing-initial-manuscript -->
 
+# Reviewers (5):
+*Include Names, affiliations, and e-mail addresses of up to five potential reviewers and up to five excluded reviewers.*  
 
-<!-- - Reviewers: Names, affiliations, and e-mail addresses of up to five potential reviewers and up to five excluded reviewers. -->
+**Note:** Please include potential reviewers you think appropiate to review the manuscript (Or confirm my suggestions)
 
-<!-- # One Sentence Summary (~ 125 characters) -->
+- **Potential Reviewers (J)**  
+ -- Gakushi Ishimura,  
+ -- Kathleen Miller, National Center for Atmospheric Research, Boulder, Colorado, USA  
+ -- Malin Pinsky, Rutgers University, New Brunswick, New Jersey, USA  
+ -- Steven D. Gaines, University of California, Santa Barbara, Santa Barbara, California, USA  
 
+- **Excluded Reviewers (J)**  
+-- U. Rashid Sumaila, Institute for the Oceans and Fisheries, University of British Columbia, Vancouver, Canada  
+-- Louise S.L. Teh, Institute for the Oceans and Fisheries, University of British Columbia, Vancouver, Canada  
 
-<!-- A brief teaser statement highlighting main result of the paper, understandable by a scientist not in your field, without jargon or abbreviations. This will appear online adjacent to the title and should not repeat phrases already present there -->
+# One Sentence Summary (125/~125 characters)
+*A brief teaser statement highlighting main result of the paper, understandable by a scientist not in your field, without jargon or abbreviations. This will appear online adjacent to the title and should not repeat phrases already present there*
 
+Over 50% of marine fish landings and revenue comes from species shared by neighbouring nations having direct implications to fisheries management.
 
-<!-- - Field code: *Fisheries* -->
+# Field code (Max. 2) 
 
-<!-- # **Abstract** (~125 words) -->
+- *Fisheries*
 
-The precense of a species in time and space is linked to a combination of biotic and abiotic factors, but the concept of species distribution is rarely integrated into fisheries management, or policy, .
+# Abstract (125/~125 words)
+*An opening sentence that sets the question that you address and is comprehensible to the general reader, background content specific to this study, results, and a concluding sentence. It should be a single paragraph.*
 
-Identifying what species re transboundary is a first step to the proper management of shared stocks and achieving sustainabillity of marine ressources.
-
-Incorporating the concept of species distribution into fisheries management, or policy, is not allways hapens as shown by the delineation of Economic Exclusive Zones (EEZs) under the United Nations Convention on the Law of the Seas (UNCLOS) in the early 80s. Shared marine ressources are inheratably complex to manage and thus, require special care. However, forty years after the formal adoption of EEZs, the question of how many shared species exist in the world based on their distribution is still unanswered. Here, we ucombine species' distributions with the nation's EEZs in order to determine the number of transboundary stocks. moreover, we identify their importance in terms of catch and revenue and discuss the
-
-
-<!-- An opening sentence that sets the question that you address and is comprehensible to the general reader, background content specific to this study, results, and a concluding sentence. It should be a single paragraph. -->
+Regulatory boundaries and species distributions are not always aligned, therefore marine species often cross multiple Economic Exclusive Zones (EEZs). This represents a challenge for fisheries management as the benefits from a shared resource is often maximized through collaboration. In here, we combined species distributions and the spatial delimitation of EEZs to identify the number of exploited marine fish species that are shared between neighbouring nations. We found that 64% of the world's capture and 50% or revenue comes from 633 shared species, with some countries receiving over 70% of their benefits from a few shared resources. Identifying shared species can play a critical role in the sustainability of wild fisheries suggesting a need for collaborative management strategies.
 
 
 # Main Article
@@ -91,7 +95,7 @@ Forty years after the formal adoption of UNCLOS, accurate estimates of the numbe
 
 We developed a four-criteria methodology to determine if a species was transboundary (see Methods). The first criteria consisted in only considering shared species between neighboring EEZs, rather than the specie's extended distribution. For the second criteria we considered a species to be present in a $0.5^o$ x $5^o$ grid cell if all data sources predicted positive occurrence. Current species distributions were predicted from occurrence records obtained from publicly available observational databases of the world’s marine species and two structurally distinct species distribution models [@Asch:2018ca; Reygondeau:2019uh; @Zeller2016]. The third criteria determined whether the species were exploited at the grid cell using spatially explicit catch data [@Zeller2016]. A species was kept in a grid cell if both predicted species occurrences and catch data were positive. Finally, the last criteria determined a spatial threshold to confirm that a species occurs in both neighboring EEZs. Once transboundary species were identified, we estimated their contribution to fishing landings and revenues using the *Sea Around Us* database [@Zeller2016] and categorized them according to catch trends [@Kleisner:2013gh]. We carry out the analysis at the species per EEZ level, rather than stocks (populations within a species), due to lack of stock-specific spatial and ecological information on all of the fished species [@Teh:2015gd]. Despite loosing detail-specific (e.g. a species could have multiple stocks within an EEZ),  many fisheries within a country or EEZ are managed at the species level, and recent research has suggested strong connectivity between stocks thousand of kilometers away [@Ramesh:2019va].
 
-## Results and discussion (~1000 words)
+<!-- ## Results and discussion (~1000 words) -->
 
 We identified **633** transboundary species in the world, more than double the number previously estimated [@Teh:2015gd], accounting for **65.4%** of the species analyzed (Fig. 1A). Between 2005 and 2014, national fleets targeting shared species within EEZs landed an average of **69.2** million tonnes, representing **64%** of the EEZ-global catch, and generating USD **79,745** million in fishing revenue. This is equivalent to **49.8%** of the global revenue of the same period. These values are higher than previously estimated reinforcing the importance of these species at the global level [@Teh:2015gd]. 
 
@@ -139,14 +143,16 @@ The median for species of all other ecosystem preferences is close to, or less t
 Our study identifies the current species shared by neighbouring coastal nations and highlights the importance of these species in terms of global capture and revenue from wild fisheries. Our results show that captures and revenues from shared species are higher than previously estimated and particularly important to countries in Northern America and Eastern Asia. This result highlights the importance of these fisheries and their potential contribution to regional food security and wellbeing. Moreover, the vast majority of transboundary species are harvest at low rates with no geographic variation. Previous work has found that collaboration will result in better outcomes for shared marine resources. Thus, countries should pay specific attention in the management of the identified transboundary stocks potentially creating collaborative management plans. Identifying existing transboundary species is the first step towards joint management frameworks that are precautionary, strive for sustainability, and can be flexible to accommodate the uncertain future driven by climate change.
 
 
-<!-- # **References** (up to 40 for reports and 15 for policy forum) -->
-
 <!-- # **Acknowledgments* * -->
 
 <!-- ## Funding: include complete funding information;  -->
 <!-- ## Authors contributions: a complete list of contributions to the paper (we encourage you to follow the CRediT model), -->
 <!-- ## Competing interests: competing interests of any of the authors must be listed (all authors must also fill out the Conflict of Interest form). Where authors have no competing interests, this should also be declared. -->
-<!-- ## Data and materials availability: Any restrictions on materials such as MTAs.  -->
+
+## Data and materials availability
+*Any restrictions on materials such as MTAs.*
+
+Gabriel, is there any restriction with the data?
 
 
 # Materials and Methods
@@ -315,7 +321,7 @@ grid.raster(img)
 ![**Histogram of transboundary species using different values of Area Index. Darker histogram represents used value (25%) in the analysis**](./Figures/S3_Area.png)
 
 
-#References
+# References (59/about 30)
 
 <!-- # Recicled text (Not to be included) -->
 
