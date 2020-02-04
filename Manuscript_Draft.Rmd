@@ -1,5 +1,5 @@
 ---
-title: "Fish do not need Visas: the transboundary nature of the world’s exploited marine fish species (79/96 characters)"
+title: "Fish do not need visas: the transboundary nature of the world’s exploited marine fish species (79/96 characters)"
 author: "Authors: Juliano Palacios-Abrantes^1^, Gabriel Reygondeau^1,2^, Colette Wabnitz^1,3^ and William W.L. Cheung^1^"
 date: "Affiliations: ^1^Institute for the Oceans and Fisheries, University of British Columbia, Vancouver, Canada, ^2^Yale University, New Haven, Connecticut, USA, ^3^Stockholm Resilience Centre, Stockholm University, Stockholm, Sweden"
 # subtitle: "DRAFT DO NOT SHARE"
@@ -62,12 +62,11 @@ ipak(packages)
 **Note:** Please include potential reviewers you think appropiate to review the manuscript (Or confirm my suggestions)
 
 - **Potential Reviewers (J)**  
- -- Gakushi Ishimura, Faculty of Agriculture Department of Food Production and Environmental Management, Iwate University, Morioka, Japan  
- -- Kathleen Miller, National Center for Atmospheric Research, Boulder, Colorado, USA  
- -- Louise S.L. Teh, Institute for the Oceans and Fisheries, University of British Columbia, Vancouver, Canada  
- -- Malin Pinsky, Rutgers University, New Brunswick, New Jersey, USA  
- -- Megan Baily, Integrated Ocean and Coastal Governance, Dalhousie University, Halifax, Canada  
- -- Steven D. Gaines, University of California, Santa Barbara, Santa Barbara, California, USA  
+ -- Gakushi Ishimura, Faculty of Agriculture Department of Food Production and Environmental Management, Iwate University, Morioka, Japan; gakugaku@iwate-u.ac.jp
+ -- Rebecca Selden, Wellesley College, Wellesley, MA, USA; bselden@wellesley.edu
+ -- Julia Xue, Shanghai Jiao Tong University; juliaxue@ouc.edu.cn
+ -- Claire Armstrong, The Norwegian College of Fishery Science, Tromso, Norway claire.armstrong@uit.no
+
 
 - **Excluded Reviewers (J)**  
 
@@ -75,7 +74,7 @@ ipak(packages)
 # One Sentence Summary (125/~125 characters)
 *A brief teaser statement highlighting main result of the paper, understandable by a scientist not in your field, without jargon or abbreviations. This will appear online adjacent to the title and should not repeat phrases already present there*
 
-Over 50% of marine fish landings and revenue comes from species shared by neighbouring nations having direct implications to fisheries management.
+Species shared by neighboring nations contribute over 50% of marine capture fisheries' landings and revenue with direct implications for fisheries management.
 
 # Field code (Max. 2) 
 
@@ -84,13 +83,13 @@ Over 50% of marine fish landings and revenue comes from species shared by neighb
 # Abstract (125/~125 words)
 *An opening sentence that sets the question that you address and is comprehensible to the general reader, background content specific to this study, results, and a concluding sentence. It should be a single paragraph.*
 
-Regulatory boundaries and species distributions are not always aligned, therefore marine species often cross multiple Economic Exclusive Zones (EEZs). This represents a challenge for fisheries management as the benefits from a shared resource is often maximized through collaboration. In here, we combined species distributions and the spatial delimitation of EEZs to identify the number of exploited marine fish species that are shared between neighbouring nations. We found that 64% of the world's capture and 50% or revenue comes from 633 shared species, with some countries receiving over 70% of their benefits from a few shared resources. Identifying shared species can play a critical role in the sustainability of wild fisheries suggesting a need for collaborative management strategies.
+Regulatory boundaries and species distributions are often not aligned, especially in the case of  marine species crossing multiple Economic Exclusive Zones (EEZs). This represents a challenge for fisheries management as policies tend to focus at the national level, yet collaborations are needed to maximize long-term ecological, social and economic benefits. Here, we combined species distributions and the spatial delimitation of EEZs to identify the number of commercially exploited marine fish species that are shared between neighbouring nations.  We found that 64% of the world’s catches in the last decade, amounted to 50% of fisheries revenue, comes from 633 shared species. Some countries received over 70% of their benefits from a few shared resources. This study highlights the large and under-recognized challenge in achieving international fisheries management goals, particularly as species redistribute under climate change.
 
 
 # Main Article
 <!-- # Introduction (~555/500 words) -->
 
-Distributions of marine species around the world are not restricted by human-made boundaries; rather shaped by contemporary biotic and abiotic factors, as well as their evolutionary history [@Hutchinson:1957nt; @Nelson:2016kk]. Thus, a species can have a broader distribution (cosmopolitan), or be endemic [@Nelson:2016kk]. However, fisheries management is predicated on the definition of “stocks” that are delineated by human-made spatial boundaries that often do not correspond to biologically-meaningful population units [@Song:2017iua; @FredstonHermann:2018kp]. The delineation of Economic Exclusive Zones (EEZs) under the United Nations Convention on the Law of the Seas (UNCLOS) in the early 80s, for instance, established political boundaries across the distribution of many species, creating shared species between nations. Theories and empirical experience demonstrate fisheries targeting resources that straddle between political boundaries complicate fisheries management and potentially reduce its effectiveness to achieve stated objectives [@Munro:2002uf; @Bailey:2010ga]. For example, climate-driven changes in species distributions have led to conflict between nations due to changes in the proportion of captures [@Munro:2002uf], quota allocation, and fishery newcomers [@Spijkers:2017ij]. Moreover, climate change is likely to exacerbate these types of conflict [@Pinsky:2018cb] and presents further challenges for fisheries management [@Miller:2013iv].
+Distributions of marine species around the world are not constrained by human-made boundaries; rather they are shaped by biotic and abiotic factors defined by their evolutionary history [@Hutchinson:1957nt; @Nelson:2016kk]. Thus, a species can have a broader distribution (cosmopolitan), or be endemic [@Nelson:2016kk]. However, fisheries management is predicated on the definition of “stocks” that, in most cases, are delineated by human-made spatial boundaries that often do not correspond to biologically-meaningful population units [@Song:2017iua; @FredstonHermann:2018kp]. The delineation of Economic Exclusive Zones (EEZs) under the United Nations Convention on the Law of the Seas (UNCLOS) in the early 80s, for instance, established political boundaries across the distribution of many species, creating shared species between nations. Theories and empirical experience have show that fisheries targeting resources that straddle between political boundaries complicate fisheries management and potentially reduce its effectiveness to achieve stated objectives [@Munro:2002uf; @Bailey:2010ga]. For instance, climate-driven changes in species distributions have led to conflict between nations due to changes in the proportion of captures [@Munro:2002uf], quota allocation, and fishery newcomers [@Spijkers:2017ij]. Moreover, climate change is likely to exacerbate these types of conflict and presents new challenges for political relations between neighboring countries [@Pinsky:2018cb] and for fisheries management [@Miller:2013iv].
 
 Forty years after the formal adoption of UNCLOS, accurate estimates of the number of exploited marine species that are shared by neighboring nations (hereafter called transboundary species [@Munro:2002uf]) is still unclear due to data limitations [@Caddy:1997ue], and methodological approaches [@Teh:2015gd]. In here, we aimed to estimate the number of exploited marine fish species shared by neighbouring countries and determine their contribution to global catch and fisheries revenue. 
 
