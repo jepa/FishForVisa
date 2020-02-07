@@ -1659,6 +1659,17 @@ Tresholded_T_Data <- Clean_Results_Trans %>%
 
 length(unique(Tresholded_T_Data$eez_name))
 
+### Determine not transboundary data 
+
+Discrete <- Clean_Results_Trans %>% 
+  filter(
+    area_index < Min_AI|
+    area_index > Max_AI|
+    model_index < MI
+  )
+write.csv(Clean_Results_Trans,
+          "Clean_Results_Trans.csv")
+
 ```
 
 ## Overall results
