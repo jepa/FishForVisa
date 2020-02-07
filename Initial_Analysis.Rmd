@@ -1586,6 +1586,11 @@ Clean_Results_Trans <- GetTransResults(Spp) %>%
          eez_neighbour = neighbour) %>% 
   mutate(fishing_entity = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",paste(fishing_entity)))
 
+
+# Read Results For Carmelia
+
+# Clean_Results_Trans <- fread(paste(Data_Path,"Results/EEZ/Clean_Results_Trans.csv", sep =""))
+
 # Vulnerabillity Data from William
 # cc_vul <- fread(paste(Data_Path,"Species_Data/vulspp310817.csv", sep ="")) %>% 
 #   rename(taxon_key = V1,
@@ -1657,18 +1662,25 @@ Tresholded_T_Data <- Clean_Results_Trans %>%
     model_index >= MI
   )
 
-length(unique(Tresholded_T_Data$eez_name))
-
-### Determine not transboundary data 
+length(unique(Tresholded_T_Data$taxon_key))
 
 Discrete <- Clean_Results_Trans %>% 
   filter(
-    area_index < Min_AI|
-    area_index > Max_AI|
+    area_index < Min_AI |
+    area_index > Max_AI |
     model_index < MI
   )
-write.csv(Clean_Results_Trans,
-          "Clean_Results_Trans.csv")
+
+# Makes sense?
+# nrow(Tresholded_T_Data) + nrow(Discrete) == nrow(Clean_Results_Trans) # TRUE
+
+#Number of discrete species #170
+
+n_discrete <- Clean_Results_Trans %>% 
+  filter(! taxon_key %in% Tresholded_T_Data$taxon_key) %>% 
+  group_by() %>% 
+  summarize(length(unique(taxon_key))) %>% 
+  pull() 
 
 ```
 
@@ -3875,6 +3887,24 @@ Neighbours_Data %>%
 
 ```
 
+### UN Data exploration 
+
+```{r}
+
+  UN_Regions %>% 
+  filter(fishing_entity %in% Clean_sau_eez_fes$fishing_entity) %>% 
+  group_by(sub_region) %>% 
+  summarise(n_countries = length(unique(fishing_entity))) %>% 
+  arrange(n_countries)
+
+World_sf %>% 
+  as.data.frame() %>% 
+  left_join(UN_Regions) %>% 
+  filter(fishing_entity %in% Clean_sau_eez_fes$fishing_entity) %>% 
+  group_by(sub_region) %>% 
+  summarise(Size_EEZ = sum())
+
+```
 
 # Extra Analysis
 ## Extra Analysis; Functions
