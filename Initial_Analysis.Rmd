@@ -1555,6 +1555,17 @@ World_sf <- st_read(dsn = path_world,
 # View(unique(World_sf$eez_name))
 
 
+#### Determine Regions ezs areas
+
+Regional_Area <- World_sf %>% 
+  as.data.frame() %>% 
+  left_join(Clean_sau_eez_fes) %>% 
+  left_join(UN_Regions) %>% 
+  filter(fishing_entity %in% Clean_sau_eez_fes$fishing_entity) %>% 
+  group_by(sub_region) %>% 
+  summarise(Size_EEZ = sum(Area_km2))
+
+
 # ---------------------------- #
 # Transboundary Results ####
 # ---------------------------- #
@@ -1771,12 +1782,19 @@ Transboundary_Spp <- Tresholded_T_Data %>%
     n_neighbours = length(unique(eez_neighbour)),
     trans_Rrate = n_trans_spp/n_neighbours
   ) %>% 
+  left_join(Regional_Area, 
+            by = "eez_name") %>% 
   mutate(
     Bins = cut(n_trans_spp,breaks = 5),
     Bins_Plot = cut(n_trans_spp,breaks = 5,
-                    labels = c('super low', 'low','median', 'high','super high'))
+                    labels = c('super low', 'low','median', 'high','super high')),
+    # Include the weighted method for supplementals
+    Weight_Spp = n_trans_spp/Size_EEZ 
+    Weight_Bins = cut(Weight_Spp,breaks = 5),
+    Weight_Bins_Plot = cut(Weight_Spp,breaks = 5,
+                    labels = c('super low', 'low','median', 'high','super high')),
   )
-
+  
 # Get Catch and Revenue data for mapping 
 
 # Set manual breaks for bins
@@ -1797,18 +1815,22 @@ Revenue_Country <- sau_eez_fes %>%
   group_by(fishing_entity) %>% # Estimate the amount of dollars of each nation 
   summarise(Total_USD = (sum(mean_value,na.rm=T))/1000000) %>% # Million of USD
   ungroup() %>% 
-  mutate(#fishing_entity = ifelse(fishing_entity == "USA","United States of America",
-    # ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)
-    # ),
+  left_join(Regional_Area, 
+            by = "eez_name") %>% 
+  mutate(
     Bins = cut(Total_USD,breaks = Rev_Breaks, dig.lab = 5 ),
     Bins_Plot = cut(Total_USD,breaks = Rev_Breaks,
                     labels = c('super low', 'low','median','high','super high'),
                     dig.lab = 5 # Removes scientific notaion
-    )
+    ),
+     # Include the weighted method for supplementals
+    Weight_Rev = Total_USD/Size_EEZ 
+    Weight_Bins = cut(Weight_Rev,breaks = 5),
+    Weight_Bins_Plot = cut(Weight_Rev,breaks = 5,
+                    labels = c('super low', 'low','median', 'high','super high')),
+  )
   ) %>% 
-  filter(Total_USD > 0) 
-
-
+  filter(Total_USD > 0)
 
 ####  Data for Jessica
 
@@ -1823,7 +1845,6 @@ Revenue_Country <- sau_eez_fes %>%
 
 # write_csv(Transboundary_Jess,
 #           "transboundary_species_dec19.csv")
-
 
 ```
 
@@ -1909,6 +1930,7 @@ Subregion_Data_Trans$sub_region <- Subregion_Data_Trans$sub_region %>%
 
 number_of_bar <- nrow(Subregion_Data_Trans)
 
+# Label info
 label_data_rev <- Subregion_Data_Trans %>% 
   arrange(Total_USD_sum) %>% # soo it looks like a nice snail :)
   mutate(
