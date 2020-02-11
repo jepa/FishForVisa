@@ -99,7 +99,7 @@ Jursidiction <- "EEZ"
 # Set paths depending on machine Beast (jepa88), "carmelia" or Hall1000
 if(Sys.info()[7] == "jepa88"){
   Data_Path <- "Z:/JULIANO_NEYMAR/FishForVisa/"
-  }
+}
 if(Sys.info()[7] == "carmelia"){
   Data_Path <- paste(here::here(),"/Temporal_Data/",sep = "")
 }
@@ -141,13 +141,13 @@ print("_____________________ WARNING DO NOT FORGET TO PULL/PUSH BEFORE YOU START
 These are the methods to follow:
 
 1. Determine which countries have Neighbouring EEZs  
-  1.1. For this we used the Sea Around Us EEZ map that discriminate by oceans and a routine (*Estimate Transboundary Species*) to identify Neighbouring polygons,
-  1.2. Then we match the SAU spatial information (e.g. INDEX within EEZ and coordinates) with the Neighbouring data
+1.1. For this we used the Sea Around Us EEZ map that discriminate by oceans and a routine (*Estimate Transboundary Species*) to identify Neighbouring polygons,
+1.2. Then we match the SAU spatial information (e.g. INDEX within EEZ and coordinates) with the Neighbouring data
 
 2. Overlap distribution maps with Neighbours data  
-  2.1. For each species we merged the Neighbours data with their known distribution (SAU distribution and catch,ESMs, and Observation)  
+2.1. For each species we merged the Neighbours data with their known distribution (SAU distribution and catch,ESMs, and Observation)  
 3. Determine transboundary if:  
-  3.1. Species is present in both Neighbouring EEZs by INDEX  
+3.1. Species is present in both Neighbouring EEZs by INDEX  
 
 We create two "confidence level" based on data and area covered, i.e;
 
@@ -203,8 +203,8 @@ Step_One <- gsub(".*_","",list.files(paste(Data_Path,"/Distribution_Data/SAU_Dis
 Species_List <- gsub("\\..*","",Step_One)
 
 exploited_species <- read.csv("/Volumes/DATA/PROJECTION exploited species ENM/exploited_species_list.csv") #%>% 
-  # left_join(Spp_Clasification) %>% 
-  # filter(!is.na(DemPel)) # remove freshwater spp
+# left_join(Spp_Clasification) %>% 
+# filter(!is.na(DemPel)) # remove freshwater spp
 
 # Get all species in SAU database (2080)
 Species_list <- exploited_species %>% 
@@ -215,7 +215,7 @@ Species_list <- exploited_species %>%
 
 Species_environ_list <- rbind(species(Species_list, 
                                       fields = species_fields$habitat)
-                              ) %>% 
+) %>% 
   mutate(TaxonName = Species_list) %>% 
   left_join(exploited_species,  by ="TaxonName") %>% 
   filter(!TaxonKey %in% Species_List) %>% 
@@ -257,7 +257,7 @@ EstNeighbours <- function(Shapefile, Partial = "NA"){
   int = suppressMessages(st_intersects(Shapefile))
   # Warnning message
   # although coordinates are longitude/latitude, st_intersects assumes that they are planar
-
+  
   
   # Intitalize new object
   mat = NULL
@@ -285,22 +285,22 @@ EstNeighbours <- function(Shapefile, Partial = "NA"){
     
   }else{
     
-  # Merge them with SAU data so we have the INDEX and lat long info
-  suppressWarnings(
-    # warning for characters in name, no problem
-  DBEM_Neighbours_Data <- Result_table %>% 
-     left_join(EEZIDs_List, 
-              by = "Name") %>% # Asign EEZ id to each country
-    left_join(EEZ_CellID, 
-              by = "EEZID") %>% # Asign EEZ id to each country
-    left_join(Coor,
-              by = "INDEX") %>%  # Include lat long
-    rename(Country_Territory = Name)
-  
-  )
-  
-  return(DBEM_Neighbours_Data)
-  
+    # Merge them with SAU data so we have the INDEX and lat long info
+    suppressWarnings(
+      # warning for characters in name, no problem
+      DBEM_Neighbours_Data <- Result_table %>% 
+        left_join(EEZIDs_List, 
+                  by = "Name") %>% # Asign EEZ id to each country
+        left_join(EEZ_CellID, 
+                  by = "EEZID") %>% # Asign EEZ id to each country
+        left_join(Coor,
+                  by = "INDEX") %>%  # Include lat long
+        rename(Country_Territory = Name)
+      
+    )
+    
+    return(DBEM_Neighbours_Data)
+    
   } # end ifelse
 } # end function
 
@@ -350,9 +350,9 @@ colnames(Coor) <- c("INDEX","Longitude","Latitude")
 ```{r Neighbours_Subroutine, eval = F, echo = T}
 
 # Run Function (Ran and saved May 27 2019 at 6pm)
- system.time(
+system.time(
   EEZ_Neighbour_List <- EstNeighbours(World_EEZs, Partial = T)
- )
+)
 # 8203.05    0.25 8204.51 (around 2 hours 30 min)
 
 write.csv(EEZ_Neighbour_List,
@@ -383,7 +383,7 @@ write.csv(EEZ_Neighbour_List,
 This sub routine determines the species exploitation status based on the SAU methodology. **Note:** For the current project we do not consider this method to determine the species exploitation status *per se*, but rather a catch trend that *could* indicate that a species is under/over/max exploited.
 
 In the original method the authors analyze stocks, while we analyze at the species level within each EEZ. Also (n), the number of species, is defined as a time series of a given species, genus or family (higher and pooled groups have been excluded) for which the first and last reported landings are at least 10 years apart, for which there are at least 5 years of consecutive catches and for which the catch in a given area (LME) is at least 1000 tonnes. We removed the last one (LME) and computed all of the species that only followed the first two;
- 
+
 1) The first and last reported landings are at least ten years apart;
 
 2) There are at least five years of consecutive catches
@@ -640,7 +640,7 @@ EstSppStatus <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
   
   if(Per_Taxa == T){
     
-   # Select onlyZ 
+    # Select onlyZ 
     Status_Data <- Status_Data %>%
       ungroup() %>%
       select(TaxonKey,Territory,Year, Status)
@@ -740,19 +740,19 @@ Species_List <- gsub("\\..*","",Step_One)
 ```{r Spp_Status_Sub_Routine, eval = T, echo = F}
 # Needs to have trans species 
 Species_Status <- bind_rows(
-    mclapply(
-   Species_List[1:2],
-      FUN = EstSppStatus,
-      Coord = CoorG,  # Gabriels coordinate system for read species dist
-   Per_Taxa = T,
-   Save_Path = "Z:/Vicky/Stock_Status/"
-   )
+  mclapply(
+    Species_List[1:2],
+    FUN = EstSppStatus,
+    Coord = CoorG,  # Gabriels coordinate system for read species dist
+    Per_Taxa = T,
+    Save_Path = "Z:/Vicky/Stock_Status/"
   )
+)
 
 # Save data
 readr::write_csv(Species_Status,
                  paste(Results_Path,"Species_Status.csv",sep="")
-                 )
+)
 # head(Species_Status)
 ```
 
@@ -873,16 +873,16 @@ This is the main function of the project, the one that actually estimates if a s
 # Spp <- 600464 # Discrete species 
 # Spp <- 600051 # One of Pierrs massive (wrong) discrete spp
 # x <- c(600464, # Discreat spp in one nation
-      # 600059, # nowhere to be found spp
-       # 601352, # Discrete spp in two nations
-       # 600004) # transboundary spp
+# 600059, # nowhere to be found spp
+# 601352, # Discrete spp in two nations
+# 600004) # transboundary spp
 # Model <- "All"
 # Coord <- CoorG
 # 
 # # For EEZ
 # Neighbours <- Neighbours_Data
 # Index_Code <- Index_Code
- 
+
 # __________________________________ #
 
 # The function
@@ -914,7 +914,7 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
     select(-Model, -Value, -Latitude,-Longitude) %>%
     left_join(Index_Code,
               by = "INDEX")
-
+  
   # MODEL INDEX (TRESHOLDS 1 & 2) #
   Model_Index_D <- Trans_Spp %>% 
     group_by(Territory,
@@ -924,7 +924,7 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
     summarise(n_cells_spp = n()) %>% 
     select(-n_cells_spp)
   
-
+  
   #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 3)_________ #
   # The number of species' cells present within each country's EEZ
   
@@ -955,8 +955,8 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
   if(nrow(Spp_Grid) == 0 & Save == "Y"){
     
     #  Get the Territory where species happen
-  Discrete_Territory <- unique(Model_Index_D$Territory)
-  n_Territory <- length(Discrete_Territory)
+    Discrete_Territory <- unique(Model_Index_D$Territory)
+    n_Territory <- length(Discrete_Territory)
     
     # Reads dataset of Non transboundary species
     Non_Transboundary_Data <- fread(paste(Results_Path,"Trans_Results/Non_Transboundary_Data.csv",sep=""))
@@ -973,76 +973,76 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
     New_Non_Name <- paste(Results_Path,"Trans_Results/Non_Transboundary_Data.csv",sep="")
     write.csv(New_Non, New_Non_Name, row.names = F)
     
-  EstTransIndex=Current_Spp
+    EstTransIndex=Current_Spp
     
   }
   
   # Step 3. Sum total grids per Neighbours
   if(nrow(Spp_Grid) > 0 & Save == "Y"){
-  
-  # Split dataframes to merge latter
-  Territory_T <- Spp_Grid %>% 
-    ungroup() %>% 
-    select(
-      Model_Index, # Un-comment after producing models x datasets
-      TaxonKey,
-      Name=Territory,
-      n_spp_eez
-    )
-  
-  Neighbour_T <- Spp_Grid %>% 
-    ungroup() %>% 
-    select(
-      Model_Index,
-      TaxonKey,n_spp_eez,
-      Name=Neighbour,
-      Territory
-    )
-  
-  # Merge dataframes to get totals per Neighbourds
-  Area_Index_D <- full_join(Territory_T,
-                            Neighbour_T, 
-                            by = c("Model_Index","Name","TaxonKey")
-  ) %>%
-    rowwise() %>%
-    mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per Neighbours
-    distinct() %>% # Removes false duplicates from `full_join()`
-    rename(Territory = Name,
-           Neighbour =Territory,
-           n_spp_Country = n_spp_eez.x,
-           n_spp_Neighbour = n_spp_eez.y) %>% 
-    mutate(Area_Index = n_spp_Country/Spp_Total) %>%  #Estimates the proportion of grids per country
-    select(1:3,6,8)
     
-  
-  #____________ FINAL INDEX TABLE_________ #
-  Indexes <- Model_Index_D %>% 
-    full_join(Area_Index_D,
-              by = c("TaxonKey","Territory","Model_Index")
-    ) %>% 
-    filter(!is.na(Area_Index),
-           !is.na(Model_Index) # Uncomment after producing Models x datasets
-    ) %>%  # Remove cases where the country does not pass the area_index and viceversa
-    select(TaxonKey,Territory,Neighbour,everything())
-  
-  ### Save spp dataframe
-  
-  if(nrow(Indexes) > 0 & Save == "Y"){
+    # Split dataframes to merge latter
+    Territory_T <- Spp_Grid %>% 
+      ungroup() %>% 
+      select(
+        Model_Index, # Un-comment after producing models x datasets
+        TaxonKey,
+        Name=Territory,
+        n_spp_eez
+      )
     
-    File_Name <- paste(Spp,"_Transboundary.csv",sep = "")
-    Save_Path <- paste(Results_Path,"Trans_Results/",File_Name,sep="")
+    Neighbour_T <- Spp_Grid %>% 
+      ungroup() %>% 
+      select(
+        Model_Index,
+        TaxonKey,n_spp_eez,
+        Name=Neighbour,
+        Territory
+      )
     
-    write_csv(Indexes,
-              Save_Path)
+    # Merge dataframes to get totals per Neighbourds
+    Area_Index_D <- full_join(Territory_T,
+                              Neighbour_T, 
+                              by = c("Model_Index","Name","TaxonKey")
+    ) %>%
+      rowwise() %>%
+      mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per Neighbours
+      distinct() %>% # Removes false duplicates from `full_join()`
+      rename(Territory = Name,
+             Neighbour =Territory,
+             n_spp_Country = n_spp_eez.x,
+             n_spp_Neighbour = n_spp_eez.y) %>% 
+      mutate(Area_Index = n_spp_Country/Spp_Total) %>%  #Estimates the proportion of grids per country
+      select(1:3,6,8)
     
-  }
-  
-  if(nrow(Indexes) > 0 & Save == "N"){
-  EstTransIndex=Indexes # A dataframe with   
-  }
-  
-  ### Function return
-  EstTransIndex=Indexes # A dataframe with 
+    
+    #____________ FINAL INDEX TABLE_________ #
+    Indexes <- Model_Index_D %>% 
+      full_join(Area_Index_D,
+                by = c("TaxonKey","Territory","Model_Index")
+      ) %>% 
+      filter(!is.na(Area_Index),
+             !is.na(Model_Index) # Uncomment after producing Models x datasets
+      ) %>%  # Remove cases where the country does not pass the area_index and viceversa
+      select(TaxonKey,Territory,Neighbour,everything())
+    
+    ### Save spp dataframe
+    
+    if(nrow(Indexes) > 0 & Save == "Y"){
+      
+      File_Name <- paste(Spp,"_Transboundary.csv",sep = "")
+      Save_Path <- paste(Results_Path,"Trans_Results/",File_Name,sep="")
+      
+      write_csv(Indexes,
+                Save_Path)
+      
+    }
+    
+    if(nrow(Indexes) > 0 & Save == "N"){
+      EstTransIndex=Indexes # A dataframe with   
+    }
+    
+    ### Function return
+    EstTransIndex=Indexes # A dataframe with 
     
   } # Closes Treshold (Step 3)
 } # closes function
@@ -1050,7 +1050,7 @@ EstTransIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code,Save="Y"
 # __________________________________
 # Test function
 # __________________________________
- 
+
 # Spp <-  # Tuna Many RFMOs
 # Model <- "All"
 # Coord = CoorG
@@ -1078,49 +1078,49 @@ https://www.r-bloggers.com/implementing-mclapply-on-windows-a-primer-on-embarras
 # The hack
 
 Mclapply_Hack <- function(...){
-    ## Create a cluster
-    size.of.list <- length(list(...)[[1]])
-
-    cl <- makeCluster(min(size.of.list, n_cores))
-    
+  ## Create a cluster
+  size.of.list <- length(list(...)[[1]])
+  
+  cl <- makeCluster(min(size.of.list, n_cores))
+  
   ## Find out the names of the loaded packages 
-    loaded.package.names <- c(
-        ## Base packages
-        sessionInfo()$basePkgs,
-        ## Additional packages
-        names(sessionInfo()$otherPkgs))
-    tryCatch( {
-
-       ## Copy over all of the objects within scope to
-       ## all clusters. 
-       this.env <- environment()
-       while( identical( this.env, globalenv() ) == FALSE ) {
-           clusterExport(cl,
-                         ls(all.names=TRUE, env=this.env),
-                         envir=this.env)
-           this.env <- parent.env(environment())
-       }
-       clusterExport(cl,
-                     ls(all.names=TRUE, env=globalenv()),
-                     envir=globalenv())
-       
-       ## Load the libraries on all the clusters
-       ## N.B. length(cl) returns the number of clusters
-       parLapply( cl, 1:length(cl), function(xx){
-           lapply(loaded.package.names, function(yy) {
-               require(yy , character.only=TRUE)})
-       })
-       
-       ## Run the lapply in parallel 
-       return( parLapply( cl, ...) )
-    }, finally = {        
-       ## Stop the cluster
-       stopCluster(cl)
+  loaded.package.names <- c(
+    ## Base packages
+    sessionInfo()$basePkgs,
+    ## Additional packages
+    names(sessionInfo()$otherPkgs))
+  tryCatch( {
+    
+    ## Copy over all of the objects within scope to
+    ## all clusters. 
+    this.env <- environment()
+    while( identical( this.env, globalenv() ) == FALSE ) {
+      clusterExport(cl,
+                    ls(all.names=TRUE, env=this.env),
+                    envir=this.env)
+      this.env <- parent.env(environment())
+    }
+    clusterExport(cl,
+                  ls(all.names=TRUE, env=globalenv()),
+                  envir=globalenv())
+    
+    ## Load the libraries on all the clusters
+    ## N.B. length(cl) returns the number of clusters
+    parLapply( cl, 1:length(cl), function(xx){
+      lapply(loaded.package.names, function(yy) {
+        require(yy , character.only=TRUE)})
     })
-
-
-## Warn the user if they are using Windows
-if( Sys.info()[['sysname']] == 'Windows' ){
+    
+    ## Run the lapply in parallel 
+    return( parLapply( cl, ...) )
+  }, finally = {        
+    ## Stop the cluster
+    stopCluster(cl)
+  })
+  
+  
+  ## Warn the user if they are using Windows
+  if( Sys.info()[['sysname']] == 'Windows' ){
     message(paste(
       "\n", 
       "   *** Microsoft Windows detected ***\n",
@@ -1133,16 +1133,16 @@ if( Sys.info()[['sysname']] == 'Windows' ){
       "   with a wrapper to parLapply() for this R session. Please see\n\n",
       "     http://www.stat.cmu.edu/~nmv/2014/07/14/implementing-mclapply-on-windows \n\n",
       "   for details.\n\n"))
-}
-
-## If the OS is Windows, set mclapply to the
-## the hackish version. Otherwise, leave the
-## definition alone. 
-mclapply <- switch( Sys.info()[['sysname']],
-   Windows = {Mclapply_Hack}, 
-   Linux   = {mclapply},
-   Darwin  = {mclapply})
-
+  }
+  
+  ## If the OS is Windows, set mclapply to the
+  ## the hackish version. Otherwise, leave the
+  ## definition alone. 
+  mclapply <- switch( Sys.info()[['sysname']],
+                      Windows = {Mclapply_Hack}, 
+                      Linux   = {mclapply},
+                      Darwin  = {mclapply})
+  
 }
 ## end mclapply.hack.R
 
@@ -1231,15 +1231,15 @@ head(Dis_Trans)
 # user    system   elapsed 
 # 11375.652  3726.515  8342.296 
 
-   # Data on time for the Beast with 30 cores
+# Data on time for the Beast with 30 cores
 # user   system  elapsed 
 # 8117.72  1991.91 10296.00 
 
 # Data on time for the Beast with 32 cores
- #  user  system elapsed 
+#  user  system elapsed 
 # 7831.10 1327.27 9261.48 
-    
-   
+
+
 ```
 
 
@@ -1260,7 +1260,7 @@ x <- RFMO_Data %>%
 #           "rfmos.csv")           
 
 rfmos <- read.csv("~/Github/FishForVisa/rfmos.csv")
-  View(rfmos)
+View(rfmos)
 
 list <- rfmos$Taxa
 
@@ -1295,7 +1295,7 @@ This function simply reads in the files and import them all as on large d.f
 ```{r Fun_GetTransResults, eval = F}
 
 GetTransResults=function(Spp){
-
+  
   # Set the path for each file
   Distpath <- paste(Results_Path,"Trans_Results/",Spp,sep="")
   
@@ -1303,7 +1303,7 @@ GetTransResults=function(Spp){
   Load_Data <- bind_rows(lapply(Distpath, FUN=fread))
   
   return(Load_Data)
-
+  
 }
 
 ```
@@ -1317,8 +1317,8 @@ There are quite a few inconsistencies between the names of territories within th
 # Requires Clean_sau_eez_fes
 # Data <- Results_Trans
 CleanResults <- function(Data){
-
-# Clean out countries that share with their own borders (e.g. Brazil mainland and Brazil (Fernando de Noronha))
+  
+  # Clean out countries that share with their own borders (e.g. Brazil mainland and Brazil (Fernando de Noronha))
   Auto_Remove_Territories <- Data %>% 
     filter(!is.na(Territory),
            !is.na(Neighbour)) %>% 
@@ -1404,7 +1404,7 @@ CleanResults <- function(Data){
     filter(Same_Nation == "No") %>% 
     select(-8,-9)
   
-    # Fix coding issues between MAC and Windows
+  # Fix coding issues between MAC and Windows
   
   Clean_Results$Territory <- Clean_Results$Territory %>% 
     gsub("Cura<e7>ao (Netherlands)","Curaçao (Netherlands)",.) %>% 
@@ -1424,7 +1424,7 @@ CleanResults <- function(Data){
   
   
   return(Clean_Results)
-
+  
 }
 
 ```
@@ -1533,7 +1533,7 @@ World_land_sf <- st_read(dsn = path_world_land,
     fishing_entity = gsub("Marshall Islands", "Solomon Isl.",fishing_entity),
     fishing_entity = gsub("Dem. Rep. Congo", "Congo, R. of",fishing_entity),
     fishing_entity = ifelse(fishing_entity=="Congo", "Congo (ex-Zaire)",paste(fishing_entity))
-         )
+  )
 
 # View(unique(World_land_sf$fishing_entity))
 
@@ -1568,7 +1568,7 @@ SAU_Revenue_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_cou
   group_by(fishing_entity_id,taxon_key) %>% 
   summarise(mean_value = mean(value,na.rm=T)) %>% 
   left_join(Clean_sau_eez_fes)
-  
+
 # Read Species Status Data (Sub-routine Species Status)
 Status_Data <- fread(paste(Results_Path,"Species_Status.csv", sep ="")) %>% 
   clean_names() %>% 
@@ -1597,7 +1597,7 @@ Clean_Results_Trans <- GetTransResults(Spp) %>%
 #          ccvul = V2)
 
 # fish_vul <- fread(paste(Data_Path,"Species_Data/FishSenIndex.csv", sep ="")) %>% 
-  # clean_names()
+# clean_names()
 
 # ---------------------------- #
 # RFMOs Results ####
@@ -1623,7 +1623,7 @@ Results_rfmo <- GetTransResults(Spp_rfmo) %>%
     !rfmo_name %in% c("IPHC","PSC","NASCO"), # remove these
     !neighbour %in% c("IPHC","PSC","NASCO") # remove these
   )
-         
+
 
 # The path
 path_world <- paste(Data_Path,"/Spatial_Data/","RFMO","/SAU_RFMO",sep="")
@@ -1632,7 +1632,7 @@ fnam_world <- "SAU_RFMO_Sept_2015.shx"
 # #Load it!
 # 
 RFMOs_sf <- st_read(dsn = path_world,
-                      layer =file_path_sans_ext(fnam_world)) %>% 
+                    layer =file_path_sans_ext(fnam_world)) %>% 
   dplyr::rename(Name = RFMO_nm_s)
 
 
@@ -1667,8 +1667,8 @@ length(unique(Tresholded_T_Data$taxon_key))
 Discrete <- Clean_Results_Trans %>% 
   filter(
     area_index < Min_AI |
-    area_index > Max_AI |
-    model_index < MI
+      area_index > Max_AI |
+      model_index < MI
   )
 
 # Makes sense?
@@ -1687,6 +1687,26 @@ n_discrete <- Clean_Results_Trans %>%
 ## Overall results
 
 ```{r Data_per_Territory, eval = F, echo = F}
+
+
+# -------------------------- #
+# Percentage of capture analyzed
+# -------------------------- #
+
+EEZ_Catch %>% 
+  filter(
+    reporting_status == "Reported",
+    year > 2005) %>% 
+  group_by(year) %>% 
+  summarise(sum_year = sum(tonnes),
+            sum_year_value = sum(landed_value)) %>% 
+  group_by() %>% 
+  summarise(mean(sum_year),
+            mean(sum_year_value)
+  )
+
+
+Total_Catch_Spp <- 71842644/75202371
 
 # -------------------------- #
 # Number of Transboundary Species
@@ -1731,7 +1751,7 @@ Total_Trans_Catch <- SAU_Catch_Data %>%
   summarise(Total =sum(total_catch)/1000000) %>%  # total revenue within EEZs of the world from sau.org
   pull()
 
-Global_Catch <- 108 # million (estimated from sau.com)
+Global_Catch <- 80 # million (estimated from sau.com)
 
 Per_Catch <- (Total_Trans_Catch/Global_Catch)*100
 
@@ -1778,13 +1798,13 @@ Revenue_Country <- sau_eez_fes %>%
   summarise(Total_USD = (sum(mean_value,na.rm=T))/1000000) %>% # Million of USD
   ungroup() %>% 
   mutate(#fishing_entity = ifelse(fishing_entity == "USA","United States of America",
-                                 # ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)
-                                 # ),
-         Bins = cut(Total_USD,breaks = Rev_Breaks, dig.lab = 5 ),
-         Bins_Plot = cut(Total_USD,breaks = Rev_Breaks,
-                         labels = c('super low', 'low','median','high','super high'),
-                         dig.lab = 5 # Removes scientific notaion
-                         )
+    # ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)
+    # ),
+    Bins = cut(Total_USD,breaks = Rev_Breaks, dig.lab = 5 ),
+    Bins_Plot = cut(Total_USD,breaks = Rev_Breaks,
+                    labels = c('super low', 'low','median','high','super high'),
+                    dig.lab = 5 # Removes scientific notaion
+    )
   ) %>% 
   filter(Total_USD > 0) 
 
@@ -1812,7 +1832,7 @@ Revenue_Country <- sau_eez_fes %>%
 # Contienent level
 Continent_Data <- Revenue_Country %>% 
   left_join(Catch_Country,
-             by = "fishing_entity") %>% 
+            by = "fishing_entity") %>% 
   left_join(UN_Regions,
             by = "fishing_entity") %>% 
   mutate(georegion = ifelse(is.na(georegion), "Other",paste(georegion))) %>% 
@@ -1845,17 +1865,17 @@ Catch_Country <- SAU_Catch_Data %>%
   summarise(fishing_entity_catch = sum(eez_catch,na.rm=T)/1000) %>% # thousand tones
   mutate(
     # fishing_entity = ifelse(fishing_entity == "USA","United States of America",
-  #                                ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)),
-         Bins = cut(fishing_entity_catch,breaks = Catch_Breaks),
-         Bins_Plot = cut(fishing_entity_catch,breaks = Catch_Breaks,
-                         labels = c('super low', 'low','median','high','super high'))
+    #                                ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)),
+    Bins = cut(fishing_entity_catch,breaks = Catch_Breaks),
+    Bins_Plot = cut(fishing_entity_catch,breaks = Catch_Breaks,
+                    labels = c('super low', 'low','median','high','super high'))
   ) %>% 
   filter(fishing_entity_catch > 0)
 
 ### Revenue Data
 Subregion_Data <- Revenue_Country %>% 
   left_join(Catch_Country,
-             by = "fishing_entity") %>% 
+            by = "fishing_entity") %>% 
   left_join(UN_Regions,
             by = "fishing_entity") %>% 
   mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
@@ -1901,7 +1921,8 @@ label_data_rev <- Subregion_Data_Trans %>%
     sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
                         ifelse(sub_region =="Northern America","Northern\nAmerica",
                                paste(sub_region))
-    )
+    ),
+    sub_region_n = paste(sub_region," (n=",n_trans_spp,")",sep = "")
   )
 
 label_data_catch <- Subregion_Data_Trans %>% 
@@ -1916,23 +1937,23 @@ label_data_catch <- Subregion_Data_Trans %>%
     sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
                         ifelse(sub_region =="Northern America","Northern\nAmerica",
                                paste(sub_region))
-    )
+    ),
+    sub_region_n = paste(sub_region," (n=",n_trans_spp,")",sep = "")
   )
-
 
 # Transboundary Species shapefile
 World_sf_si <- World_sf %>%
   st_transform(crs = 4326) %>% # 4326
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
   left_join(Transboundary_Spp, by ="eez_name")# %>% 
-  # filter(!is.na(n_trans_spp))
+# filter(!is.na(n_trans_spp))
 
 # Total catch/Revenue shapefile
 World_sf_si_land <- World_land_sf %>%
   st_transform(crs = 4326) %>% # 4326
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>% 
   left_join(Revenue_Country, by ="fishing_entity")# %>% 
-  # filter(!is.na(Total_USD))
+# filter(!is.na(Total_USD))
 
 # Get the NA's to be grey
 Grey_land <- World_sf_si_land %>% 
@@ -2200,10 +2221,10 @@ Catch_Country <- SAU_Catch_Data %>%
   summarise(fishing_entity_catch = sum(eez_catch,na.rm=T)/1000) %>% # thousand tones
   mutate(
     # fishing_entity = ifelse(fishing_entity == "USA","United States of America",
-  #                                ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)),
-         Bins = cut(fishing_entity_catch,breaks = Catch_Breaks),
-         Bins_Plot = cut(fishing_entity_catch,breaks = Catch_Breaks,
-                         labels = c('super low', 'low','median','high','super high'))
+    #                                ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)),
+    Bins = cut(fishing_entity_catch,breaks = Catch_Breaks),
+    Bins_Plot = cut(fishing_entity_catch,breaks = Catch_Breaks,
+                    labels = c('super low', 'low','median','high','super high'))
   ) %>% 
   filter(fishing_entity_catch > 0)
 
@@ -2233,7 +2254,7 @@ World_sf_si_land <- World_land_sf %>%
   st_transform(crs = 4326) %>%
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>% 
   left_join(Catch_Country, by ="fishing_entity")
-  
+
 # Get the NA's to be grey
 Grey_land <- World_sf_si_land %>% 
   filter(is.na(Bins_Plot))
@@ -2300,17 +2321,143 @@ Map <- ggplot() +
 
 
 ggsave(
-    plot = last_plot(),
-    width = 8,
-    height = 5,
-    units = "in",
-    filename = "S1_Catch_EEZ.png"#,
-    # path = Figures_Path
-  )
+  plot = last_plot(),
+  width = 8,
+  height = 5,
+  units = "in",
+  filename = "S1_Catch_EEZ.png"#,
+  # path = Figures_Path
+)
 
 
 ```
 
+```{r Territory_Map_Round_Weighted, eval =F, echo =F}
+
+
+# Get Catch data for mapping (Supplemental materials)
+Catch_Breaks <- c(-1,10,100,1000,5000,10000)
+
+
+Catch_Country <- SAU_Catch_Data %>%
+  group_by(eez_name) %>%
+  summarise(eez_catch = round(sum(total_catch,na.rm=T),2)) %>%
+  left_join(Clean_sau_eez_fes,
+            by = "eez_name") %>%
+  group_by(fishing_entity) %>%
+  summarise(fishing_entity_catch = sum(eez_catch,na.rm=T)/1000) %>% # thousand tones
+  mutate(
+    # fishing_entity = ifelse(fishing_entity == "USA","United States of America",
+    #                                ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)),
+    Bins = cut(fishing_entity_catch,breaks = Catch_Breaks),
+    Bins_Plot = cut(fishing_entity_catch,breaks = Catch_Breaks,
+                    labels = c('super low', 'low','median','high','super high'))
+  ) %>% 
+  filter(fishing_entity_catch > 0)
+
+# Create labels for legend
+Bins_Trans <- Transboundary_Spp %>% 
+  arrange(Bins) %>% 
+  pull(Bins) %>% 
+  unique()
+
+Bins_Catch <- Catch_Country %>% 
+  arrange(Bins) %>% 
+  pull(Bins) %>% 
+  unique()
+
+Labels_Trans <- c("(1-29]",paste(Bins_Trans[2:5]))
+Labels_Catch <- c("(1-10]",paste(Bins_Catch[2:5]))
+
+
+# Transboundary Species shapefile
+World_sf_si <- World_sf %>%
+  st_transform(crs = 4326) %>%
+  st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
+  left_join(Transboundary_Spp, by ="eez_name")
+
+# Total catch/Revenue shapefile
+World_sf_si_land <- World_land_sf %>%
+  st_transform(crs = 4326) %>%
+  st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>% 
+  left_join(Catch_Country, by ="fishing_entity")
+
+# Get the NA's to be grey
+Grey_land <- World_sf_si_land %>% 
+  filter(is.na(Bins_Plot))
+
+
+# Make map
+Map <- ggplot() +
+  geom_sf(data = World_sf_si_land,aes(fill = reorder(Bins_Plot,fishing_entity_catch)), colour = "grey80",size = 0.1) +
+  geom_sf(data = World_sf_si,aes(fill =  reorder(Bins_Plot,n_trans_spp)),colour = "grey20", size = 0.1) + # n_trans_spp or Bins
+  geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80", colour = "grey50",size = 0.1) + # n_trans_spp or Bins
+  scale_fill_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
+                                  "#00A08A",#"#00A08A", #green
+                                  "#F2AD00",#"#F2AD00", # Yellow
+                                  "#F98400",#"#F98400", #Orange
+                                  "#FF0000"#,"#FF0000" #Red
+  ),
+  na.translate = F
+  ) +
+  ggtheme_map() +
+  # Transboundary labels
+  annotate("text",
+           x =(c(-85.5,-30,25,81,136)+5),
+           y = -93.5,
+           label = Labels_Trans,
+           color="black",
+           size=3,
+           angle=0,
+           # fontface="bold",
+           hjust=0) +
+  # Catch labels
+  annotate("text",
+           x =(c(-85.5,-31,20,75,131)+5),
+           y = -110,
+           label = Labels_Catch,
+           color="black",
+           size=3,
+           angle=0,
+           # fontface="bold",
+           hjust=0) +
+  # # Legend Titles
+  annotate("text",
+           x =-180,
+           y = -93.5,
+           label = "Transboundary Spp. (n)",
+           color="black",
+           size=3,
+           angle=0,
+           fontface="bold",
+           hjust=0) +
+  annotate("text",
+           x =-180,
+           y = -110,
+           label = "Catch (Thousand tons)",
+           color="black",
+           size=3,
+           angle=0,
+           fontface="bold",
+           hjust=0) +
+  theme(
+    legend.box.margin = margin(t = -54, l = 130),
+    legend.text = element_blank(),
+  ) +
+  guides(fill = guide_legend(nrow = 1))
+
+
+ggsave(
+  plot = last_plot(),
+  width = 8,
+  height = 5,
+  units = "in",
+  filename = "S1_Catch_EEZ.png"#,
+  # path = Figures_Path
+)
+
+
+```
 
 ### China, US, Russia, and Peru
 
@@ -2347,7 +2494,7 @@ Rev_PeRu <- sau_eez_fes %>%
 Rev_PeRu %>% 
   group_by(fishing_entity) %>% 
   summarise(sum(Ratio))
-  
+
 
 ### Total from the top 5
 
@@ -2373,7 +2520,7 @@ We used a one-way ANOVA to determine significant differences within regions for 
 ### Prepare Data
 Subregion_Data_stats <- Revenue_Country %>% 
   left_join(Catch_Country,
-             by = "fishing_entity") %>% 
+            by = "fishing_entity") %>% 
   left_join(UN_Regions,
             by = "fishing_entity") %>% 
   mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
@@ -2476,11 +2623,11 @@ World_sf_si <- RFMOs_sf %>%
   st_transform(crs = 4326) %>% # 4326
   # st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
   left_join(Tresholded_rfmo_Data, by ="rfmo_name")
-  
+
 # Total catch/Revenue shapefile
 World_sf_si_land <- World_land_sf %>%
   st_transform(crs = 4326) #%>% # 4326
-  # st_simplify(preserveTopology = TRUE, dTolerance = 0.1)
+# st_simplify(preserveTopology = TRUE, dTolerance = 0.1)
 
 # Get the NA's to be grey
 # Grey_land <- World_sf_si_land %>% 
@@ -2494,21 +2641,21 @@ Plot <- ggplot() +
             colour = n_trans_spp
           ), 
           size = 0.1
-          ) + # n_trans_spp or Bins
+  ) + # n_trans_spp or Bins
   geom_sf(data = World_sf_si_land) +
   # geom_sf_label(data = World_sf_si,
   #               aes(label = eez_name)
   #               ) +
   scale_fill_gradientn("Number of Shared Species",
-    colours = wes_palette("Zissou1", 100, type = "continuous"),
-    limits = c(0,45),
-    breaks = seq(0,45,5)
-    ) +
+                       colours = wes_palette("Zissou1", 100, type = "continuous"),
+                       limits = c(0,45),
+                       breaks = seq(0,45,5)
+  ) +
   scale_colour_gradientn("Number of Shared Species",
-    colours = wes_palette("Zissou1", 100, type = "continuous"),
-    limits = c(0,45),
-    breaks = seq(0,45,5)
-    ) +
+                         colours = wes_palette("Zissou1", 100, type = "continuous"),
+                         limits = c(0,45),
+                         breaks = seq(0,45,5)
+  ) +
   ggtheme_map()
 
 
@@ -2520,7 +2667,7 @@ ggsave(Plot_Name,
        height = 8,
        units = "in",
        path = Figures_Path
-       )
+)
 ```
 
 ### OHI-inspired Circular plot for Territories
@@ -2575,16 +2722,16 @@ Status_Data_Plot <- Tresholded_T_Data %>%
   mutate(value = ifelse(value > 100,100,value)) %>% 
   filter(!is.na(fishing_entity),
          !str_detect(fishing_entity, ".\\(.") # remove associated territories
-         ) %>% 
+  ) %>% 
   select(individual = fishing_entity,observation = status,group = Georegion,value) %>% 
   arrange(group,value) %>% 
   mutate(value = ifelse(observation %in% c("Collapsed","Over Exploited"),value*-1,value),
          observation = ifelse(observation %in% c("Developing","Rebuilding"),"Category A",
-                            ifelse(observation == "Max Exploited","Category B",
-                                   ifelse(observation %in% c("Over Exploited","Collapsed","Category C"),"Category C", "No Category")
-                            )
+                              ifelse(observation == "Max Exploited","Category B",
+                                     ifelse(observation %in% c("Over Exploited","Collapsed","Category C"),"Category C", "No Category")
+                              )
          )
-         ) %>% 
+  ) %>% 
   group_by(individual,observation,group) %>% 
   summarise(value = sum(value))
 
@@ -2597,10 +2744,10 @@ Status_Plot_Data <- tibble(
   rename(individual = fishing_entity) %>% 
   full_join(Status_Data_Plot,
             by = c("individual","observation")
-            ) %>% 
+  ) %>% 
   mutate(value = ifelse(is.na(value),0,value)#,
          # group = ifelse(is.na(group),"Other",group)
-         ) %>% 
+  ) %>% 
   select(individual,observation,group=georegion,value) %>% 
   filter(group != "other")
 
@@ -2660,7 +2807,7 @@ Status_Plot_Data$id <- rep( seq(1, nrow(Status_Plot_Data)/nObsType) , each=nObsT
 #   group_by(group,individual) %>%
 #   mutate(id = as.integer(individual),
 #          order = as.integer(group))
-  
+
 # Get the name and the y position of each label
 label_data <- Status_Plot_Data %>% 
   # filter(value > 0) %>% 
@@ -2757,27 +2904,27 @@ Status_Plot_Data %>%
   ylim(-100,105) +
   theme_minimal() +
   theme(legend.position = c(0.93,0.14),
-    legend.key.size = unit(1,"cm"),
-    legend.title = element_text(size = 16),
-    legend.text = element_text(size = 14),
-    axis.text = element_blank(),
-    axis.title = element_blank(),
-    panel.grid = element_blank(),
-    plot.margin = unit(rep(-1,4), "cm")) +
+        legend.key.size = unit(1,"cm"),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 14),
+        axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.grid = element_blank(),
+        plot.margin = unit(rep(-1,4), "cm")) +
   coord_polar()
 
 # Save plot
 
 ggsave(
-    plot = last_plot(),
-    width = 17,
-    height = 15,
-    units = "in",
-    # filename = "Plot.png"
-    filename = "Territory_circular_status.png",
-    path = Figures_Path
-  )
- 
+  plot = last_plot(),
+  width = 17,
+  height = 15,
+  units = "in",
+  # filename = "Plot.png"
+  filename = "Territory_circular_status.png",
+  path = Figures_Path
+)
+
 
 ```
 
@@ -2827,7 +2974,7 @@ Conflict_nations <- c(NW_Europe,"Portugal","Spain")
 Mackerel_Rev <- SAU_Revenue_Data %>% 
   filter(taxon_key == 600118,
          fishing_entity %in% Conflict_nations
-         ) %>% 
+  ) %>% 
   group_by() %>% 
   summarise(sum(mean_value))/1000000
 
@@ -2835,10 +2982,10 @@ Mackerel_Catch <- SAU_Catch_Data %>%
   left_join(Clean_sau_eez_fes) %>% 
   filter(taxon_key == 600118,
          fishing_entity %in% Conflict_nations
-         ) %>% 
+  ) %>% 
   group_by() %>% 
   summarise(sum(total_catch))/1000
-  
+
 
 ```
 
@@ -2875,11 +3022,11 @@ Species_Data <- Tresholded_T_Data %>%
   left_join(Species_environ_list) %>%
   mutate(DemersPelag = ifelse(is.na(DemersPelag),"Other",
                               ifelse(DemersPelag %in% c("bathypelagic","benthopelagic"), "bathy-bento-pelagic",paste(DemersPelag)
-                                     )
-                              ),
-         n_trans_spp = ifelse(n_trans_spp > 100, 100, n_trans_spp),
-         DemersPelag = str_to_title(DemersPelag)
-         ) %>% 
+                              )
+  ),
+  n_trans_spp = ifelse(n_trans_spp > 100, 100, n_trans_spp),
+  DemersPelag = str_to_title(DemersPelag)
+  ) %>% 
   select(individual=scientific_name,
          value = n_trans_spp,
          group = DemersPelag) %>% 
@@ -2913,9 +3060,9 @@ Top_5_Ecosystem <- Species_Data %>%
 #   summarise(top_catch = sum(mean_value)/1000000) %>%  # Million
 #   group_by(group) %>% 
 #   top_n(5)
-  
 
-  # If you want to show catch  
+
+# If you want to show catch  
 Country_Spp_Data <- Tresholded_T_Data %>%
   left_join(Exploited_Species) %>%
   left_join(Top_5_Ecosystem) %>% # includes the groups
@@ -2997,7 +3144,7 @@ base_data <- Species_Data %>%
   summarize(start=min(id), 
             end=max(id) - empty_bar, 
             median = median(value, na.rm = T)
-            ) %>% 
+  ) %>% 
   rowwise() %>% 
   mutate(title=mean(c(start, end)))
 
@@ -3009,7 +3156,7 @@ grid_data$start <- grid_data$start - 1
 # grid_data <- grid_data[-1,]
 grid_data[1,2] <- 5 # Manually include bathydemerssal
 grid_data[1,3] <- 1 
- 
+
 
 # Median data
 median_data <- grid_data %>% 
@@ -3024,10 +3171,10 @@ Ticks_Color <- "black"
 # Make the plot
 ### ------------------- ###
 Spp_circular <- ggplot(Species_Data, 
-       aes(x=as.factor(id), 
-           y=value,
-           fill=group)
-       ) +       # Note that id is a factor. If x is numeric, there is some space between the first bar
+                       aes(x=as.factor(id), 
+                           y=value,
+                           fill=group)
+) +       # Note that id is a factor. If x is numeric, there is some space between the first bar
   geom_bar(aes(x=as.factor(id),
                y=value,
                fill=group),
@@ -3085,7 +3232,7 @@ Spp_circular <- ggplot(Species_Data,
                 label=individual,
                 hjust=hjust#,
                 # color = group
-                ),
+            ),
             color="black",
             fontface="bold.italic",
             alpha=1,
@@ -3124,7 +3271,7 @@ Spp_circular <- ggplot(Species_Data,
   ) +
   scale_colour_manual("Ecosystem Preference",
                       values = c(wes_palette(n = 5, name = "Darjeeling1"),
-                               wes_palette(n = 3, name = "Darjeeling2")
+                                 wes_palette(n = 3, name = "Darjeeling2")
                       ),
                       na.value = "white"
   )
@@ -3158,10 +3305,10 @@ Ecosystem_plots <- Country_Spp_Data %>%
   scale_x_reordered() +
   theme(legend.position = "",
         axis.text.x = element_text(size = 11,
-                               angle = 0,
-                               face = "plain"),
-          strip.background = element_blank(),
-  strip.text.x = element_blank()
+                                   angle = 0,
+                                   face = "plain"),
+        strip.background = element_blank(),
+        strip.text.x = element_blank()
   )
 
 
@@ -3292,13 +3439,13 @@ for(i in 1:length(Area_Index_Level)){
 }
 
 ggsave(
-    plot = do.call(gridExtra::grid.arrange,p),
-    width = 8,
-    height = 8,
-    units = "in",
-    filename = "Area_Tresholds.png",
-    path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Sensitivity_Analysis"
-  )
+  plot = do.call(gridExtra::grid.arrange,p),
+  width = 8,
+  height = 8,
+  units = "in",
+  filename = "Area_Tresholds.png",
+  path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Sensitivity_Analysis"
+)
 
 ```
 
@@ -3367,40 +3514,40 @@ ggplot(x) +
 
 
 Spp_Trans <- bind_rows(
-    mclapply(
-      600004, FUN =EstTransIndex, Model = "All", Neighbours = Neighbour_List, Coord = CoorG
-    )
+  mclapply(
+    600004, FUN =EstTransIndex, Model = "All", Neighbours = Neighbour_List, Coord = CoorG
   )
+)
 
 
-  # Estimate total spp distribution within neighbours
-  
-  Trans_Spp <- SppDist %>%
-    filter(INDEX %in% Neighbours$INDEX) %>% # Filter data only located within EEZs
-    mutate(Value = ifelse(Value > 0, 1,0)) %>%  # For now using SAU_C as presence absence
-    group_by(TaxonKey,
-             INDEX
-    ) %>%
-    summarise(Model_Index = mean(Value,na.rm=T)) %>%
-    filter(Model_Index > 0) %>%
-    mutate(Model_Index = Model_Index*100) %>%
-    left_join(Neighbours,
-              by = "INDEX")
-    
-    Test <- Trans_Spp %>% 
-      filter(Name == "USA (West Coast)" & Model_Index ==100)
+# Estimate total spp distribution within neighbours
+
+Trans_Spp <- SppDist %>%
+  filter(INDEX %in% Neighbours$INDEX) %>% # Filter data only located within EEZs
+  mutate(Value = ifelse(Value > 0, 1,0)) %>%  # For now using SAU_C as presence absence
+  group_by(TaxonKey,
+           INDEX
+  ) %>%
+  summarise(Model_Index = mean(Value,na.rm=T)) %>%
+  filter(Model_Index > 0) %>%
+  mutate(Model_Index = Model_Index*100) %>%
+  left_join(Neighbours,
+            by = "INDEX")
+
+Test <- Trans_Spp %>% 
+  filter(Name == "USA (West Coast)" & Model_Index ==100)
 
 
- # Explore only SAU catch data
+# Explore only SAU catch data
 
 # Get Catch Data
 Anchoveta_Dist <- GetSppDist(Spp,"SAU_C")
-    
+
 # Get Mex, Can and USA W coast Grid
 Anchoveta_Dist_EEZ <- Anchoveta_Dist %>% 
   
-
-Anchoveta_NA <-  Anchoveta_Dist%>% 
+  
+  Anchoveta_NA <-  Anchoveta_Dist%>% 
   filter(INDEX %in% North_America$INDEX) %>% 
   gather("Year","Tonnes",CATCH.1:CATCH.65) %>% 
   group_by(Year) %>% 
@@ -3425,7 +3572,7 @@ Australia <- Results_Data %>%
 Original_Australia <-Australia %>% 
   filter(Model_Index >= 50#,
          # Trans_Index >= 0.10
-         ) %>% 
+  ) %>% 
   group_by(Name,Model_Index) %>% 
   summarise(n_Trans_Spp = n()) %>% 
   filter(Model_Index == 100)
@@ -3435,13 +3582,13 @@ Original_Australia <-Australia %>%
 Explore_Australia <- Australia %>% 
   filter(Model_Index >= 50#,
          # Trans_Index >= 0.10
-         ) %>% 
+  ) %>% 
   slice(1:20) %>% 
   group_by(Name,Model_Index) %>% 
   summarise(
     n_trans = length(unique(TaxonKey)),
     n_countries = length(unique(Neighbour_Territory)),
-    )
+  )
 
 ```
 
@@ -3524,7 +3671,7 @@ write.csv(SubsetData,
 Clean_Results <- read.csv("~/GitHub/FishForVisa/Temporal_Data/SubsetData.csv")
 
 sau_eez_fes <- read.csv("~/GitHub/FishForVisa/Temporal_Data/sau_eez_fes.csv")
-  
+
 
 Neighbourd_Territory_T <- Clean_Results %>% 
   group_by(eez_name=Neighbour_Territory) %>% 
@@ -3533,7 +3680,7 @@ Neighbourd_Territory_T <- Clean_Results %>%
             by = "eez_name") %>% 
   select(Neighbour_Territory= eez_name,
          NT_fishing_entity=fishing_entity
-         )
+  )
 
 Country_Territory_T <- Clean_Results %>% 
   group_by(eez_name=Country_Territory) %>% 
@@ -3545,9 +3692,9 @@ Country_Territory_T <- Clean_Results %>%
 
 Non_duplicate_Data <- Clean_Results %>%   
   left_join(Neighbourd_Territory_T,
-              by ="Neighbour_Territory") %>% 
+            by ="Neighbour_Territory") %>% 
   left_join(Country_Territory_T,
-              by ="Country_Territory") %>% 
+            by ="Country_Territory") %>% 
   mutate(
     Same_Nation = ifelse(CT_fishing_entity==NT_fishing_entity,"Yes","No")
   ) %>% 
@@ -3572,7 +3719,7 @@ Clean_sau_eez_fes <- sau_eez_fes %>%
   gather("Type","FishingRegion",2,4) %>% 
   left_join(sau_eez_fes,
             by = ("fishing_entity_id")
-            ) %>% 
+  ) %>% 
   group_by(FishingRegion,fishing_entity) %>% 
   summarise(n())
 
@@ -3602,7 +3749,7 @@ Russian_Regions <- c("Russia (Laptev to Chukchi Sea)","Russia (Kara Sea)")
 
 Russia_Results <- Results_Data %>% 
   filter(stringr::str_detect(Country_Territory,"Russia"))
-  
+
 unique(Russia_Results$Country_Territory)
 # Missing Laptev to Chukchi sea
 
@@ -3612,7 +3759,7 @@ EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17
 
 Russia_EEZlist <- EEZIDs_List %>% 
   filter(stringr::str_detect(Name,"Russia"))
-  
+
 unique(Russia_EEZlist$Name)
 
 ### So maybe there are no Neighbours?
@@ -3620,7 +3767,7 @@ Neighbour_List <- fread(paste(Data_Path,"Spatial_Data/Neighbour_List.csv", sep =
 
 Russia_Neighbour <- Neighbour_List %>% 
   filter(stringr::str_detect(Name,"Russia"))
-  
+
 unique(Russia_Neighbour$Country_Territory)
 
 # OK So Kara Sea has no borders outside Russia, hence white. Now Laptev does have borders but No species... which is weird... Paific Halibut?
@@ -3761,18 +3908,18 @@ World_sf %>%
 unique(Russian_sf$Territory)
 
 # split shapefile by DF
- Russian_id <- World_sf %>% 
+Russian_id <- World_sf %>% 
   filter(Territory %in% Russians) %>% 
   left_join(Russian_Index, by= "Territory") %>%  
   mutate(EEZID = ifelse(Territory == "Russia (Kara Sea)",912,913)) %>% 
   filter(EEZID == 913) %>% 
   st_simplify(preserveTopology = TRUE, dTolerance = 1000)
-  
- 
- ggplot(Russian_id) +
-   geom_sf(aes())
 
- # ok! 
+
+ggplot(Russian_id) +
+  geom_sf(aes())
+
+# ok! 
 
 # split shapefile by DF
 Russia_id_912_913 <- World_sf %>% 
@@ -3784,11 +3931,11 @@ Russia_id_912_913 <- World_sf %>%
   select(Territory,INDEX,EEZID)
 
 write.csv(Russia_id_912_913,
-         "Russia_id_912_913.csv",
-         row.names = F)
-  
+          "Russia_id_912_913.csv",
+          row.names = F)
+
 head(x)
-  
+
 
 ```
 
@@ -3806,7 +3953,7 @@ USA_Collapsed <- Species_Status %>%
   ungroup() %>% 
   mutate(TaxonKey = as.numeric(TaxonKey)) %>%
   left_join(Exploited_Species)
-         
+
 # Comparring to RAM legacy in the W pacific coast
 
 # Sabelfish match
@@ -3860,7 +4007,7 @@ Wake_Trans <- Transboundary_Spp %>%
 Wake_Tresh <- Tresholded_T_Data %>% 
   filter(str_detect(eez_name,"Wake")) %>% 
   pull(eez_name)
-  
+
 "NA"
 
 Wake_Raw <- Clean_Results_Trans %>% 
@@ -3891,7 +4038,7 @@ Neighbours_Data %>%
 
 ```{r}
 
-  UN_Regions %>% 
+UN_Regions %>% 
   filter(fishing_entity %in% Clean_sau_eez_fes$fishing_entity) %>% 
   group_by(sub_region) %>% 
   summarise(n_countries = length(unique(fishing_entity))) %>% 
@@ -3955,16 +4102,16 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Save="Y"){
     summarise(n_cells_spp = n()) %>% 
     select(-n_cells_spp)
   
-    #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 3)_________ #
-   # The number of species' cells present within each country's EEZ
+  #____________ ESTIMATING DISTRIBUTION INDEX (TRESHOLD 3)_________ #
+  # The number of species' cells present within each country's EEZ
   
   #Step 1.  Get EEZ id and Neighbour
   Neighbours_EEZ <- Neighbours %>% 
-  group_by(EEZID,Country_Territory,Neighbour_Territory) %>% 
-  summarise(n=n()) %>% 
-  ungroup() %>% 
-  select(-n)
-
+    group_by(EEZID,Country_Territory,Neighbour_Territory) %>% 
+    summarise(n=n()) %>% 
+    ungroup() %>% 
+    select(-n)
+  
   # Step 2. Determines the amount of grids present in each country
   Spp_Grid <- Trans_Spp %>% 
     group_by(TaxonKey,
@@ -3992,10 +4139,10 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Save="Y"){
       Model_Index,
       TaxonKey,n_spp_eez,Name=Neighbour_Territory, Country_Territory
     )
-
+  
   # Merge dataframes to get totals per Neighbourds
   Area_Index_D <- full_join(Country_Territory_T,
-                           Neighbour_Territory_T, by = c("Name","TaxonKey","Model")) %>%
+                            Neighbour_Territory_T, by = c("Name","TaxonKey","Model")) %>%
     rowwise() %>%
     mutate(Spp_Total = sum(n_spp_eez.x,n_spp_eez.y,na.rm=T)) %>% # Total gridcelles per Neighbours
     distinct() %>% # Removes false duplicates from `full_join()`
@@ -4004,16 +4151,16 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Save="Y"){
            n_spp_Neighbour = n_spp_eez.y) %>% 
     mutate(Area_Index = n_spp_Country/Spp_Total) %>%  #Estimates the proportion of grids per country
     select(1:4,6,8)
-
+  
   #____________ FINAL INDEX TABLE_________ #
   Indexes <- Model_Index_D %>% 
-  rename(Country_Territory = Name) %>% 
-  full_join(Area_Index_D,
-            by = c("TaxonKey","Country_Territory","Model")
-  ) %>% 
+    rename(Country_Territory = Name) %>% 
+    full_join(Area_Index_D,
+              by = c("TaxonKey","Country_Territory","Model")
+    ) %>% 
     filter(!is.na(Area_Index))%>%  # Remove cases where the country does not pass the area_index and viceversa
     select(Model,TaxonKey,Country_Territory,Neighbour_Territory,everything())
-
+  
   ### Save spp dataframe
   
   if(nrow(Indexes) > 0 & Save == "Y"){
@@ -4029,7 +4176,7 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Save="Y"){
   
   if(nrow(Indexes) == 0 & Save == "Y"){
     
-# Reads dataset of Non transboundary species
+    # Reads dataset of Non transboundary species
     Non_Transboundary_Data <- fread(paste(Results_Path,"All_Models/","Non_Transboundary_Data.csv",sep=""))
     
     # Get current Spp that is not transboundary 
@@ -4062,7 +4209,7 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Save="Y"){
 # Over_20 <-Tryout %>% 
 #     filter(Area_Index > 0.20,
 #            Area_Index < 0.80)
-  
+
 # Spp <- NULL
 # Model <- NULL
 
@@ -4077,8 +4224,8 @@ World_EEZs_simple <- World_EEZs %>%
   st_transform(crs = 4326) %>% # 4326
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
   left_join(TenTwenyfive, by ="Name") #%>%
-  # filter(!is.na(n_trans)) #%>%
-  # st_transform(crs = 3832)
+# filter(!is.na(n_trans)) #%>%
+# st_transform(crs = 3832)
 
 # head(World_EEZs_simple)
 # World_EEZs_simple %>% 
@@ -4112,8 +4259,8 @@ for(v in 1:length(Mod)){
     filename = Plot_Name,
     path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/All_Models/"
   )
-    
-  }
+  
+}
 
 ```
 
@@ -4139,24 +4286,24 @@ for(r in 1:length(Regions)){
   
   Oceania <- World_land_sf %>%
     st_transform(crs = 3832)
-    
+  
   
   Oceania %>% 
     filter(REGION_UN %in% Regions[5]) %>% 
     ggplot() +
     geom_sf(aes(),fill="black",colour = "black") +
     ggtheme_map() #+
-    # coord_sf(xlim = c(-180, 90), ylim = c(-90, 90), expand = FALSE)
+  # coord_sf(xlim = c(-180, 90), ylim = c(-90, 90), expand = FALSE)
   
   Plot_Name <-paste(Regions[5],".png",sep="")
   
   ggsave(Plot_Name,
-       plot = last_plot(),
-       width = 4,
-       height = 4,
-       units = "in",
-       path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Images_Data/"
-)
+         plot = last_plot(),
+         width = 4,
+         height = 4,
+         units = "in",
+         path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Images_Data/"
+  )
   
 }
 
@@ -4221,14 +4368,14 @@ for(r in 1:length(Regions)){
 #                  fill = Bins)
 #                ) +
 #   geom_path(data=eez, aes(x=long,y=lat, group=group),colour="grey") +
-  # geom_point(data=ui, aes(x=long, y=lat, size=M, color=M), alpha=0.9) +
-  # geom_text_repel(data=ui,aes(x=long, y=lat, label=un.name), size=2.5, color = 'black',
-  #                 box.padding = unit(0.5, "lines"),
-  #                 point.padding = unit(0.5, "lines"),
-  #                 segment.color = 'grey50') +
-  # scale_radius(range = c(1, 2)) #+
-  # scale_colour_distiller(palette ="Spectral", direction = 1, limits=c(0,1), breaks=c(c(0,1))) + # or direction=1
-  # theme_map()+
+# geom_point(data=ui, aes(x=long, y=lat, size=M, color=M), alpha=0.9) +
+# geom_text_repel(data=ui,aes(x=long, y=lat, label=un.name), size=2.5, color = 'black',
+#                 box.padding = unit(0.5, "lines"),
+#                 point.padding = unit(0.5, "lines"),
+#                 segment.color = 'grey50') +
+# scale_radius(range = c(1, 2)) #+
+# scale_colour_distiller(palette ="Spectral", direction = 1, limits=c(0,1), breaks=c(c(0,1))) + # or direction=1
+# theme_map()+
 #   theme(legend.key = element_blank(),
 #         strip.background = element_blank(),
 #         legend.position = "none",
@@ -4287,18 +4434,18 @@ Status_Per_Species <- Tresholded_T_Data %>%
   group_by(taxon_key,status) %>% 
   summarise(value = length(unique(fishing_entity))) %>% 
   mutate(Categories = ifelse(status %in% c("Developing","Rebuilding"),"Category A",
-                            ifelse(status == "Max Exploited","Category B",
-                                   ifelse(status %in% c("Over Exploited","Collapsed","Category C"),"Category C", "No Category")
-                            )
-                         )
-         ) %>% 
+                             ifelse(status == "Max Exploited","Category B",
+                                    ifelse(status %in% c("Over Exploited","Collapsed","Category C"),"Category C", "No Category")
+                             )
+  )
+  ) %>% 
   left_join(cc_vul) %>% 
   left_join(fish_vul) %>% 
   filter(status != "No Category",
          Categories != "No Category")
 
 # Test for assumptions
- # - Data Normally distributed (YES)
+# - Data Normally distributed (YES)
 
 qqnorm(Status_Per_Species$ccvul) # yes
 qqnorm(Status_Per_Species$fishvul) # yes
@@ -4362,8 +4509,8 @@ EstNeighbours <- function(Shapefile){
   
   # Convert te nb data to a Matrix of crossing references
   Neighbour_Matrix <- nb2mat(Neighbour_List,
-                            style="B", 
-                            zero.policy=TRUE)
+                             style="B", 
+                             zero.policy=TRUE)
   
   # Rename the matrix axis
   colnames(Neighbour_Matrix) <- rownames(Neighbour_Matrix)
@@ -4371,10 +4518,10 @@ EstNeighbours <- function(Shapefile){
   
   # Get the names of the countries for identifying them
   Country_Names <- tibble(id = row.names(Shapefile@data),
-                              Country_Territory = as.character(Shapefile@data$Name),
-                              Neighbour_Territory = Country_Territory,
-                              EEZID = Shapefile@data$EEZID # specific of SAU sf
-                              )
+                          Country_Territory = as.character(Shapefile@data$Name),
+                          Neighbour_Territory = Country_Territory,
+                          EEZID = Shapefile@data$EEZID # specific of SAU sf
+  )
   
   # Clean up and transform the Neighbour matrix
   Neighbours <- as.data.frame(Neighbour_Matrix) %>%
@@ -4387,20 +4534,20 @@ EstNeighbours <- function(Shapefile){
     left_join(select(Country_Names, 
                      -Country_Territory), by=c("Neighbour" = "id")) %>% 
     select(EEZID = EEZID.x,Country_Territory,Neighbour_Territory) # select final column
- 
-    # Merge them with SAU data
+  
+  # Merge them with SAU data
   
   DBEM_Neighbours_Data <- EEZIDs_List %>% 
-  left_join(EEZ_CellID, 
-            by = "EEZID") %>% # Asign EEZ id to each country
-  left_join(Neighbours, 
-            by = "EEZID") %>% # Include all Neighbouring countries 
-  filter(Neighbour_Territory != "NA") %>% 
-  left_join(Coor,
-            by = "INDEX") # Inclu
+    left_join(EEZ_CellID, 
+              by = "EEZID") %>% # Asign EEZ id to each country
+    left_join(Neighbours, 
+              by = "EEZID") %>% # Include all Neighbouring countries 
+    filter(Neighbour_Territory != "NA") %>% 
+    left_join(Coor,
+              by = "INDEX") # Inclu
   
   return(DBEM_Neighbours_Data)
-   
+  
 }
 
 
@@ -4433,9 +4580,9 @@ EstNeighbours <- function(Shapefile){
 
 #### For testing 
 # Spp <- 600059
- #Model <- "All"
- #Neighbours <- Neighbour_List
- #Coord = CoorG
+#Model <- "All"
+#Neighbours <- Neighbour_List
+#Coord = CoorG
 # __________________________________
 
 # The function
@@ -4626,15 +4773,15 @@ ggplot(Species_data,
   #               linetype = 2,
   #               size = 0.6,
   #               alpha = 0.5
-  # ) +
-  geom_text(data = Species_data, 
-            aes(
-              x = reorder(DemersPelag,desc(Distance)),
-              y = 2,
-              label = paste(as.character(N_spp), "species"),
-            ),
-            colour = "black"
-  ) +
+# ) +
+geom_text(data = Species_data, 
+          aes(
+            x = reorder(DemersPelag,desc(Distance)),
+            y = 2,
+            label = paste(as.character(N_spp), "species"),
+          ),
+          colour = "black"
+) +
   coord_flip() +
   scale_fill_gradientn("Total number\nof countries",
                        colours = wes_palette("Zissou1"),
@@ -4648,7 +4795,7 @@ ggplot(Species_data,
   ) +
   scale_y_continuous(breaks=seq(0, 40, 5), 
                      limits=c(0, 40)
-                     )+
+  )+
   labs(
     x = "Habitat type",
     y = "Mean number of countries per habitat"
@@ -4672,7 +4819,7 @@ to_add$group <- rep(levels(Char), each=empty_bar)
 Countries_Data_Plot <- bind_rows(Countries_Data_Plot, to_add)
 Countries_Data_Plot <- Countries_Data_Plot %>% arrange(group,value)
 Countries_Data_Plot$id <- seq(1, nrow(Countries_Data_Plot))
- 
+
 # Get the name and the y position of each label
 
 # Top n of each group label
@@ -4701,7 +4848,7 @@ base_data <- Countries_Data_Plot %>%
   summarize(start=min(id), 
             end=max(id) - empty_bar, 
             median = median(value, na.rm = T)
-            ) %>% 
+  ) %>% 
   rowwise() %>% 
   mutate(title=mean(c(start, end)))
 
@@ -4717,7 +4864,7 @@ grid_data[1,3] <- 1
 median_data <- grid_data %>% 
   mutate_at(vars(start,end),
             .funs = as.numeric)
- 
+
 
 # -------------------------- #
 # Get id to Discrete data
@@ -4833,7 +4980,7 @@ ggplot(Countries_Data_Plot,
                    y = 0, 
                    xend = end, 
                    yend = 0
-                   ), 
+               ), 
                colour = "black",
                alpha=0.8, 
                size=0.6 , 
@@ -4871,7 +5018,7 @@ ggplot(Countries_Data_Plot,
 #     filename = "Territory_circular_both.png",
 #     path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Figures/"
 #   )
- 
+
 
 ```
 
@@ -4882,11 +5029,11 @@ ggplot(Countries_Data_Plot,
 # Number of countries shared by each Species
 Top_10_Countries <- Clean_Results_Trans %>% 
   filter(
-         Area_Index < Min_AI |
-         Area_Index > Max_AI,
-         Model_Index == MI,
-         Same_Nation == "No"
-         ) %>% 
+    Area_Index < Min_AI |
+      Area_Index > Max_AI,
+    Model_Index == MI,
+    Same_Nation == "No"
+  ) %>% 
   group_by(Country_Territory) %>% 
   summarise(
     n_countries = length(unique(TaxonKey))
@@ -4896,27 +5043,27 @@ Top_10_Countries <- Clean_Results_Trans %>%
 # Countries that share the top 10
 Top_Ten_Countries <- Clean_Results_Trans %>% 
   filter(
-         Area_Index < Min_AI |
-         Area_Index > Max_AI,
-         Model_Index == MI,
-         Same_Nation == "No",
-         Country_Territory %in% Top_10_Countries$Country_Territory
-         ) %>% 
+    Area_Index < Min_AI |
+      Area_Index > Max_AI,
+    Model_Index == MI,
+    Same_Nation == "No",
+    Country_Territory %in% Top_10_Countries$Country_Territory
+  ) %>% 
   group_by(from=CT_fishing_entity,
            to=NT_fishing_entity
-           ) %>% 
+  ) %>% 
   summarise(value=n()
-            ) %>% 
+  ) %>% 
   ungroup() %>% 
   mutate(from = paste("F", from),
          to = paste("T", to)
-         )
+  )
 
 ####________________###
 # Circulize package ####
 # https://jokergoo.github.io/circlize_book/book/
 ####________________###
-  
+
 
 # To set links collor 
 Bins <- as.numeric(cut(Top_Ten_Countries$value,breaks = 5))
@@ -4940,22 +5087,22 @@ chordDiagram(Top_Ten_Countries,
              # annotationTrack = "grid", # no labels
              scale = FALSE, # fraction of total instead of absolute value
              preAllocateTracks = list(track.height = max(strwidth(unlist(dimnames(Top_Ten_Countries))))) # I have no idea but helps with the labels
-    ) 
+) 
 #  Rest of eddits
 circos.track(track.index = 1, panel.fun = function(x, y) {
-    xlim = get.cell.meta.data("xlim")
-    xplot = get.cell.meta.data("xplot")
-    ylim = get.cell.meta.data("ylim")
-    sector.name = get.cell.meta.data("sector.index")
-    
-    circos.text(mean(xlim),
-                ylim[1], 
-                sector.name, 
-                facing = "clockwise",
-                niceFacing = TRUE,
-                adj = c(-0.2, 0.5),
-                col = "black")
-    
+  xlim = get.cell.meta.data("xlim")
+  xplot = get.cell.meta.data("xplot")
+  ylim = get.cell.meta.data("ylim")
+  sector.name = get.cell.meta.data("sector.index")
+  
+  circos.text(mean(xlim),
+              ylim[1], 
+              sector.name, 
+              facing = "clockwise",
+              niceFacing = TRUE,
+              adj = c(-0.2, 0.5),
+              col = "black")
+  
 }, bg.border = NA)
 
 
@@ -4993,20 +5140,20 @@ Top_Spp_Countries <- Clean_Results_Trans %>%
   group_by(
     # from,
     from = scientific_name,
-           to=CT_fishing_entity,
-           DemersPelag
+    to=CT_fishing_entity,
+    DemersPelag
   ) %>% 
   summarise(value=n()
   ) #%>%
-  # filter(DemersPelag == "demersal") %>%
-  # select(-DemersPelag)
+# filter(DemersPelag == "demersal") %>%
+# select(-DemersPelag)
 
 
 ####________________###
 # Circulize package ####
 # https://jokergoo.github.io/circlize_book/book/
 ####________________###
-  
+
 # To set links color 
 Bins <- as.numeric(cut(Top_Spp_Countries$value,breaks = 5)) # By size of sharing
 
@@ -5118,7 +5265,7 @@ for(s in 1:2){ # sclae loop
 
 Note that (n), the number of ‘stocks’ is defined as a time series of a given species, genus or family (higher and pooled groups have been excluded) for which the first and last reported landings are at least 10 years apart, for which there are at least 5 years of consecutive catches and for which the catch in a given area is at least 1000 tonnes.
 
- 1) The first and last reported landings are at least ten years apart;
+1) The first and last reported landings are at least ten years apart;
 
 2) There are at least five years of consecutive catches; and
 
@@ -5168,94 +5315,94 @@ Data <- Spp %>%
 # head(Data)
 
 # Tresholds to evaluate stocks if these are not met, then soecies status = "No Status"
- Tresholds <- Data %>% 
+Tresholds <- Data %>% 
   arrange(Territory) %>% 
   group_by(Species,Territory, grp = cumsum(c(1, diff(Year) != 65))) %>% 
   group_by(Species,Territory) %>% 
   summarise(Years_appart = ifelse(max(Year)-min(Year) >= 0,"Yes","No"), # Step 1. first and last reported landings are at least 10 years apart
             Consecutive = ifelse(max(grp) >= 5,"Yes","No"), # Step 2. There are at least 5 consecutive catch years
             Catch_over = ifelse(max(RMean >= 1000),"Yes","No") # Step 3. 3) The catch in a particular area (LME) is at least 1,000 tonnes.
-            ) %>% 
-   gather("Step","Treshold",Years_appart:Catch_over) %>% 
-   filter(Treshold == "Yes")
+  ) %>% 
+  gather("Step","Treshold",Years_appart:Catch_over) %>% 
+  filter(Treshold == "Yes")
 
- 
- # Evaluate stocks
- 
- # Filter data that does not satisfy tresholds
 
- Landings_Peaks <- Data %>% 
+# Evaluate stocks
+
+# Filter data that does not satisfy tresholds
+
+Landings_Peaks <- Data %>% 
   group_by(Species,Territory) %>% 
   summarise(Max_Peak = max(RMean,na.rm=T))
- 
- Eval_Data <- Data %>% 
+
+Eval_Data <- Data %>% 
   semi_join(Tresholds,
             by = c("Species","Territory")) %>% 
-   left_join(Landings_Peaks,
-             by = c("Species","Territory"))
- 
- Peak_Year <- Eval_Data %>% 
-   filter(RMean == Max_Peak) %>% 
-   select(Species,Territory,EEZID,Y_Max_Peak = Year)
+  left_join(Landings_Peaks,
+            by = c("Species","Territory"))
 
- Post_Max_Min <- Eval_Data %>% 
-   left_join(Peak_Year) %>% 
-   filter(Year > Y_Max_Peak) %>% 
-   group_by(Species,Territory,EEZID) %>% 
-   summarise(Post_Max_Min = min(RMean,na.rm=T))
- 
- Y_Post_Max_Min <- Eval_Data %>% 
-   left_join(Post_Max_Min) %>% 
-   filter(RMean == Post_Max_Min) %>% 
-   select(Species,Territory,EEZID,Y_Post_Max_Min = Year)
- 
- Data_Status <- Eval_Data %>% 
-   left_join(Peak_Year,
-             by = c("Species","Territory","EEZID")) %>%
-   left_join(Post_Max_Min,
-             by = c("Species","Territory","EEZID")) %>% 
-   left_join(Y_Post_Max_Min,
-             by = c("Species","Territory","EEZID")) %>% 
-   rename(Y_RMean = Year) %>% 
-   mutate(Status = ifelse(Y_RMean > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
-                          ifelse((Y_RMean < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Y_RMean)),"Developing",
-                                 ifelse(RMean > Max_Peak*0.50,"Max Exploited",
-                                        ifelse(Y_RMean > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Over Exploited",
-                                               ifelse(Y_RMean > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
-                                                      "No Status")
-                                        )
-                                 )
-                          )
-   )
-   ) %>% 
-   filter(Y_RMean > 2004) %>% 
-   group_by(Species,EEZID,Territory,Status) %>% 
-   summarise(n_Status= n()) %>% 
-   group_by(Species,EEZID,Territory) %>% 
-   top_n(1,n_Status)
- 
- 
- # Manual estimation
- 
- data.frame(
-   Y_RMean = 1980,
-   RMean = 642187,
-   Max_Peak = 1298712,
-   Y_Max_Peak = 1990,
-   Post_Max_Min = 681967,
-   Y_Post_Max_Min = 2010,
-   Y_RMean = 2014
- ) %>% 
-   mutate(Status = ifelse(Y_RMean > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
-                          ifelse((Y_RMean < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Y_RMean)),"Developing",
-                                 ifelse(RMean > Max_Peak*0.50,"Max Exploited",
-                                        ifelse(Y_RMean > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50))," Over Exploited",
-                                               ifelse(Y_RMean > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
-                                                      "NA")
-                                        )
-                                 )
-                          )
-   )
-   )
- 
+Peak_Year <- Eval_Data %>% 
+  filter(RMean == Max_Peak) %>% 
+  select(Species,Territory,EEZID,Y_Max_Peak = Year)
+
+Post_Max_Min <- Eval_Data %>% 
+  left_join(Peak_Year) %>% 
+  filter(Year > Y_Max_Peak) %>% 
+  group_by(Species,Territory,EEZID) %>% 
+  summarise(Post_Max_Min = min(RMean,na.rm=T))
+
+Y_Post_Max_Min <- Eval_Data %>% 
+  left_join(Post_Max_Min) %>% 
+  filter(RMean == Post_Max_Min) %>% 
+  select(Species,Territory,EEZID,Y_Post_Max_Min = Year)
+
+Data_Status <- Eval_Data %>% 
+  left_join(Peak_Year,
+            by = c("Species","Territory","EEZID")) %>%
+  left_join(Post_Max_Min,
+            by = c("Species","Territory","EEZID")) %>% 
+  left_join(Y_Post_Max_Min,
+            by = c("Species","Territory","EEZID")) %>% 
+  rename(Y_RMean = Year) %>% 
+  mutate(Status = ifelse(Y_RMean > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
+                         ifelse((Y_RMean < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Y_RMean)),"Developing",
+                                ifelse(RMean > Max_Peak*0.50,"Max Exploited",
+                                       ifelse(Y_RMean > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Over Exploited",
+                                              ifelse(Y_RMean > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
+                                                     "No Status")
+                                       )
+                                )
+                         )
+  )
+  ) %>% 
+  filter(Y_RMean > 2004) %>% 
+  group_by(Species,EEZID,Territory,Status) %>% 
+  summarise(n_Status= n()) %>% 
+  group_by(Species,EEZID,Territory) %>% 
+  top_n(1,n_Status)
+
+
+# Manual estimation
+
+data.frame(
+  Y_RMean = 1980,
+  RMean = 642187,
+  Max_Peak = 1298712,
+  Y_Max_Peak = 1990,
+  Post_Max_Min = 681967,
+  Y_Post_Max_Min = 2010,
+  Y_RMean = 2014
+) %>% 
+  mutate(Status = ifelse(Y_RMean > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50)),"Rebuilding",
+                         ifelse((Y_RMean < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Y_RMean)),"Developing",
+                                ifelse(RMean > Max_Peak*0.50,"Max Exploited",
+                                       ifelse(Y_RMean > Y_Max_Peak & (RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50))," Over Exploited",
+                                              ifelse(Y_RMean > Y_Max_Peak & RMean < Max_Peak*0.10,"Collapsed",
+                                                     "NA")
+                                       )
+                                )
+                         )
+  )
+  )
+
 ```
