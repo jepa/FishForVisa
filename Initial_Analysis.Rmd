@@ -3899,10 +3899,12 @@ Neighbours_Data %>%
 
 World_sf %>% 
   as.data.frame() %>% 
+  left_join(Clean_sau_eez_fes) %>% 
   left_join(UN_Regions) %>% 
   filter(fishing_entity %in% Clean_sau_eez_fes$fishing_entity) %>% 
   group_by(sub_region) %>% 
-  summarise(Size_EEZ = sum())
+  summarise(Size_EEZ = sum(Area_km2)) %>% 
+  arrange(desc(Size_EEZ))
 
 ```
 
