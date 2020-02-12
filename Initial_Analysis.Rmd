@@ -1557,13 +1557,18 @@ World_sf <- st_read(dsn = path_world,
 
 #### Determine Regions ezs areas
 
+EEZ_Area <- World_sf %>% 
+  as.data.frame() %>% 
+  group_by(eez_name) %>% 
+  summarise(Size_EEZ = sum(Area_km2))
+
 Regional_Area <- World_sf %>% 
   as.data.frame() %>% 
   left_join(Clean_sau_eez_fes) %>% 
   left_join(UN_Regions) %>% 
   filter(fishing_entity %in% Clean_sau_eez_fes$fishing_entity) %>% 
   group_by(sub_region) %>% 
-  summarise(Size_EEZ = sum(Area_km2))
+  summarise(Size_Region = sum(Area_km2))
 
 
 # ---------------------------- #
@@ -1574,11 +1579,24 @@ Regional_Area <- World_sf %>%
 SAU_Catch_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_country_taxon.csv", sep =""))
 
 # Read Sau Value Data (Thank you Tim!)
-SAU_Revenue_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>% 
+SAU_Tim_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_country_taxon_JEPA.csv", sep ="")) 
+
+SAU_Sampled_Data <- Clean_sau_eez_fes %>%
+  group_by(fishing_entity,fishing_entity_id) %>% 
+  summarise(n=n()) %>% 
+  left_join(SAU_Tim_Data, by = "fishing_entity_id") %>% 
   clean_names() %>% 
   group_by(fishing_entity_id,taxon_key) %>% 
-  summarise(mean_value = mean(value,na.rm=T)) %>% 
-  left_join(Clean_sau_eez_fes)
+  summarise_at(c("catch","value"),
+               mean,na.rm=T) %>% 
+  gather("Variable","Value",catch:value)
+
+# Total sampled catch
+Total_Catch <- SAU_Sampled_Data %>% 
+  filter(Variable == "catch") %>% 
+  group_by() %>% 
+  summarize(sum(Value,na.rm=T)) %>% 
+  pull()
 
 # Read Species Status Data (Sub-routine Species Status)
 Status_Data <- fread(paste(Results_Path,"Species_Status.csv", sep ="")) %>% 
@@ -1704,20 +1722,7 @@ n_discrete <- Clean_Results_Trans %>%
 # Percentage of capture analyzed
 # -------------------------- #
 
-EEZ_Catch %>% 
-  filter(
-    reporting_status == "Reported",
-    year > 2005) %>% 
-  group_by(year) %>% 
-  summarise(sum_year = sum(tonnes),
-            sum_year_value = sum(landed_value)) %>% 
-  group_by() %>% 
-  summarise(mean(sum_year),
-            mean(sum_year_value)
-  )
-
-
-Total_Catch_Spp <- 71842644/75202371
+Total_Catch_Spp <- SAU_Sampled_Data/SAU_Total_EEZ_Data
 
 # -------------------------- #
 # Number of Transboundary Species
@@ -1739,8 +1744,10 @@ Total_trans_n <- Total_trans %>%
 # Total Revenue
 # -------------------------- #
 
-Total_Trans_Rev <- SAU_Revenue_Data %>% 
-  filter(taxon_key %in% Total_trans$taxon_key) %>% 
+Total_Trans_Rev <- SAU_Sampled_Data %>% 
+  semi_join(Tresholded_T_Data,
+            by = c("taxon_key"))
+  
   group_by() %>% 
   summarise(Total =sum(mean_value)/1000000)# total revenue within EEZs of the world from sau.org
 
@@ -1782,17 +1789,18 @@ Transboundary_Spp <- Tresholded_T_Data %>%
     n_neighbours = length(unique(eez_neighbour)),
     trans_Rrate = n_trans_spp/n_neighbours
   ) %>% 
-  left_join(Regional_Area, 
+  left_join(EEZ_Area, 
             by = "eez_name") %>% 
   mutate(
     Bins = cut(n_trans_spp,breaks = 5),
     Bins_Plot = cut(n_trans_spp,breaks = 5,
                     labels = c('super low', 'low','median', 'high','super high')),
     # Include the weighted method for supplementals
-    Weight_Spp = n_trans_spp/Size_EEZ 
+    Weight_Spp = ifelse(n_trans_spp/Size_EEZ < 1,1, n_trans_spp/Size_EEZ),
     Weight_Bins = cut(Weight_Spp,breaks = 5),
     Weight_Bins_Plot = cut(Weight_Spp,breaks = 5,
-                    labels = c('super low', 'low','median', 'high','super high')),
+                    labels = c('super low', 'low','median', 'high','super high')
+                    )
   )
   
 # Get Catch and Revenue data for mapping 
@@ -1815,20 +1823,20 @@ Revenue_Country <- sau_eez_fes %>%
   group_by(fishing_entity) %>% # Estimate the amount of dollars of each nation 
   summarise(Total_USD = (sum(mean_value,na.rm=T))/1000000) %>% # Million of USD
   ungroup() %>% 
-  left_join(Regional_Area, 
-            by = "eez_name") %>% 
+  # left_join(EEZ_Area, 
+            # by = "eez_name") %>% 
   mutate(
     Bins = cut(Total_USD,breaks = Rev_Breaks, dig.lab = 5 ),
     Bins_Plot = cut(Total_USD,breaks = Rev_Breaks,
                     labels = c('super low', 'low','median','high','super high'),
                     dig.lab = 5 # Removes scientific notaion
-    ),
+    )#,
      # Include the weighted method for supplementals
-    Weight_Rev = Total_USD/Size_EEZ 
-    Weight_Bins = cut(Weight_Rev,breaks = 5),
-    Weight_Bins_Plot = cut(Weight_Rev,breaks = 5,
-                    labels = c('super low', 'low','median', 'high','super high')),
-  )
+  #   Weight_Rev = Total_USD/Size_EEZ,
+  #   Weight_Bins = cut(Weight_Rev,breaks = 5),
+  #   Weight_Bins_Plot = cut(Weight_Rev,breaks = 5,
+  #                   labels = c('super low', 'low','median', 'high','super high'))
+  # )
   ) %>% 
   filter(Total_USD > 0)
 
@@ -1900,6 +1908,12 @@ Subregion_Data <- Revenue_Country %>%
   left_join(UN_Regions,
             by = "fishing_entity") %>% 
   mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
+  left_join(Regional_Area, 
+            by = "sub_region") %>% 
+  mutate(
+    Weighted_Catch = fishing_entity_catch/Size_Region,
+    Weighted_USD = Total_USD/Size_Region
+    ) %>% 
   group_by(sub_region) %>% 
   summarise_if(is.numeric,c(sum = sum,
                             m = mean,
@@ -1930,7 +1944,7 @@ Subregion_Data_Trans$sub_region <- Subregion_Data_Trans$sub_region %>%
 
 number_of_bar <- nrow(Subregion_Data_Trans)
 
-# Label info
+# Label info Rev
 label_data_rev <- Subregion_Data_Trans %>% 
   arrange(Total_USD_sum) %>% # soo it looks like a nice snail :)
   mutate(
@@ -1947,8 +1961,43 @@ label_data_rev <- Subregion_Data_Trans %>%
     sub_region_n = paste(sub_region," (n=",n_trans_spp,")",sep = "")
   )
 
+# Label info Catch
 label_data_catch <- Subregion_Data_Trans %>% 
   arrange(fishing_entity_catch_sum) %>% # soo it looks like a nice snail :)
+  mutate(
+    id = seq(1,nrow(Subregion_Data_Trans)),
+    angle = 90 -360 * (id-0.5)/number_of_bar,
+    hjust = ifelse(angle < -90,1,0),
+    angleb = ifelse(angle < -90, (angle +180), angle)
+  ) %>% 
+  mutate(
+    sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
+                        ifelse(sub_region =="Northern America","Northern\nAmerica",
+                               paste(sub_region))
+    ),
+    sub_region_n = paste(sub_region," (n=",n_trans_spp,")",sep = "")
+  )
+
+# Label info Weight Catch
+label_data_w_catch <- Subregion_Data_Trans %>% 
+  arrange(Weighted_Catch_sum) %>% # soo it looks like a nice snail :)
+  mutate(
+    id = seq(1,nrow(Subregion_Data_Trans)),
+    angle = 90 -360 * (id-0.5)/number_of_bar,
+    hjust = ifelse(angle < -90,1,0),
+    angleb = ifelse(angle < -90, (angle +180), angle)
+  ) %>% 
+  mutate(
+    sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
+                        ifelse(sub_region =="Northern America","Northern\nAmerica",
+                               paste(sub_region))
+    ),
+    sub_region_n = paste(sub_region," (n=",n_trans_spp,")",sep = "")
+  )
+
+# Label info Weight Catch
+label_data_w_rev <- Subregion_Data_Trans %>% 
+  arrange(Weighted_USD_sum) %>% # soo it looks like a nice snail :)
   mutate(
     id = seq(1,nrow(Subregion_Data_Trans)),
     angle = 90 -360 * (id-0.5)/number_of_bar,
@@ -1978,7 +2027,7 @@ World_sf_si_land <- World_land_sf %>%
 # filter(!is.na(Total_USD))
 
 # Get the NA's to be grey
-Grey_land <- World_sf_si_land %>% 
+Grey_land <- World_sf_si_land %>%  
   filter(is.na(Bins))
 
 ```
@@ -2003,66 +2052,67 @@ Bins_Rev <- Revenue_Country %>%
 Labels_Trans <- c("(1-29]",paste(Bins_Trans[2:5]))
 Labels_Rev <- c("(1-10]",paste(Bins_Rev[2:5]))
 
-# Make map
-Map <- ggplot() +
-  geom_sf(data = World_sf_si_land,aes(fill = reorder(Bins_Plot,Total_USD)), colour = "grey80",size = 0.1) +
-  geom_sf(data = World_sf_si,aes(fill =  reorder(Bins_Plot,n_trans_spp)),colour = "grey20", size = 0.1) + # n_trans_spp or Bins
-  geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80", colour = "grey50",size = 0.1) + # n_trans_spp or Bins
-  scale_fill_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
-                                  "#00A08A",#"#00A08A", #green
-                                  "#F2AD00",#"#F2AD00", # Yellow
-                                  "#F98400",#"#F98400", #Orange
-                                  "#FF0000"#,"#FF0000" #Red
-  ),
-  na.translate = F
-  ) +
-  ggtheme_map() +
-  # Transboundary labels
-  annotate("text", 
-           x =(c(-85.5,-30,25,81,136)+5),
-           y = -93.5,
-           label = Labels_Trans, 
-           color="black", 
-           size=3, 
-           angle=0, 
-           # fontface="bold",
-           hjust=0) +
-  # Revenue labels
-  annotate("text", 
-           x =(c(-85.5,-31,20,75,131)+5),
-           y = -110,
-           label = Labels_Rev, 
-           color="black", 
-           size=3, 
-           angle=0, 
-           # fontface="bold",
-           hjust=0) +
-  # Legend Titles
-  annotate("text", 
-           x =-180,
-           y = -93.5,
-           label = "Transboundary Spp. (n)", 
-           color="black", 
-           size=3, 
-           angle=0, 
-           fontface="bold",
-           hjust=0) +
-  annotate("text", 
-           x =-180,
-           y = -110,
-           label = "Revenue (Million USD)", 
-           color="black", 
-           size=3, 
-           angle=0, 
-           fontface="bold",
-           hjust=0) +
-  theme(
-    legend.box.margin = margin(t = -54, l = 130),
-    legend.text = element_blank(),
-  ) +
-  guides(fill = guide_legend(nrow = 1))
 
-
+  # Make map
+  Map <- ggplot() +
+    geom_sf(data = World_sf_si_land,aes(fill = reorder(Bins_Plot,Total_USD)), colour = "grey80",size = 0.1) +
+    geom_sf(data = World_sf_si,aes(fill =  reorder(Bins_Plot,n_trans_spp)),colour = "grey20", size = 0.1) + # n_trans_spp or Bins
+    geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80", colour = "grey50",size = 0.1) + # n_trans_spp or Bins
+    scale_fill_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
+                                    "#00A08A",#"#00A08A", #green
+                                    "#F2AD00",#"#F2AD00", # Yellow
+                                    "#F98400",#"#F98400", #Orange
+                                    "#FF0000"#,"#FF0000" #Red
+    ),
+    na.translate = F
+    ) +
+    ggtheme_map() +
+    # Transboundary labels
+    annotate("text", 
+             x =(c(-85.5,-30,25,81,136)+5),
+             y = -93.5,
+             label = Labels_Trans, 
+             color="black", 
+             size=3, 
+             angle=0, 
+             # fontface="bold",
+             hjust=0) +
+    # Revenue labels
+    annotate("text", 
+             x =(c(-85.5,-31,20,75,131)+5),
+             y = -110,
+             label = Labels_Rev, 
+             color="black", 
+             size=3, 
+             angle=0, 
+             # fontface="bold",
+             hjust=0) +
+    # Legend Titles
+    annotate("text", 
+             x =-180,
+             y = -93.5,
+             label = "Transboundary Spp. (n)", 
+             color="black", 
+             size=3, 
+             angle=0, 
+             fontface="bold",
+             hjust=0) +
+    annotate("text", 
+             x =-180,
+             y = -110,
+             label = "Revenue (Million USD)",
+             color="black", 
+             size=3, 
+             angle=0, 
+             fontface="bold",
+             hjust=0) +
+    theme(
+      legend.box.margin = margin(t = -54, l = 130),
+      legend.text = element_blank(),
+    ) +
+    guides(fill = guide_legend(nrow = 1))
+  
+  
 ####___________________________###
 ### Now create the Two circluar bar plots
 ####___________________________###
@@ -2354,132 +2404,175 @@ ggsave(
 
 ```
 
-```{r Territory_Map_Round_Weighted, eval =F, echo =F}
+```{r Weight_Revenue, eval =F, echo =F}
 
 
-# Get Catch data for mapping (Supplemental materials)
-Catch_Breaks <- c(-1,10,100,1000,5000,10000)
+####___________________________###
+### Now create the Two circluar bar plots
+####___________________________###
 
+# Revenue Plot
 
-Catch_Country <- SAU_Catch_Data %>%
-  group_by(eez_name) %>%
-  summarise(eez_catch = round(sum(total_catch,na.rm=T),2)) %>%
-  left_join(Clean_sau_eez_fes,
-            by = "eez_name") %>%
-  group_by(fishing_entity) %>%
-  summarise(fishing_entity_catch = sum(eez_catch,na.rm=T)/1000) %>% # thousand tones
-  mutate(
-    # fishing_entity = ifelse(fishing_entity == "USA","United States of America",
-    #                                ifelse(fishing_entity == "Russian Federation","Russia",fishing_entity)),
-    Bins = cut(fishing_entity_catch,breaks = Catch_Breaks),
-    Bins_Plot = cut(fishing_entity_catch,breaks = Catch_Breaks,
-                    labels = c('super low', 'low','median','high','super high'))
-  ) %>% 
-  filter(fishing_entity_catch > 0)
+# Set color pal
+pal <- wes_palette("Zissou1",100,type = "continuous")
 
-# Create labels for legend
-Bins_Trans <- Transboundary_Spp %>% 
-  arrange(Bins) %>% 
-  pull(Bins) %>% 
-  unique()
+# Set plot limits
+max_lim <- max(Subregion_Data_Trans$Weighted_USD_sum) +0.01
 
-Bins_Catch <- Catch_Country %>% 
-  arrange(Bins) %>% 
-  pull(Bins) %>% 
-  unique()
-
-Labels_Trans <- c("(1-29]",paste(Bins_Trans[2:5]))
-Labels_Catch <- c("(1-10]",paste(Bins_Catch[2:5]))
-
-
-# Transboundary Species shapefile
-World_sf_si <- World_sf %>%
-  st_transform(crs = 4326) %>%
-  st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
-  left_join(Transboundary_Spp, by ="eez_name")
-
-# Total catch/Revenue shapefile
-World_sf_si_land <- World_land_sf %>%
-  st_transform(crs = 4326) %>%
-  st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>% 
-  left_join(Catch_Country, by ="fishing_entity")
-
-# Get the NA's to be grey
-Grey_land <- World_sf_si_land %>% 
-  filter(is.na(Bins_Plot))
-
-
-# Make map
-Map <- ggplot() +
-  geom_sf(data = World_sf_si_land,aes(fill = reorder(Bins_Plot,fishing_entity_catch)), colour = "grey80",size = 0.1) +
-  geom_sf(data = World_sf_si,aes(fill =  reorder(Bins_Plot,n_trans_spp)),colour = "grey20", size = 0.1) + # n_trans_spp or Bins
-  geom_sf(data = Grey_land,aes(fill = Bins),fill = "grey80", colour = "grey50",size = 0.1) + # n_trans_spp or Bins
-  scale_fill_manual("",values = c("#5BBCD6",#"#5BBCD6", # blue
-                                  "#00A08A",#"#00A08A", #green
-                                  "#F2AD00",#"#F2AD00", # Yellow
-                                  "#F98400",#"#F98400", #Orange
-                                  "#FF0000"#,"#FF0000" #Red
-  ),
-  na.translate = F
+Rev_Plot <- ggplot(
+  # Regional plots
+  data = Subregion_Data_Trans, 
+  aes(
+    x=reorder(id,Weighted_USD_sum),
+    y=Weighted_USD_sum, 
+    fill=Weighted_USD_sum
+  )
+) +    
+  ylim(-0.001, max_lim) +
+  geom_bar(stat="identity") +
+  # Regional averages
+  geom_point(data = Subregion_Data_Trans,
+             aes(
+               x=reorder(id,Weighted_USD_m),
+               y=Weighted_USD_m
+             ),
+             colour = "black",
+             alpha = 0.5
   ) +
-  ggtheme_map() +
-  # Transboundary labels
-  annotate("text",
-           x =(c(-85.5,-30,25,81,136)+5),
-           y = -93.5,
-           label = Labels_Trans,
-           color="black",
-           size=3,
-           angle=0,
-           # fontface="bold",
-           hjust=0) +
-  # Catch labels
-  annotate("text",
-           x =(c(-85.5,-31,20,75,131)+5),
-           y = -110,
-           label = Labels_Catch,
-           color="black",
-           size=3,
-           angle=0,
-           # fontface="bold",
-           hjust=0) +
-  # # Legend Titles
-  annotate("text",
-           x =-180,
-           y = -93.5,
-           label = "Transboundary Spp. (n)",
-           color="black",
-           size=3,
-           angle=0,
-           fontface="bold",
-           hjust=0) +
-  annotate("text",
-           x =-180,
-           y = -110,
-           label = "Catch (Thousand tons)",
-           color="black",
-           size=3,
-           angle=0,
-           fontface="bold",
-           hjust=0) +
+  # Regional sds
+  geom_errorbar(
+    aes(
+      ymin=ifelse(Weighted_USD_m-Weighted_USD_sd <= 0,0,Weighted_USD_m-Weighted_USD_sd), # sets lower to 0
+      ymax=Weighted_USD_m+Weighted_USD_sd
+    ),
+    width=.2,
+    position=position_dodge(.9),
+    alpha = 0.5) +
+  # Looking good
+  theme_minimal() +
   theme(
-    legend.box.margin = margin(t = -54, l = 130),
-    legend.text = element_blank(),
+    legend.position = c(0.73,0.60),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(0,-10,-6,-10,"cm")
+  )  +
+  # Base line
+  # geom_segment(aes(x = 1, y = 1, xend = 17, yend = 17),  
+  #              colour = "black", size=0.1, inherit.aes = FALSE) +
+  coord_polar(start = 0) + 
+  geom_text(data=label_data_w_rev, 
+            aes(x=id,
+                y=Weighted_USD_sum+0.0001,
+                label=sub_region,
+                hjust=hjust), 
+            color="black",
+            fontface="bold",
+            size=2, 
+            angle= label_data_rev$angleb, 
+            inherit.aes = FALSE) +
+  scale_fill_gradientn("",
+                       colours = pal#,
+                       # limits = c(0,16500),
+                       # breaks = seq(0,16000,4000)
+                       ) +
+  guides(fill = guide_colorbar(label.position = "left")
+  )
+
+
+###____________###
+### Catch plot
+###____________###
+max_lim <- max(Subregion_Data_Trans$Weighted_Catch_sum) +0.001
+
+Catch_Plot <- ggplot(data = Subregion_Data_Trans, 
+                     aes(x=reorder(id,Weighted_Catch_sum),
+                         y=Weighted_Catch_sum, 
+                         fill=Weighted_Catch_sum
+                     )
+) +    
+  ylim(-0.0003, max_lim) +
+  geom_bar(stat="identity") +
+  # Regional averages
+  geom_point(data = Subregion_Data_Trans,
+             aes(
+               x=reorder(id,Weighted_Catch_sum),
+               y=Weighted_Catch_m
+             ),
+             colour = "black",
+             alpha = 0.5
   ) +
-  guides(fill = guide_legend(nrow = 1))
+  # Regional sd's
+  geom_errorbar(
+    aes(
+      ymin=ifelse(Weighted_Catch_m-Weighted_Catch_sd <= 0,0,Weighted_Catch_m-Weighted_Catch_sd),
+      ymax=Weighted_Catch_m+Weighted_Catch_sd
+    ), 
+    width=.2,
+    position=position_dodge(.9),
+    alpha = 0.5) +
+  theme_minimal() +
+  theme(
+    legend.position = c(0.1,0.60),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(0,-10,-6,-5,"cm")
+  )  +
+  # Base line
+  # geom_segment(aes(x = 0, y = 1, xend = 17, yend = 17),
+  #              colour = "black", size=0.1, inherit.aes = FALSE) +
+  coord_polar(start = 0) + 
+  geom_text(data=label_data_w_catch, 
+            aes(x=id,
+                y=Weighted_Catch_sum+0.0001,
+                label=sub_region,
+                hjust=hjust), 
+            color="black",
+            fontface="bold",
+            size=2, 
+            angle= label_data_catch$angleb, 
+            inherit.aes = FALSE) +
+  scale_fill_gradientn("",
+                       # limits = c(0,16.5),
+                       # breaks = seq(0,16,4),
+                       colours = pal
+                       
+  );Catch_Plot
+
+## Joining everything in one ploit
+
+plot <- ggdraw() +
+  # map
+  # draw_plot(Map, x = 0, y = 0.45, width = 1, height = 0.58) +
+  # Revenue circular
+  draw_plot(Rev_Plot, x = 0.2, y = 0.5, width = 0.5, height = 0.4) +
+  # Catch circular
+  draw_plot(Catch_Plot, x = 0.46, y = 0.5, width = 0.5, height = 0.4) +
+  # Labeks
+  draw_plot_label(label = c("A", "B"), 
+                  size = 20,
+                  x = c(0.1, 0.5), 
+                  y = c(1,1)
+  ) +
+  draw_plot_label(label = c("Revenue (USD) | Catch (Tones)","(Million)"), 
+                  size = 8,
+                  x = c(0.330,0.485), 
+                  y = c(0.31,0.29)
+  )
 
 
-ggsave(
-  plot = last_plot(),
-  width = 8,
-  height = 5,
-  units = "in",
-  filename = "S1_Catch_EEZ.png"#,
-  # path = Figures_Path
+save_plot(
+  paste(Figures_Path,"100_25_Bins_Value_Region.png",sep=""),
+  # "Plot.png",
+  plot,
+  base_height = 8,
+  base_width = 8
 )
 
-
 ```
+
+
 
 ### China, US, Russia, and Peru
 
