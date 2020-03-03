@@ -1,16 +1,26 @@
 ---
-title: 'Fish do nor need Visas: Reference Letter'
-author: "Juliano Palacios Abrantes"
-date: '2019-09-18'
-output: pdf_document
+output:
+  word_document: default
+  pdf_document: default
 ---
+[Editor Name] 									     02-22-2020
 
-Should include:
-- Reference to any pre-submission discussions with editors.
-- The title of the paper and a statement of its main point.
-- Any information needed to ensure a fair review process, including related manuscripts submitted to other journals.
-- Names of colleagues who have reviewed the paper.
-- A statement that none of the material has been published or is under consideration for publication elsewhere.
-- Specification of where all data underlying the study are available, or will be deposited, and whether there are any restrictions on data availability such as an MTA.
-- Information on any reference material or additional data files uploaded to the Auxiliary files section (see below).
-- Please also upload a .docx version of your cover letter – see below.
+Title, Science 
+
+Dear [Editor Name],
+
+Please find attached our manuscript titled “Marine species do not need visas: the transboundary nature of the world’s exploited marine species” submitted for publication in Science as a Report. In here we highlight the large and under-recognized scale of transboundary fisheries and discusses the challenges in achieving international fisheries management goals.
+
+Last year Nandini et al published a paper in Science where they demonstrate that the world of marine fishes is deeply interconnected by larvae. Here, we show that this is not only true at the early stages of marine species, but also in later life stages, as marine species distribute across multiple Economic Exclusive Zones. We found that 67% of the world’s identified fished species are transboundary and responsible for 80% of the global-EEZs catches and 78.5% of fisheries revenue of the last decade. We rely on multiple data sources of species distributions to estimate the number of shared species, their contribution to global, regional and local catch and fishing revenue, and their potential management status. We identify that the largest share of transboundary species are oceanic pelagics, and that fisheries catching transboundary species seem to be worse off than those for non-transboundary stocks. Our study has direct implications for the management of transboundary species, calling for international cooperation in the management of these fisheries.
+
+
+Please do not hesitate to contact me if you require more information. This manuscript is not being considered for publication in any other journal. All code used to analyze the data is currently available at https://github.com/jepa/FishForVisa and data will be available upon request if the paber is published.
+
+Sincerely (on behalf of all authors),
+
+
+
+Juliano Palacios Abrantes
+The Institute for Oceans and Fisheries
+ The University of British Columbia
+
