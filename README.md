@@ -1,13 +1,25 @@
-# Overall project information
+# Marine species do not need visas: the transboundary nature of the world’s exploited marine species.
 
-This repository is intended for the project *Marine species do not need visas: the transboundary nature of the world’s exploited marine species* authored by Juliano Palacios-Abrantes, Gabriel Reygondeau, Colette Wabnitz and William W.L. Cheung
+This repository is intended to support the project *Marine species do not need visas: the transboundary nature of the world’s exploited marine species* 
+
+**Authors**: Juliano Palacios-Abrantes<sup>1</sup>, Gabriel Reygondeau<sup>2</sup>, Colette Wabnitz<sup>3</sup> and William W.L. Cheung<sup>1</sup>.
+
+
+1. Institute for the Oceans and Fisheries, University of British Columbia, Vancouver, Canada.  
+2. Yale University, New Haven, Connecticut, USA.  
+3. Stockholm Resilience Center, Stockholm University, Stockholm, Sweden.  
+
+\*Corresponding author: Juliano Palacios-Abrantes, j.palacios@oceans.ubc.ca
+
 
 # Project Goal:
 
-- Determine the number of curent fisheries that are shared by neighboring countries (transboundary)
+- Determine the number of current fisheries that are shared by neighboring countries (transboundary)
 - Estimate their contribution to global fishing catch and revenue
 
 ## Files and folders organization:
+
+In this repository you will find all of the code related to the manuscript *Marine species do not need visas: the transboundary nature of the world’s exploited marine species*. **Note** that the code needs to compile data from different sources including *OBIS*, *GBIF*, *The Sea Around Us*, and *FishBase*, among others. Due to the large volume of data, these are not in *GitHub*. Please email me to discuss other ways to share the data.
 
 ### Files
 
@@ -28,5 +40,3 @@ This repository is intended for the project *Marine species do not need visas: t
 - **Tables**: Manuscript tables in csv format
 
 - **Drobo**: Shortcut to the Drobo where all data is stored
-
-
