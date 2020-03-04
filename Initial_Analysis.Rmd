@@ -7,6 +7,9 @@ editor_options:
   chunk_output_type: console
 ---
 
+# Read Me
+This script runs the analysis for the manuscript *Marine species do not need visas: the transboundary nature of the world’s exploited marine species* from the data loading to the results analysis. Is divided in two parts; *Methods* where the raw data is analyzed and *Results* where the results from the analysis are processed.
+
 
 ```{r setup, eval = T, echo=F, warning=F,message=F, results='hide'}
 
@@ -141,23 +144,20 @@ print("_____________________ WARNING DO NOT FORGET TO PULL/PUSH BEFORE YOU START
 
 These are the methods to follow:
 
-1. Determine which countries have Neighbouring EEZs  
+1. Determine which countries have Neighboring EEZs  
 1.1. For this we used the Sea Around Us EEZ map that discriminate by oceans and a routine (*Estimate Transboundary Species*) to identify Neighbouring polygons,
 1.2. Then we match the SAU spatial information (e.g. INDEX within EEZ and coordinates) with the Neighbouring data
 
-2. Overlap distribution maps with Neighbours data  
-2.1. For each species we merged the Neighbours data with their known distribution (SAU distribution and catch,ESMs, and Observation)  
+2. Overlap distribution maps with Neighbors data  
+2.1. For each species we merged the Neighbors data with their known distribution (SAU distribution and catch,ESMs, and Observation)  
 3. Determine transboundary if:  
 3.1. Species is present in both Neighbouring EEZs by INDEX  
 
-We create two "confidence level" based on data and area covered, i.e;
-
--
--
+We create two "confidence level" based on data and area covered.
 
 ## Determine species list
 
-This part is to determine the list of species to be analized in the project. Initially this list was limited by the species data from the DBEM, however, as we are not using the DBEM, the limit is now the SAU.
+This part is to determine the list of species to be analyzed in the project. Initially this list was limited by the species data from the DBEM, however, as we are not using the DBEM, the limit is now the SAU.
 
 ```{r Speceis_List_For_Data, eval = F, echo = T}
 
@@ -241,13 +241,13 @@ Species_environ_list <- rbind(species(Species_list,
 
 ```
 
-## Determine Neighbourds
+## Determine Neighbors
 
-This is the first step of the analysis and will determine what EEZs are neighbouring. THe routine creates a final dataset that we then use to estimate transboundary species.
+This is the first step of the analysis and will determine what EEZs are neighbors. The routine creates a final data-set that we then use to estimate transboundary species.
 
 ### Function `EstNeighbours`
 
-This function determines what EEZs are Neighbours and returns a data.frame of it
+This function determines what EEZs are Neighbors and returns a data.frame of it
 
 ```{r funEstNeighbours, eval = F, echo=T}
 # Determine which countries are Neighbours
@@ -312,7 +312,7 @@ EstNeighbours <- function(Shapefile, Partial = "NA"){
 
 ```
 
-### Sub Routine; Neighbours
+### Sub Routine; Neighbors
 
 ```{r Neighbours_Control_Pannel, eval = F, echo = F}
 
@@ -389,7 +389,7 @@ In the original method the authors analyze stocks, while we analyze at the speci
 
 2) There are at least five years of consecutive catches
 
-Once those tresholds are met, the status of the species is determined as follows:
+Once those thresholds are met, the status of the species is determined as follows:
 
 - Rebuilding (Recovering),	Year of landing > year of post-max. min. landing AND post-max. min. landing < 10% of max. landing AND landing is 10-50% of max. landing
 - Developing,	Year of landing < year of max. landing AND landing is < or = 50% of max. landing OR year of max. landing = final year of landing
@@ -838,16 +838,16 @@ write_csv(SAU_Catch_Data,
 
 This is the main step of the project. In this segment we estimate the number of transboundary species existing today in each of the worlds EEZs.
 
-The datasets SAU_D, OCC, and ESM are used as sppecies presence while SAU_C is used as a confirmation of that. The `Model Index` is the first treshold and estimates the uncertanty of models. Goes from 0 - 1 as follows:
+The data-sets SAU_D, OCC, and ESM are used as species presence while SAU_C is used as a confirmation of that. The `Model Index` is the first threshold and estimates the uncertainty of models. Goes from 0 - 1 as follows:
 
 - 1 or 0; All models agree that in the presence of the species
-- 0.75; Three out of four models agree on speices presence
-- 0.50; Two out of four models agree on speices presence
-- 0.25; Only one model flags a speices presence
+- 0.75; Three out of four models agree on species presence
+- 0.50; Two out of four models agree on species presence
+- 0.25; Only one model flags a species presence
 - 0; All models agree there is no species there
 
 
-The `Area_Index` is the second treshold and estimates the proportion of each species distribution in each EEZ. It only take into consideration the distribution of the species within the two EEZs, rather than the complete distribution. Hence, is mirrord (e.g. if EEZ#1 is 0.40, EEZ#2 is 0.6)
+The `Area_Index` is the second threshold and estimates the proportion of each species distribution in each EEZ. It only take into consideration the distribution of the species within the two EEZs, rather than the complete distribution. Hence, is mirror (e.g. if EEZ#1 is 0.40, EEZ#2 is 0.6)
 
 ** NOTE THAT THE FUNCTION IS SETTED TO OUTPUT RESULTS FOR ALL MODELS **
 
@@ -1311,7 +1311,7 @@ GetTransResults=function(Spp){
 
 ### Function `CleanResults`
 
-There are quite a few inconsistencies between the names of territories within the SAU shapefile, the distribution data and the UN database. The following function cleans up the names, some of them manually some of the automatic. It also removes the "transboundary nature" of those species shared by two territories that belong to the same nation (e.g. Brazil mainland and Brazil (Fernando de Noronha) or US Gulf of Mexico and US East coast). Finally, there is an annoying thing coding issue between MAC and Windows related to characters so I have to also fix for that, manually.
+There are quite a few inconsistencies between the names of territories within the SAU shape file, the distribution data and the UN database. The following function cleans up the names, some of them manually some of the automatic. It also removes the "transboundary nature" of those species shared by two territories that belong to the same nation (e.g. Brazil mainland and Brazil (Fernando de Noronha) or US Gulf of Mexico and US East coast). Finally, there is an annoying thing coding issue between MAC and Windows related to characters so I have to also fix for that, manually.
 
 ```{r funCleanResults, eval = F, echo = F}
 
@@ -1441,7 +1441,7 @@ CreateFigureOne <- function(Variable_Selected){
   
   
   if(Variable_Selected == "catch"){
-    Map_Label <- "Catch (Thousand Tonnes)"
+    Map_Label <- "Catch (Thousand Tons)"
     Plot_Name <- "Catch_plot.png"
   }else{
     Map_Label <- "Revenue (Million USD)"
@@ -1599,7 +1599,7 @@ CreateFigureOne <- function(Variable_Selected){
     coord_polar(start = 0) + 
     geom_text(data=label_data_rev, 
               aes(x=id,
-                  y=Value_sum+10,
+                  y=Value_sum,
                   label=sub_region,
                   hjust=hjust), 
               color="black",
@@ -1669,7 +1669,7 @@ CreateFigureOne <- function(Variable_Selected){
   coord_polar(start = 0) + 
   geom_text(data=label_data_catch, 
             aes(x=id,
-                y=ifelse(Value_sum == 12,Value_sum,Value_sum+0.1), # Fix names overlap
+                y=ifelse(Value_sum >= 12,12,Value_sum+0.1), # Fix names overlap
                 label=sub_region,
                 hjust=hjust), 
             color="black",
@@ -1698,7 +1698,7 @@ CreateFigureOne <- function(Variable_Selected){
                   x = c(0, 0), 
                   y = c(1, 0.45)
   ) +
-  draw_plot_label(label = c("Revenue (USD) | Catch (Tones)","(Million)"), 
+  draw_plot_label(label = c("Revenue (USD) | Catch (Tons)","(Million)"), 
                   size = 8,
                   x = c(0.330,0.485), 
                   y = c(0.31,0.29)
@@ -1718,7 +1718,7 @@ CreateFigureOne <- function(Variable_Selected){
 
 ## Load Results data
 
-In here we load and cleaned the multiple external datasets requred to produce the manuscript figures 
+In here we load and cleaned the multiple external data sets required to produce the manuscript figures 
 
 ```{r Load_Results_Data, eval = F}
 
@@ -1965,9 +1965,9 @@ RFMOs_sf <- st_read(dsn = path_world,
 
 ```
 
-## Determine Tresholds
+## Determine Thresholds
 
-Determine transboundary stocks and countries based on selected trsholds. We created two tresholds (levels of uncertanty), in here we can chose which level we wanna work with.
+Determine transboundary stocks and countries based on selected thresholds. We created two thresholds (levels of uncertainty), in here we can chose which level we wanna work with.
 
 ```{r Results_Tresholds, eval = F, echo = F}
 
@@ -1993,6 +1993,15 @@ Tresholded_T_Data <- Clean_Results_Trans %>%
 ## Overall results
 
 ```{r Transboundary_Data_per_Territory, eval = F, echo = F}
+
+# -------------------------- #
+# Number of EEZs and countries
+# -------------------------- #
+
+# number of eezs
+length(unique(sau_eez_fes$eez_name))
+# Number of coastal territories
+length(unique(sau_eez_fes$fishing_entity))
 
 # -------------------------- #
 # Number of Transboundary and Discrete Species
@@ -2096,6 +2105,7 @@ Species_Left_Out <- Species_Sampled %>%
 
 ###_________________###
 # Discrete species
+# Species that are transboundary in some cases but discrete in other cases
 ###_________________###
 
 Discrete <- Clean_Results_Trans %>% 
@@ -2111,29 +2121,17 @@ Discrete <- Clean_Results_Trans %>%
             by = c("taxon_key","eez_name"))
 
 # Both categories (trans and Discrete)
-Tresholded_T_Data %>% 
+n_discrete <- Tresholded_T_Data %>% 
   semi_join(Discrete,
-            by = "taxon_key") %>% 
+            by = "taxon_key") %>% # those that are not only discrete
   group_by(taxon_key) %>% 
   summarise(n()) %>% 
   pull(unique(taxon_key)) %>% 
   length()
   
-n_discrete <- length(unique(Discrete$taxon_key))
-
-  Summary_Discrete_B <- Discrete_B %>% 
-  left_join(SAU_Sampled_Data,
-           by = c("taxon_key","eez_name")) %>% 
-  group_by(Variable) %>%
-  summarise(Total_Discrete = sum(Value, na.rm=T)) %>% 
-  left_join(Total_SAU_Sampled) %>% 
-  left_join(Total_SAU_Global) %>% 
-  mutate(Per_sampled = Total_Discrete/Total_Sampled*100,
-         Per_SAU = Total_Discrete/Total_Global*100)
-
-  
 ###_________________###
 # Discrete Exclusive
+# Species that are only discrete and are not present in the transboundary category
 ###_________________###
   
   # Discrete species (not in Tresholded)
@@ -2143,13 +2141,18 @@ Discrete_Exclusive <- Clean_Results_Trans %>%
   group_by(taxon_key) %>% 
   summarise(n())
 
+## double check 
+
+Discrete_Exclusive %>% 
+  semi_join(Tresholded_T_Data, by = "taxon_key") # 0 ok thes
+
 # Number of discrete species
 n_discrete_exclusive <- length(unique(Discrete_Exclusive$taxon_key))
 
 # Total species
 n_discrete_exclusive + n_trans # 938
 
-Summary_Discrete_Exclusive <- Discrete %>% 
+Summary_Discrete_Exclusive <- Discrete_Exclusive %>% 
   left_join(SAU_Sampled_Data) %>% 
   group_by(Variable) %>%
   summarise(Total_Discrete = sum(Value, na.rm=T)) %>% 
@@ -2166,7 +2169,7 @@ Determine the number of species per territory
 
 ```{r Data_per_Territory, eval = F, echo = F}
 
-# Data per Territory
+# Data per Territory (EEZ)
 Transboundary_Spp <- Tresholded_T_Data %>% 
   group_by(eez_name) %>% 
   summarise(
@@ -2193,6 +2196,18 @@ Transboundary_Spp <- Tresholded_T_Data %>%
 # Set manual breaks for bins
 Map_Breaks <- c(-1,10,100,1000,5000,10000)
 
+
+###
+
+Total_Value_EEZ <- sau_eez_fes %>% 
+  group_by(fishing_entity_id, fishing_entity) %>% 
+  summarise(n=n()) %>% # Get all of the fishing entity and id
+  select(-n) %>% 
+  left_join(SAU_Global_Data) %>% 
+  group_by(fishing_entity,Variable) %>% 
+  summarise(Total_Value = sum(Value,na.rm=T))
+  
+
 Value_Trans_Country <- sau_eez_fes %>% 
   group_by(fishing_entity_id, fishing_entity) %>% 
   summarise(n=n()) %>% # Get all of the fishing entity and id
@@ -2208,11 +2223,10 @@ Value_Trans_Country <- sau_eez_fes %>%
   group_by(fishing_entity,Variable) %>% # Estimate the amount of dollars of each nation 
   summarise(
     Trans_Entity_n = length(unique(taxon_key)),
-    Trans_Total = sum(Value,na.rm=T) #million
+    Trans_Total = sum(Value,na.rm=T), #million
   ) %>%
   ungroup() %>%
-  filter(!is.na(Variable)) %>% # Momentaneus fix for some reason there are diff. between datasers
-  # Match the sacle limits of both value and and catch 
+  filter(!is.na(Variable)) %>%
   mutate(
     Trans_Total = ifelse(Variable == "value",Trans_Total/1000000, #million
                          ifelse(Variable == "catch",Trans_Total/1000, #thousand
@@ -2220,7 +2234,8 @@ Value_Trans_Country <- sau_eez_fes %>%
                          )
   ) %>% 
   spread(Variable,Trans_Total) %>% 
-  left_join(Entity_Area, by = "fishing_entity") %>% 
+  left_join(Entity_Area, 
+            by = "fishing_entity") %>% 
   # Include the weighted method for supplementals
   mutate_at(
     vars(catch,value),
@@ -2235,10 +2250,14 @@ Value_Trans_Country <- sau_eez_fes %>%
                     dig.lab = 5 # Removes scientific notaion
     )
   ) %>% 
+  left_join(Total_Value_EEZ,
+            by = c("fishing_entity", "Variable") 
+            ) %>% # uncomment for estimating percentage
   # Convert catch to million tonnes
   mutate(
     Value = ifelse(Variable == "catch",Value/1000, #million
-                         Value)
+                         Value),
+    Trans_Per = (Value/Total_Value)*100000000 #Return to percentage
   )
 
 ```
@@ -2256,14 +2275,14 @@ Continent_Trans_Value <- Value_Trans_Country %>%
 
 ## Sub region leven
 
-Subregion_Trans_Value <- Value_Trans_Country %>% 
+Subregion_Trans_raw_Value <- Value_Trans_Country %>% 
   left_join(UN_Regions,
             by = "fishing_entity") %>% 
   mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
   group_by(sub_region,Variable) %>% 
-  summarise_if(is.numeric,c(Value_sum = sum,
-                            Value_m = mean,
-                            Value_sd = sd),
+  summarise_if(is.numeric,c(sum = sum,
+                            m = mean,
+                            sd = sd),
                na.rm=T) %>%
   # select(-Size_Entity,-Trans_Entity_n) %>% 
   arrange(Variable) %>%
@@ -2272,7 +2291,9 @@ Subregion_Trans_Value <- Value_Trans_Country %>%
   mutate(Value_sum=ifelse(Variable == "catch" & Value_sum >= 12,12,Value_sum))
 
 # Fix names for plot
-Subregion_Trans_Value$sub_region <- Subregion_Trans_Value$sub_region %>% 
+Subregion_Trans_Value <- Subregion_Trans_raw_Value
+
+Subregion_Trans_Value$sub_region <- Subregion_Trans_raw_Value$sub_region %>% 
   gsub("Northern","N.",.) %>% 
   gsub("Southern","S.",.) %>% 
   gsub("Western","W.",.) %>% 
@@ -2303,8 +2324,8 @@ label_data_rev <- Subregion_Trans_Value %>%
     sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
                         ifelse(sub_region =="Northern America","Northern\nAmerica",
                                paste(sub_region))
-    ),
-    sub_region_n = paste(sub_region," (n=",Trans_Entity_n_sum,")",sep = "")
+    )#,
+    # sub_region_n = paste(sub_region," (n=",Trans_Entity_n_sum,")",sep = "")
   )
 
 # Label info Catch
@@ -2321,8 +2342,8 @@ label_data_catch <- Subregion_Trans_Value %>%
     sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
                         ifelse(sub_region =="Northern America","Northern\nAmerica",
                                paste(sub_region))
-    ),
-    sub_region_n = paste(sub_region," (n=",Trans_Entity_n_sum,")",sep = "")
+    )#,
+    # sub_region_n = paste(sub_region," (n=",Trans_Entity_n_sum,")",sep = "")
   )
 
 # Create labels for legend
@@ -2344,7 +2365,7 @@ Produce the map of transboundary species within each EEZ and the value in catch/
 pal <- wes_palette("Zissou1",100,type = "continuous")
 
 # Variable to plot (value or catch)
-Variable_plot <- "catch"
+Variable_plot <- "value"
 CreateFigureOne(Variable_plot)
 
 
@@ -2555,7 +2576,7 @@ Catch_Plot <- Catch_Plot +
                   y = c(1, 1)
   ) +
   draw_plot_label(
-    label = c("Revenue (USD) | Catch (Tones)","Million per Km2"),
+    label = c("Revenue (USD) | Catch (Tons)","Million per Km2"),
                   size = 6,
                   x = c(0.3,0.40),
                   y = c(0.25,0.22)
@@ -2577,12 +2598,17 @@ Catch_Plot <- Catch_Plot +
 
 # Revenue details 
 
-Top_Rev_Countries <- c("Peru", "Russian Federation", "Chile", "USA")
+Top_Rev_Countries <- c("China", "Peru", "Russian Federation", "Chile", "USA","Japan")
 
+# Total revenue from Top countries
 Total_Top_Rev <- Value_Trans_Country %>% 
   filter(Variable == "value") %>% 
   filter(fishing_entity %in% Top_Rev_Countries) %>% 
-  select(1:3)
+  left_join(UN_Regions,
+            by = "fishing_entity") %>% 
+  left_join(Subregion_Trans_raw_Value) %>% 
+  mutate(Per_Top = Value/Value_sum*100) %>% 
+  select(1:3,Per_Top)
 
 Top_Rev <- sau_eez_fes %>% 
   filter(fishing_entity %in% Top_Rev_Countries) %>% 
@@ -2616,7 +2642,7 @@ Top_Rev %>%
 
 ### Total revenue from the top 5
 
-Top5 <- c("Peru", "Russian Federation", "Chile", "USA","China")
+Top5 <- c("Peru", "Russian Federation", "Japan", "USA","China")
 
 Total_Top5 <- Value_Trans_Country %>% 
   filter(Variable == "value") %>% 
@@ -2629,69 +2655,48 @@ Total_Top5 <- Value_Trans_Country %>%
 
 ```
 
-### Statistical differences
-
+### Statistical differences within regions
 We used a one-way ANOVA to determine significant differences within regions for transboundary fisheries catches and revenue with a Tukey's HSD post-hoc test.
 
 ```{r statistics_fig1, eval = F, echo = T}
 
 ### Using ANOVA to estimate significan differences within regions for revenue and catch of transboundary species
 
-Subregion_Data_stats <- Value_Trans_Country %>% 
-  left_join(UN_Regions,
-            by = "fishing_entity") %>% 
-  mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
-  select(fishing_entity,sub_region,Variable,Value) %>% 
-  filter()
-  
+### Reveneu ANOVA
 
-# ### Prepare Data
-# Subregion_Data_stats <- Revenue_Country %>% 
-#   left_join(Catch_Country,
-#             by = "fishing_entity") %>% 
-#   left_join(UN_Regions,
-#             by = "fishing_entity") %>% 
-#   mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
-#   select(fishing_entity,sub_region,Total_USD,fishing_entity_catch)
-
-# Revenue ANOVA
 Subregion_Rev_stats <- Subregion_Data_stats %>% 
   filter(Variable == "value")
 
 Rev_aov <- aov(Value~sub_region, data = Subregion_Rev_stats)
 Rev_aov
+
 summary(Rev_aov)
-
-# Df    Sum Sq Mean Sq F value  Pr(>F)    
-# sub_region   16  75628526 4726783    4.91 4.2e-08 ***
-# Residuals   157 151140183  962676       
-
-#### There are significant differences. But between what?
+#              Df    Sum Sq Mean Sq F value   Pr(>F)    
+# sub_region   16  75738982 4733686   4.948 3.46e-08 ***
+# Residuals   158 151144071  956608   
 
 #  Post-hoc analysis
-TukeyHSD(Rev_aov)
-
-# Northern America sig than everyone except for Eastern Asia
-# Eastern Asia sig with everyone except with Eastern Europe and North Am.
+TukeyHSD(Rev_aov) %>% 
+  tidy() %>% 
+  filter(adj.p.value < 0.05)
 
 ### Catch ANOVA
 
 Subregion_Catch_stats <- Subregion_Data_stats %>% 
   filter(Variable == "catch")
 
-Catch_aov <- aov(fishing_entity_catch~sub_region, data = Subregion_Catch_stats)
+Catch_aov <- aov(Value~sub_region, data = Subregion_Catch_stats)
 Catch_aov
 
 summary(Catch_aov)
-
-# sub_region   16  50.63   3.164   3.767 7.2e-06 ***
-# Residuals   155 130.22   0.840                    
-# ---
-# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
+#  Df Sum Sq Mean Sq F value  Pr(>F)   
+# sub_region   16  27.51  1.7195   2.265 0.00539 **
+# Residuals   158 119.97  0.7593   
 
 #  Post-hoc analysis
-TukeyHSD(Catch_aov)
+TukeyHSD(Catch_aov) %>% 
+   tidy() %>% 
+  filter(adj.p.value < 0.05) # Eastern Asia
 
 
 # Weight ANOVA
@@ -2700,7 +2705,7 @@ Subregion_Weigh_stats <- Subregion_Data_stats %>%
 
 Weight_aov <- aov(Value~sub_region, data = Subregion_Weigh_stats)
 Weight_aov
-summary(Weight_aov)
+summary(Weight_aov) 
 
 #  Df Sum Sq Mean Sq F value  Pr(>F)   
 # sub_region   16   6722   420.1   2.411 0.00289 **
@@ -2711,7 +2716,9 @@ summary(Weight_aov)
 #### There are significant differences. But between what?
 
 #  Post-hoc analysis
-TukeyHSD(Rev_aov)
+TukeyHSD(Weight_aov) %>% 
+  tidy() %>% 
+  filter(adj.p.value < 0.05) # Northern Europe
 ```
 
 ### RFMO Map of Transboundary Species
@@ -2875,20 +2882,15 @@ Status_Plot_Data <- tibble(
   select(individual,observation,group=georegion,value) %>% 
   filter(group != "other")
 
-# Number of coastal nations
-length(unique(Status_Data_Plot$individual))
-
-
 # Summary for manuscipt
 
-Status_Data_Plot %>% 
+T_Summary <- Status_Data_Plot %>% 
   mutate(value = ifelse(value <0, value*-1,value)) %>% 
   group_by(observation) %>% 
   summarise(tot=sum(value),
             mean(value),
             sd(value)) %>% 
-  arrange(desc(tot)) %>% 
-  view()
+  arrange(desc(tot))
 
 
 # -------------------------- #
@@ -2919,6 +2921,35 @@ Discrete_Status_Data <- Discrete %>%
   ) %>% 
   group_by(individual,observation,group) %>% 
   summarise(value = sum(value))
+
+
+# Summary for manuscipt
+
+D_Summary <- Discrete_Status_Data %>% 
+  mutate(value = ifelse(value <0, value*-1,value)) %>% 
+  group_by(observation) %>% 
+  summarise(tot=sum(value),
+            mean(value),
+            sd(value)) %>% 
+  arrange(desc(tot))
+
+
+#### Supplemental Table 3
+
+# T_Summary %>%
+#   left_join(D_Summary, by = "observation") %>%
+#   mutate(
+#     "Mean Shared" = paste(round(`mean(value).x`,2)," \u00B1 (",round(`sd(value).x`,2),")",sep=""),
+#     "Mean Discrete" = paste(round(`mean(value).y`,2)," \u00B1 (",round(`sd(value).y`,2),")",sep="")
+#     ) %>%
+#   select(1,8:9) %>%
+#   filter(observation != "No Category") %>%
+#   rename(Category = observation) %>%
+#   arrange(Category) %>%
+#   write_csv("Category_summary.csv")
+
+
+
 ```
 
 ```{r Territories_Circluar_Plot, eval = F, echo = T}
@@ -3080,36 +3111,99 @@ ggsave(
 
 ```
 
+### Statistical differences between species status
+
+Using MANOVA to investigate differences in catch category between discrete and transboundary species
+
 ```{r statistics_fig2, eval = F, echo = T}
 
-# -------------------------- #
-# Transboundary species
-# -------------------------- #
+#-----------------# 
+# Get Data
+#-----------------# 
 
-Status_Data_Stats <- Status_Data_Plot %>% 
+# Transboundary Data
+Transboundary_Data_Stats <- Status_Plot_Data %>% 
+filter(observation != "No Category") %>%
+  mutate(value = abs(value))
+
+# Discrete Data
+Discrete_Data_Stats <- Discrete_Status_Data %>% 
   filter(observation != "No Category") %>%
-  mutate(value = abs(value)) %>% 
+  mutate(value = abs(value))
 
-Total_Trans_Status <- Status_Data_Stats %>% 
-  group_by() %>% 
-  summarise(sum = sum(value)) %>% 
-  pull()
+#### By Category (Manova)
 
-Status_Data_Stats %>% 
-  group_by(observation) %>% 
-  summarise_if(is.numeric,
-               .funs = c(Mean="mean",
-                           sd = "sd",
-                          Sum = "sum")
+# Use manova to test for a significant effect of Catch category on discrete and transboundary species simultaneously. Takes into account possible correlations between dependent variables.
+# Decreases Tipe I errors
+
+Manova_Differences <- Transboundary_Data_Stats %>% 
+  rename(Trans_value = value) %>% 
+  left_join(Discrete_Data_Stats, by = c("individual","observation","group")
   ) %>% 
-  mutate(Sum/Total_Trans_Status*100)
+  rename(Discrete_value= value) %>% 
+  mutate(Discrete_value = ifelse(is.na(Discrete_value),0,Discrete_value))
 
-# --------------------- #
-### Check for Asumptions
-# --------------------- #
+#-----------------# 
+## Test assumptions
+#-----------------# 
+
+Manova_Differences %>% 
+  gather("cat","val",Trans_value,Discrete_value) %>% 
+  ggplot() +
+  geom_histogram(
+    aes(
+      x = val
+    )
+  ) +
+  facet_wrap(~observation+cat)
+
+### Correlation
+
+plot(Manova_Differences$Trans_value~Manova_Differences$Discrete_value)
+cor(Manova_Differences$Trans_value,Manova_Differences$Discrete_value)
+
+#-----------------# 
+## MANOVA test
+#-----------------# 
+
+mano <- manova(cbind(Discrete_value,Trans_value) ~ observation, data = Manova_Differences)
+
+summary(mano)
+# Df  Pillai approx F num Df den Df    Pr(>F)    
+# observation   2 0.21621   27.091      4    894 < 2.2e-16 ***
+# Residuals   447
+
+summary.aov(mano)
+#  Response Discrete_value :
+#              Df Sum Sq Mean Sq F value    Pr(>F)    
+# observation   2   7088  3544.1  26.305 1.584e-11 ***
+# Residuals   447  60226   134.7                      
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+# 
+#  Response Trans_value :
+#              Df Sum Sq Mean Sq F value    Pr(>F)    
+# observation   2  22778 11389.2  55.005 < 2.2e-16 ***
+# Residuals   447  92555   207.1   
+
+
+#-----------------# 
+## Run non-parametric to make sure
+# Same result
+#-----------------# 
+
+# kruskal.test(Trans_value~Discrete_value, data = Manova_Differences)
+# Kruskal-Wallis chi-squared = 100.24, df = 45, p-value = 4.358e-06
+
+
+#-----------------# 
+## ANOVA test for each category
+#-----------------# 
+
+# Transboundary Species
 
 #### Test for normallity 
-Status_Data_Stats %>%
+Transboundary_Data_Stats %>%
   ggplot() +
   geom_histogram(
     aes(
@@ -3118,49 +3212,38 @@ Status_Data_Stats %>%
   ) +
   facet_wrap(~observation)
 
-bartlett.test(value~observation, Status_Data_Stats)
+bartlett.test(value~observation, Transboundary_Data_Stats)
 
 # Differences between categories of transboundary species
 
-Stat_Cat_kt <- kruskal.test(observation~value, data = Status_Data_Stats)
-Stat_Cat_kt
+Stat_Cat_aov <- aov(value~observation, data = Transboundary_Data_Stats)
+Stat_Cat_aov
+summary(Stat_Cat_aov)
+#              Df Sum Sq Mean Sq F value Pr(>F)    
+# observation   2  22778   11389   55.01 <2e-16 ***
+# Residuals   447  92555     207         
 
-# Post hock test
-kruskalmc(Status_Data_Stats$value,Status_Data_Stats$observation)
+TukeyHSD(Stat_Cat_aov)
+#                            diff       lwr       upr     p adj
+# Category B-Category A  5.946667  2.039431  9.853902 0.0011125
+# Category C-Category A 17.160000 13.252765 21.067235 0.0000000
+# Category C-Category B 11.213333  7.306098 15.120569 0.0000000
 
+#-----------------# 
+# Double check the Non parametic test
+# same result
+#-----------------# 
 
-# Stat_Cat_aov <- aov(value~observation, data = Status_Data_Stats)
-# Stat_Cat_aov
-# summary(Stat_Cat_aov)
-#           Df Sum Sq Mean Sq F value Pr(>F)    
-# observation   2  22093   11046   52.88 <2e-16 ***
-# Residuals   446  93170     209           
+# Stat_Cat_kt <- kruskal.test(observation~value, data = Transboundary_Data_Stats)
+# Stat_Cat_kt
+# 
+# # Post hock test
+# kruskalmc(Transboundary_Data_Stats$value,Transboundary_Data_Stats$observation)
 
-# TukeyHSD(Stat_Cat_aov)
 
 # -------------------------- #
 # Discrete species
 # -------------------------- #
-
-# Run anova within discrete speciess
-
-Discrete_Data_Stats <- Discrete_Status_Data %>% 
-  filter(observation != "No Category") %>%
-  mutate(value = abs(value))
-
-Total_Discrete_Status <- Discrete_Data_Stats %>% 
-  group_by() %>% 
-  summarise(sum = sum(value)) %>% 
-  pull()
-
-Discrete_Data_Stats %>% 
-  group_by(observation) %>% 
-  summarise_if(is.numeric,
-               .funs = c(Mean="mean",
-                           sd = "sd",
-                          Sum = "sum")
-  ) %>% 
-  mutate(Propo_Total = Sum/Total_Discrete_Status*100)
 
 #### Test for normallity 
 Discrete_Data_Stats %>%
@@ -3174,12 +3257,6 @@ Discrete_Data_Stats %>%
 
 bartlett.test(value~observation, Discrete_Data_Stats)
 
-
-
-Stat_discrete_cat_kt <- kruskal.test(observation~value, data = Discrete_Data_Stats)
-Stat_discrete_cat_kt
-
-kruskalmc(Discrete_Data_Stats$value,Discrete_Data_Stats$observation)
 
 # ANOVA of Discrete categories
 Stat_discrete_cat_aov <- aov(value~observation, data = Discrete_Data_Stats)
@@ -3197,105 +3274,22 @@ TukeyHSD(Stat_discrete_cat_aov)
 # Category C-Category A 9.917391  6.31117452 13.523608 0.0000000
 # Category C-Category B 6.289632  2.79874173  9.780522 0.0000835
 
-# ANOVA of Discrete continents
-# Stat_discrete_cont_aov <- aov(value~group, data = Discrete_Data_Stats)
-# Stat_discrete_cont_aov
-# summary(Stat_discrete_cont_aov)
 
-# Df Sum Sq Mean Sq F value Pr(>F)
-# group         5    962   192.4    1.18  0.318
-# Residuals   377  61472   163.1 
+#-----------------# 
+# Double check the Non parametic test
+# All different... But it does not show any distance, just the categorial difference
+#-----------------# 
 
+Stat_discrete_cat_kt <- kruskal.test(observation~value, data = Discrete_Data_Stats)
+Stat_discrete_cat_kt
 
-# -------------------------- #
-# Comparrison bwtween Discrete
-# and Transboundary species
-# -------------------------- #
-
-#### By Category (Manova)
-
-# Use manova to test for a significant effect of Catch category on discrete and transboundary species simultaneously. Takes into account possible correlations between dependent variables.
-# Decreases Tipe I errors
-
-Manova_Differences <- Status_Data_Stats %>% 
-  rename(Trans_value = value) %>% 
-  left_join(Discrete_Data_Stats, by = c("individual","observation","group")
-  ) %>% 
-  rename(Discrete_value= value) %>% 
-  mutate(Discrete_value = ifelse(is.na(Discrete_value),0,Discrete_value))
-
-
-#### Test for normallity 
-
-Manova_Differences %>% 
-  gather("cat","val",Trans_value,Discrete_value) %>% 
-  ggplot() +
-  geom_histogram(
-    aes(
-      x = val
-    )
-  ) +
-  facet_wrap(~observation+cat)
-
-### Correlation?
-
-plot(Manova_Differences$Trans_value~Manova_Differences$Discrete_value)
-
-cor(Manova_Differences$Trans_value,Manova_Differences$Discrete_value)
-
-mano <- manova(cbind(Discrete_value,Trans_value) ~ observation, data = Manova_Differences)
-summary(mano)
-#     Df  Pillai approx F num Df den Df    Pr(>F)    
-# observation   2 0.20992   26.151      4    892 < 2.2e-16 ***
-# Residuals   446             
-summary.aov(mano)
-# Response Discrete_value :
-#              Df Sum Sq Mean Sq F value    Pr(>F)    
-# observation   2   6918  3458.9  25.684 2.769e-11 ***
-# Residuals   446  60063   134.7                      
-# ---
-# 
-# 
-#  Response Trans_value :
-#              Df Sum Sq Mean Sq F value    Pr(>F)    
-# observation   2  22093 11046.3  52.878 < 2.2e-16 ***
-# Residuals   446  93170   208.9                      
-# ---
-
-#### Run non-parametric to make sure (same)
-
-kruskal.test(Trans_value~Discrete_value, data = Manova_Differences)
-# Kruskal-Wallis chi-squared = 296.66, df = 43, p-value < 2.2e-16
-
-### Multiple wilcox/t.test
-
-Manova_Differences %>% 
-  # group_by(observation) %>% 
-  ungroup() %>% 
-  select(2,4,5) %>% 
-  do(wil = aov(.$Trans_value~.$Discrete_value)) %>% 
-  tidy(wil) %>% 
-  View()
-
-# Also significantly different
-
-
-
-#### Chi square maybe???
-
-Chi_data <- Manova_Differences %>% 
-  ungroup() %>% 
-  group_by(observation) %>% 
-  summarise_if(is.numeric,sum) %>% 
-  select(-observation)
-
-chisq.test(Chi_data)
+kruskalmc(Discrete_Data_Stats$value,Discrete_Data_Stats$observation)
 
 ```
 
-## Analysis per Species
+## Results per Species
 
-### Mackerel (Scomber scombrus) war
+### Mackerel (*Scomber scombrus*) war
 
 ```{r mackrell, eval = F, echo =F}
 
@@ -3364,7 +3358,7 @@ Species_environ_list <- rbind(species(Species_list, #species from rfishbase pack
 ) %>% 
   mutate(scientific_name = Species_list)
 
-Species_Data <- Tresholded_T_Data %>% 
+Raw_Species_Data <- Tresholded_T_Data %>% 
   group_by(taxon_key) %>% 
   summarise(n_trans_spp = length(unique(fishing_entity))) %>% 
   left_join(Exploited_Species) %>%
@@ -3391,7 +3385,7 @@ Species_Data <- Tresholded_T_Data %>%
 
 #### Ecosystem based plots
 
-Top_5_Ecosystem <- Species_Data %>% 
+Top_5_Ecosystem <- Raw_Species_Data %>% 
   rename(taxon_name = individual) %>% 
   group_by(group) %>% 
   top_n(5,value) 
@@ -3444,7 +3438,7 @@ Median_trans <- median(Species_Data$value)
 # hist(Species_Data$value)
 # unique(Species_Data$group)
 
-Species_Data <- Species_Data %>%
+Species_Data <- Raw_Species_Data %>%
   filter(value > 20)
 
 # Set a number of 'empty bar' to add at the end of each group
@@ -3688,21 +3682,23 @@ save_plot(
 
 ```
 
-## Statistics on species
+### Statistics on Species Ecosystem Preference
 
 ```{r Spp_Stats, eval = T, echo = F}
 
-head(Species_Data)
+head(Raw_Species_Data)
 
 # Differences between groups
-Stat_spp_aov <- aov(value~group, data = Species_Data)
+Stat_spp_aov <- aov(value~group, data = Raw_Species_Data)
 Stat_spp_aov
 summary(Stat_spp_aov)
-# Df Sum Sq Mean Sq F value   Pr(>F)    
-# group         5  24836    4967   14.67 5.52e-11 *** (YUP)
-# Residuals   109  36915     339                     
+#              Df Sum Sq Mean Sq F value Pr(>F)    
+# group         5  56721   11344   53.82 <2e-16 ***
+# Residuals   597 125844     211                
 
-TukeyHSD(Stat_spp_aov)
+TukeyHSD(Stat_spp_aov) %>% 
+  tidy() %>% 
+  filter(adj.p.value < 0.05) # Pelagic-Oceanic
 
 
 ```
@@ -3734,8 +3730,6 @@ ICCAT_Trans <- Species_Data %>%
 
 
 ```
-
-
 
 # Sensitivity Analysis
 
@@ -3782,7 +3776,7 @@ for(i in 1:length(Area_Index_Level)){
     labs(
       x = "Transboundary species (n)",
       y = "Frequency of EEZs",
-      title= paste((Area_Index_Level[i]*100),"% area treshold"," (Median ",Median_data,")",sep="")
+      title= paste((Area_Index_Level[i]*100),"% area threshold"," (Median ",Median_data,")",sep="")
     ) +
     # ggtitle(paste("Using a",(Area_Index_Level[i]*100),"% area treshold. (Median",Median_data,")")) +
     ggtheme_plot()
@@ -3793,7 +3787,7 @@ ggsave(
   width = 8,
   height = 8,
   units = "in",
-  filename = "Area_Tresholds.png",
+  filename = "Area_Thresholds.png",
   path = "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Sensitivity_Analysis"
 )
 
@@ -3808,7 +3802,7 @@ ggsave(
 
 In a first run the model suggests anchovies "Engraulis ringens" (600004) is transboundary between US-Mex-Can. I'm exploring this since all four models agree...
 
-Found the probelm, Gab's coordinate system, hecne the data, are in different system than DBEM and SAU data...
+Found the problem, Gab's coordinate system, hence the data, are in different system than DBEM and SAU data...
 
 
 ```{r Trans_Spp_Function, eval= F ,echo = T,warning = F,message = F}
@@ -3908,9 +3902,9 @@ Anchoveta_Dist_EEZ <- Anchoveta_Dist %>%
 ```
 
 
-### Overcounting transboundary stocks
+### Over-counting transboundary stocks
 
-In a first run, Australia results in many transboundary stocks, I believe this is because it is counting the number of countries that that the species share (e.g. one species 6 countries = 6 transboundary spp) rather than 1 speces 6 countries = 1 trans spp.
+In a first run, Australia results in many transboundary stocks, I believe this is because it is counting the number of countries that that the species share (e.g. one species 6 countries = 6 transboundary spp) rather than 1 species 6 countries = 1 trans spp.
 
 **Problem fixed.** Now we can estimate the number of transboundary species as well as the number of countries/regions that each country shares per species.
 
@@ -3944,9 +3938,9 @@ Explore_Australia <- Australia %>%
 
 ### Fixing counts within EEZs
 
-In the first run. Countries where EEZs are devided but touching (e.g. South Africa inidan and atlantic coasts) are double counted.
+In the first run. Countries where EEZs are divided but touching (e.g. South Africa Indian and Atlantic coasts) are double counted.
 
-This might be fixed with Tayler's data of EEZs to ISOs... He did it manually so it does not work! 
+This might be fixed with Tyler's data of EEZs to ISOs... He did it manually so it does not work! 
 
 ```{South_Africa_case, eval =F, echo = F}
 
@@ -4157,7 +4151,7 @@ Pierre <-  Clean_Results_Trans %>%
 
 ### Côte de Ivory missing data
 
-For some reason Côte de ivory is missing data. It was fixed at the begining when I was averaging 1951 to 1961 instead of 2004 to 2014, but now is somehow back to cero.
+For some reason Côte de ivory is missing data. It was fixed at the beginning when I was averaging 1951 to 1961 instead of 2004 to 2014, but now is somehow back to zero.
 
 ```{Cote_Deivory, eval =F, echo =F}
 
@@ -4569,7 +4563,7 @@ EstTransIndex <- function(Spp,Model,Neighbours,Coord,Save="Y"){
 
 ## Extra Analysis; Results
 
-### Maps for each model/dataset
+### Maps for each model/data-set
 ```{Tran_country_Map_All, eval =F, echo =F}
 
 World_EEZs_simple <- World_EEZs %>%
@@ -4737,7 +4731,7 @@ for(r in 1:length(Regions)){
 
 ```
 
-# Vulnerabillity Assesment
+# Vulnerability Assessment
 
 ```{r Vulnerabillity, eval = T, echo = F}
 
@@ -5623,7 +5617,7 @@ Note that (n), the number of ‘stocks’ is defined as a time series of a given
 
 3) The catch in a particular area (LME) is at least 1,000 tonnes.
 
-Once those tresholds are met, the status of the species is determined as follows:
+Once those thresholds are met, the status of the species is determined as follows:
 
 - Rebuilding (Recovering)	Year of landing > year of post-max. min. landing AND post-max. min. landing < 10% of max. landing AND landing is 10-50% of max. landing
 - Developing	Year of landing < year of max. landing AND landing is < or = 50% of max. landing OR year of max. landing = final year of landing
@@ -5756,5 +5750,42 @@ data.frame(
                          )
   )
   )
+
+```
+
+
+```{r Sub-regional_differences, eval = F}
+
+#-----------------#
+# Sub-regional differences
+#-----------------#
+
+Subregion_Data_stats <- Value_Trans_Country %>%
+  left_join(UN_Regions,
+            by = "fishing_entity") %>%
+  mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>%
+  select(fishing_entity,sub_region,Variable,Value) %>%
+  filter()
+
+# Revenue ANOVA
+Subregion_Rev_stats <- Subregion_Data_stats %>%
+  filter(Variable == "value")
+
+Rev_aov <- aov(Value~sub_region, data = Subregion_Rev_stats)
+Rev_aov
+summary(Rev_aov)
+
+# Df    Sum Sq Mean Sq F value  Pr(>F)    
+# sub_region   16  75628526 4726783    4.91 4.2e-08 ***
+# Residuals   157 151140183  962676       
+
+#### There are significant differences. But between what?
+
+#  Post-hoc analysis
+TukeyHSD(Rev_aov)
+
+# Northern America sig than everyone except for Eastern Asia
+# Eastern Asia sig with everyone except with Eastern Europe and North Am.
+
 
 ```
