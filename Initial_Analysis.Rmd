@@ -1430,7 +1430,7 @@ CleanResults <- function(Data){
 
 ```
 
-### Function `Figure CreateFigureOne`
+### Function `CreateFigureOne`
 
 This function will create figure one for both catch or value 
 
