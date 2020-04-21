@@ -19,7 +19,7 @@ This repository is intended to support the project *Marine species do not need v
 
 ## Files and folders organization:
 
-In this repository you will find all of the code related to the manuscript *Marine species do not need visas: the transboundary nature of the world’s exploited marine species*. **Note** that the code needs to compile data from different sources including *OBIS*, *GBIF*, *The Sea Around Us*, and *FishBase*, among others. Due to the large volume of data, these are not in *GitHub*. Please email me to discuss other ways to share the data.
+In this repository you will find all of the code related to the manuscript *Marine species do not need visas: the transboundary nature of the world’s exploited marine species*. 
 
 ### Files
 
@@ -40,3 +40,7 @@ In this repository you will find all of the code related to the manuscript *Mari
 - **Tables**: Manuscript tables in csv format
 
 - **Drobo**: Shortcut to the Drobo where all data is stored
+
+### Data
+
+The raw data used in this analysis comes from different sources including *OBIS*, *GBIF*, *The Sea Around Us*, and *FishBase*, among others. These can be sourced directly from their respectively webpages and/or the references provided on the text. Moreover, we did not include the final dataset due to in *GitHub's* limitation on large-volume data-storage. Please email me to discuss other ways to share the data.
