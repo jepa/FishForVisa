@@ -21,25 +21,26 @@ This repository is intended to support the project *Marine species do not need v
 
 In this repository you will find all of the code related to the manuscript *Marine species do not need visas: the transboundary nature of the world’s exploited marine species*. 
 
-### Files
-
-- **Initial_Analysis.Rmd**: This is the *RMD* where all the data analysis for the manuscript will be done
-
-- **Manuscript_Draft.RMD**: Manuscript draft to be submitted as a PDF or word document
-
-- **RFMO_Analysis.RMD**: Script to explore the analysis at the RFMO level
-
 ### Folders
 
-- **Figures**: Manuscript final figures
+- `Figures`: Manuscript final figures
 
-- **Manuscript_Instructions**: Submission instructions from the journal
+- `Manuscript_Instructions`: Submission instructions from the journal
 
-- **References**: Documents needed for the references of the manuscript including the reference list
+- `References`: Documents needed for the references of the manuscript including the reference list
 
-- **Tables**: Manuscript tables in csv format
+- `Scripts`: Contains the files used to run the analysis and write the manuscript
 
-- **Drobo**: Shortcut to the Drobo where all data is stored
+- - `Initial_Analysis.Rmd`: This is the *RMD* where all the data analysis for the manuscript will be done
+
+- - `Manuscript_Draft.RMD`: Manuscript draft to be submitted as a PDF or word document
+
+- - `RFMO_Analysis.RMD`: Script to explore the analysis at the RFMO level (outdated)
+
+
+- `Tables`: Manuscript tables in csv format
+
+- `Drobo`: Shortcut to the Drobo where all data is stored
 
 ### Data
 
