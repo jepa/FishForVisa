@@ -46,28 +46,6 @@ ipak(packages)
 
 ```
 
-<!-- # Instructions for submission -->
-
-<!-- - Journal: *Scientific Reports* -->
-<!-- - Information to authors (https://www.nature.com/srep/author-instructions/submission-guidelines) -->
-<!-- - There are two types of article: -->
-
-<!-- -- Articles should be no more than 11 typeset pages in length. As a guide, the main text (not including Abstract, Methods, References and figure legends) should be no more than 4,500 words. The maximum title length is 20 words. The Abstract (without heading) - which must be no more than 200 words long and contain no references - should serve both as a general introduction to the topic and as a brief, non-technical summary of the main results and their implications.. -->
-
-<!-- # Reviewers (5): -->
-<!-- *Include Names, affiliations, and e-mail addresses of up to five potential reviewers and up to five excluded reviewers.*   -->
-
-<!-- **Note:** Please include potential reviewers you think appropiate to review the manuscript (Or confirm my suggestions) -->
-
-<!-- - **Potential Reviewers (J)**   -->
-<!--  -- Claire Armstrong, The Norwegian College of Fishery Science, Tromso, Norway claire.armstrong@uit.no -->
-<!--  -- Gakushi Ishimura, Faculty of Agriculture Department of Food Production and Environmental Management, Iwate University, Morioka, Japan; gakugaku@iwate-u.ac.jp -->
-<!--  -- Rebecca Selden, Wellesley College, Wellesley, MA, USA; bselden@wellesley.edu -->
-<!--  -- Julia Xue, Shanghai Jiao Tong University; juliaxue@ouc.edu.cn -->
-
-<!-- - **Excluded Reviewers (J)**   -->
-
-
 # Abstract
 <!-- *An opening sentence that sets the question that you address and is comprehensible to the general reader, background content specific to this study, results, and a concluding sentence. It should be a single paragraph.* -->
 
