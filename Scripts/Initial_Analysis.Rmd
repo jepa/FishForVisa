@@ -11,6 +11,11 @@ editor_options:
 This script runs the analysis for the manuscript *Marine species do not need visas: the transboundary nature of the world’s exploited marine species* from the data loading to the results analysis. Is divided in two parts; *Methods* where the raw data is analyzed and *Results* where the results from the analysis are processed.
 
 
+# NOTES FOR REVIEWERS COMENTS:
+
+- Solomon Islands is repeated in figure 3 because the UN puts it in both Micronesia and Melanesia. Choose one and re-plot figure 3.
+
+
 ```{r setup, eval = T, echo=F, warning=F,message=F, results='hide'}
 
 #### READ ME !!! ####
