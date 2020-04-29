@@ -34,3 +34,5 @@ Temporal_Data
 /Tables
 # /Figures
 Cover_Letter.Rmd
+*.csv
+/FishForVisa/*
