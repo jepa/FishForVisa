@@ -14,15 +14,7 @@ This script runs the analysis for the manuscript *Marine species do not need vis
 ```{r setup, eval = T, echo=F, warning=F,message=F, results='hide'}
 
 #### READ ME !!! ####
-# Run this chunk before knit so you make sure you have all pkgs installed in R
-
-ipak <- function(pkg){
-  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
-  if (length(new.pkg)) 
-    install.packages(new.pkg, dependencies = TRUE,repos = "http://cran.us.r-project.org")
-  sapply(pkg, require, character.only = TRUE)
-}
-
+library(MyFunctions)
 
 #### Library ####
 packages <- c(
@@ -49,52 +41,8 @@ packages <- c(
   "pgirmess" # for dune test after kurtis wallas
 )
 
-ipak(packages)
+my_lib(packages)
 
-ggtheme_map <- function(base_size = 9, Region = "NA") {
-  
-  theme(text             = element_text(#family = "Helvetica",
-    color = "gray30", size = base_size),
-    plot.title       = element_text(size = rel(1.25), hjust = 0, face = "bold"),
-    panel.background = element_blank(),
-    panel.border     = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_line(color = "transparent"),
-    strip.background =element_rect(fill = "transparent"),
-    strip.text.x = element_text(size = 18, colour = "black",face= "bold.italic", angle = 0),
-    axis.line        = element_blank(), # element_line(colour = "grey30", size = .5))
-    axis.ticks       = element_blank(),
-    axis.text        = element_blank(),
-    axis.title       = element_blank(),
-    legend.key       = element_rect(colour = NA, fill = NA, size = 4),
-    legend.position = "bottom",
-    legend.key.width =unit(5,"line")
-  )
-}
-
-ggtheme_plot <- function() {
-  theme(
-    plot.title = element_text(size = rel(1), hjust = 0, face = "bold"),
-    panel.background = element_blank(),
-    strip.background = element_blank(),
-    # strip.text       = element_text(size = base_size, face = "italic"),
-    panel.border     = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.grid.major = element_blank(),
-    axis.ticks = element_blank(),
-    axis.text.x = element_text(size = 12,
-                               angle = 0,
-                               face = "plain"),
-    axis.text.y = element_text(size = 12),
-    axis.title = element_text(size = 14),
-    legend.key = element_rect(colour = NA, fill = NA),
-    legend.position  = "right",
-    legend.title = element_text(size = 14, face = "bold"),
-    legend.text = element_text(size = 16),
-    strip.text.x = element_text(size = 12, colour = "black", face = "bold"),
-    strip.text = element_text(size = 12)
-  )
-}
 
 #### Set paths for computer ####
 
@@ -1716,31 +1664,12 @@ CreateFigureOne <- function(Variable_Selected){
 } # End of function
 ```
 
-## Load Results data
 
-In here we load and cleaned the multiple external data sets required to produce the manuscript figures 
+### Clean names table
 
-```{r Load_Results_Data, eval = F}
+Create a table that matches all names
 
-# Set Jurisdiction to EEZ or RFMO
-Jurisdiction <- "EEZ"
-# Jurisdiction <- "RFMO"
-
-# Updates result's path for the jurisdiction
-Results_Path <- paste(Results_Path,Jurisdiction,"/",sep="")
-
-# Species list to get species names
-Exploited_Species <- fread(paste(Data_Path,"Distribution_Data/Species/exploited_species_list.csv",sep="")) %>% 
-  clean_names()
-
-Species_Sampled <- fread(paste(Data_Path,"Distribution_Data/Sampled_Species.csv", sep ="")) 
-
-Spp_Clasification <- fread(paste(Data_Path,"Distribution_Data/Species/SppTaxonName.csv",sep="")) %>% 
-  clean_names()
-
-# Spatial Data needed to remove duplicates
-sau_eez_fes <- fread(paste(Data_Path,"Spatial_Data/sau_eez_fes.csv",sep="")) %>% 
-  clean_names()
+```{r names_table, eval =F, echo =F}
 
 Clean_sau_eez_fes <- sau_eez_fes %>% 
   gather("Type","fishing_region",2,4) %>% 
@@ -1751,28 +1680,37 @@ Clean_sau_eez_fes <- sau_eez_fes %>%
   summarise(n()) %>% 
   ungroup() %>% 
   ### Manually Fix names for estimating catch
-  mutate(eez_name = ifelse(eez_name =="Greece (without Crete)","Greece",
-                           ifelse(eez_name =="Greenland (Denmark)","Greenland",
-                                  ifelse(eez_name =="United Kingdom (UK)","United Kingdom",
-                                         ifelse(fishing_entity =="Italy","Italy",
-                                                ifelse(eez_name =="Chile (mainland)","Chile",
-                                                       ifelse(fishing_entity =="Brazil","Brazil",
-                                                              ifelse(eez_name == "Ecuador (mainland)", "Ecuador",
-                                                                     ifelse(eez_name =="Portugal (mainland)","Portugal",
-                                                                            ifelse(fishing_entity == "Korea (North)","Korea (North)",
-                                                                                   paste(eez_name))
-                                                                     )
-                                                              )
-                                                       )))))),
-         fishing_entity = ifelse(fishing_entity == "Viet Nam","Vietnam",fishing_entity
-         )
+  mutate(sf_eez_name = ifelse(eez_name =="Greece (without Crete)","Greece", # Vicky
+                              ifelse(eez_name =="Greenland (Denmark)","Greenland",
+                                     ifelse(eez_name =="United Kingdom (UK)","United Kingdom",
+                                            ifelse(fishing_entity =="Italy","Italy",
+                                                   ifelse(eez_name =="Chile (mainland)","Chile",
+                                                          ifelse(fishing_entity =="Brazil","Brazil",
+                                                                 ifelse(eez_name == "Ecuador (mainland)", "Ecuador",
+                                                                        ifelse(eez_name =="Portugal (mainland)","Portugal",
+                                                                               ifelse(fishing_entity == "Korea (North)","Korea (North)",
+                                                                                      ifelse(fishing_entity == "Guadeloupe  (France)","Guadeloupe (France)",
+                                                                                             ifelse(eez_name == "South Africa (Atlantic and Cape)","South Africa (Atlantic Coast)",
+                                                                                                    ifelse(eez_name =="Viet Nam","Vietnam",
+                                                                                                           ifelse(eez_name =="US Virgin Isl.","US Virgin Islands",
+                                                                                                                  ifelse(eez_name == "Spain (mainland, Med and Gulf of Cadiz)", "Spain (Mediterranean and Gulf of Cadiz)",
+                                                                                                                         paste(eez_name)
+                                                                                                                  )
+                                                                                                           )
+                                                                                                    )
+                                                                                             ))))))))))
+  ),	
+  fishing_entity = ifelse(fishing_entity == "Viet Nam","Vietnam",fishing_entity
+  )
   )
 
 
 # UN Regions dataset
-UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), header = TRUE) %>% 
+UN_Regions <- read.csv(paste(my_path("D"),"Spatial/UN_Regions.csv",sep=""), header = TRUE) %>% 
   clean_names() %>% 
-  group_by(fishing_entity = country_or_area,
+  mutate(un_fishing_entity = country_or_area) %>% 
+  group_by(un_fishing_entity,
+           fishing_entity = country_or_area,
            georegion = region_name,
            sub_region = sub_region_name) %>% 
   summarise(n=n()) %>% #merge china's 3 rows
@@ -1782,6 +1720,7 @@ UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), he
   # Change names to match SAU data and for shorter versions
   mutate(
     fishing_entity = gsub("\\s*\\([^\\)]+\\)","",fishing_entity),
+    fishing_entity = gsub("Curaçao","Curacao",fishing_entity),
     fishing_entity = gsub("United Kingdom of Great Britain and Northern Ireland","United Kingdom",fishing_entity),
     fishing_entity = gsub( "United States of America", "USA",fishing_entity),
     fishing_entity = gsub("Democratic People's Republic of Korea", "Korea (North)",fishing_entity),
@@ -1800,13 +1739,154 @@ UN_Regions <- read.csv(paste(Data_Path,"Spatial_Data/UN_Regions.csv",sep=""), he
     fishing_entity = gsub("Viet Nam", "Vietnam",fishing_entity),
     fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),
     fishing_entity = gsub("Marshall Islands", "Solomon Isl.",fishing_entity),
+  ) %>% 
+  mutate(
+    fishing_entity = ifelse(un_fishing_entity == "Congo","Congo, R. of",
+                            ifelse(un_fishing_entity == "Democratic Republic of the Congo	","Congo (ex-Zaire)",paste(fishing_entity))
+    )
+  )
+
+
+# The path
+path_world <- paste(my_path("G"),"Spatial/SAU/SAU_Shapefile",sep="")
+
+# The File
+fnam_world <- "SAUEEZ_July2015.shp"
+
+# Load it!
+World_sf <- st_read(dsn = path_world,
+                    layer =file_path_sans_ext(fnam_world)) %>% 
+  rename(eez_name = Name)
+
+World_sf_df <- as.tibble(World_sf) %>% 
+  select(sf_eez_name=eez_name,sf_objectid=OBJECTID,sf_eezid=EEZID)
+
+# Vicky
+Clean_sau_eez_fes_new <- Clean_sau_eez_fes %>% 
+  left_join(UN_Regions) %>% 
+  select(-`n()`) %>% 
+  full_join(World_sf_df) %>% 
+  select(1:3,4,8,9,everything())
+
+#  Now check tim sau data
+SAU_Tim_Data %>% 
+  anti_join(Clean_sau_eez_fes_new) %>% 
+  group_by(fishing_entity_id) %>% 
+  summarise(n())
+
+
+write_csv(Clean_sau_eez_fes_new,
+          "matching_names.csv")
+
+          
+```
+
+
+## Load Results data
+
+In here we load and cleaned the multiple external data sets required to produce the manuscript figures 
+
+```{r Load_Results_Data, eval = F}
+
+Results_Path <- my_path("R")
+
+# Set Jurisdiction to EEZ or RFMO
+Jurisdiction <- "EEZ"
+# Jurisdiction <- "RFMO"
+
+# Updates result's path for the jurisdiction
+Results_Path <- paste(my_path("R"),Jurisdiction,"/",sep="")
+
+# Species list to get species names
+Exploited_Species <- fread(paste(my_path("D"),"Distribution/Species/exploited_species_list.csv",sep="")) %>% 
+  clean_names()
+
+Species_Sampled <- fread(paste(my_path("D"),"Distribution/Sampled_Species.csv", sep ="")) 
+
+Spp_Clasification <- fread(paste(my_path("D"),"Distribution/Species/SppTaxonName.csv",sep="")) %>% 
+  clean_names()
+
+# Spatial Data needed to remove duplicates
+sau_eez_fes <- fread(paste(my_path("G"),"Spatial/SAU/sau_eez_fes.csv",sep="")) %>% 
+  clean_names()
+
+Clean_sau_eez_fes <- sau_eez_fes %>% 
+  gather("Type","fishing_region",2,4) %>% 
+  left_join(sau_eez_fes,
+            by = ("fishing_entity_id")
+  ) %>% 
+  group_by(eez_name,fishing_entity,fishing_entity_id) %>% 
+  summarise(n()) %>% 
+  ungroup() %>% 
+  ### Manually Fix names for estimating catch
+  mutate(eez_name = ifelse(eez_name =="Greece (without Crete)","Greece", # Vicky
+                           ifelse(eez_name =="Greenland (Denmark)","Greenland",
+                                  ifelse(eez_name =="United Kingdom (UK)","United Kingdom",
+                                         ifelse(fishing_entity =="Italy","Italy",
+                                                ifelse(eez_name =="Chile (mainland)","Chile",
+                                                       ifelse(fishing_entity =="Brazil","Brazil",
+                                                              ifelse(eez_name == "Ecuador (mainland)", "Ecuador",
+                                                                     ifelse(eez_name =="Portugal (mainland)","Portugal",
+                                                                            ifelse(fishing_entity == "Korea (North)","Korea (North)",
+                                                                                   ifelse(fishing_entity == "Guadeloupe  (France)","Guadeloupe (France)",
+                                                                                          ifelse(eez_name == "South Africa (Atlantic and Cape)","South Africa (Atlantic Coast)",
+                                                                                          paste(eez_name)
+                                                                                          )
+                                                                                   )
+                                                                            )
+                                                       )))))))
+                           ),
+         fishing_entity = ifelse(fishing_entity == "Viet Nam","Vietnam",fishing_entity
+         )
+  )
+
+
+# UN Regions dataset
+UN_Regions <- read.csv(paste(my_path("D"),"Spatial/UN_Regions.csv",sep=""), header = TRUE) %>% 
+  clean_names() %>% 
+  # mutate(un_fishing_entity = country_or_area) %>% 
+  group_by(#un_fishing_entity,
+           fishing_entity = country_or_area,
+           georegion = region_name,
+           sub_region = sub_region_name) %>% 
+  summarise(n=n()) %>% #merge china's 3 rows
+  select(-n) %>% 
+  filter(fishing_entity != "") %>%  # there are three rows with "developing" status as in, the code
+  ungroup() %>% 
+  # Change names to match SAU data and for shorter versions
+  mutate(
+    fishing_entity = gsub("\\s*\\([^\\)]+\\)","",fishing_entity),
+    fishing_entity = gsub("Curaçao","Curacao",fishing_entity),
+    fishing_entity = gsub("United Kingdom of Great Britain and Northern Ireland","United Kingdom",fishing_entity),
+    fishing_entity = gsub( "United States of America", "USA",fishing_entity),
+    fishing_entity = gsub("Democratic People's Republic of Korea", "Korea (North)",fishing_entity),
+    fishing_entity = gsub("Republic of Korea", "Korea (South)",fishing_entity),
+    fishing_entity = gsub("Iran (Islamic Republic of)", "Iran",fishing_entity),
+    fishing_entity = gsub("Democratic Republic of the Congo", "Congo (ex-Zaire)",fishing_entity),
+    # fishing_entity = gsub("Congo", "Congo, R. of",fishing_entity),
+    fishing_entity = gsub("United Republic of Tanzania", "Tanzania",fishing_entity),
+    fishing_entity = gsub("Cabo Verde", "Cape Verde",fishing_entity),
+    fishing_entity = gsub("Timor-Leste", "Timor Leste",fishing_entity),
+    fishing_entity = gsub(" and ", " & ",fishing_entity),
+    # fishing_entity = gsub("Puerto Rico (USA)", "Puerto Rico",fishing_entity),
+    fishing_entity = gsub("Taiwan", "Taiwan (China)",fishing_entity),
+    fishing_entity = gsub("Côte d’Ivoire", "Côte d'Ivoire",fishing_entity),
+    # fishing_entity = gsub("Russian Federation", "Russia",fishing_entity)
+    fishing_entity = gsub("Viet Nam", "Vietnam",fishing_entity),
+    fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),
+    fishing_entity = gsub("Marshall Islands", "Solomon Isl.",fishing_entity),
+  ) %>% 
+  mutate(
+    fishing_entity = ifelse(fishing_entity == "Congo","Congo, R. of",
+                            ifelse(fishing_entity == "Democratic Republic of the Congo	","Congo (ex-Zaire)",paste(fishing_entity))
+                            )
   )
 
 # Manually change congo
-UN_Regions[52,1] <- "Congo, R. of"
+# UN_Regions[52,1] <- "Congo, R. of"
 
 # Load Land shapefile
-path_world_land <- paste(Data_Path,"Spatial_Data/ne_50m_admin_0_countries",sep="")
+path_world_land <- paste(my_path("G"),"Spatial/ne_50m_admin_0_countries/ne_50m_admin_0_countries",sep="")
 
 # The File
 fnam_world_land <- "ne_50m_admin_0_countries.shp"
@@ -1831,7 +1911,7 @@ World_land_sf <- st_read(dsn = path_world_land,
 # Load SAU shapefile name and paths
 
 # The path
-path_world <- paste(Data_Path,"Spatial_Data/SAU_Shapefile/",sep="")
+path_world <- paste(my_path("G"),"Spatial/SAU/SAU_Shapefile",sep="")
 
 # The File
 fnam_world <- "SAUEEZ_July2015.shp"
@@ -1840,9 +1920,6 @@ fnam_world <- "SAUEEZ_July2015.shp"
 World_sf <- st_read(dsn = path_world,
                     layer =file_path_sans_ext(fnam_world)) %>% 
   rename(eez_name = Name)
-
-# View(unique(World_sf$eez_name))
-
 
 #### Determine polygon areas
 
@@ -1882,7 +1959,7 @@ Regional_Area <- World_sf %>%
 # ---------------------------- #
 
 # Read Sau Value Data (Thank you Tim!)
-SAU_Tim_Data <- fread(paste(Data_Path,"Distribution_Data/sau_catch_value_country_taxon_JEPA.csv", sep ="")) 
+SAU_Tim_Data <- fread(paste(my_path("D"),"Distribution/sau_catch_value_country_taxon_JEPA.csv", sep ="")) 
 
 # Set global values for catch and revenue (within EEZ with re-constructed catch)
 SAU_Global_Data <- Clean_sau_eez_fes %>%
@@ -1896,9 +1973,9 @@ SAU_Global_Data <- Clean_sau_eez_fes %>%
   gather("Variable","Value",catch:value)
 
 # Read Species Status Data (Sub-routine Species Status)
-Status_Data <- fread(paste(Results_Path,"Species_Status.csv", sep ="")) %>% 
+Status_Data <- fread(paste(my_path("R"),"EEZ/Species_Status.csv", sep ="")) %>% 
   clean_names() %>% 
-  rename(eez_name=territory)
+  rename(sf_eez_name=territory)
 
 # List of species
 Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
@@ -1915,7 +1992,7 @@ Clean_Results_Trans <- GetTransResults(Spp) %>%
 
 # Read Results For Carmelia
 
-Clean_Results_Trans <- fread(paste(Data_Path,"Results/EEZ/Clean_Results_Trans.csv", sep =""))
+Clean_Results_Trans <- fread(paste(my_path("R"),"/EEZ/Clean_Results_Trans.csv", sep =""))
 
 # Vulnerabillity Data from William
 # cc_vul <- fread(paste(Data_Path,"Species_Data/vulspp310817.csv", sep ="")) %>% 
@@ -2078,6 +2155,8 @@ SAU_Sampled_Data <- Clean_sau_eez_fes %>%
   summarise_at(c("catch","value"),
                mean,na.rm=T) %>% 
   gather("Variable","Value",catch:value)
+
+
 
 
 Summary_Trans <- Clean_sau_eez_fes %>%
