@@ -4858,9 +4858,9 @@ Status_Per_Species <- Tresholded_T_Data %>%
   mutate(status = ifelse(is.na(status),"No Status",status)) %>% 
   group_by(taxon_key,status) %>% 
   summarise(value = length(unique(fishing_entity))) %>% 
-  mutate(Categories = ifelse(status %in% c("Developing","Rebuilding"),"Category A",
-                             ifelse(status == "Max Exploited","Category B",
-                                    ifelse(status %in% c("Over Exploited","Collapsed","Category C"),"Category C", "No Category")
+  mutate(Categories = ifelse(status %in% c("Developing","Rebuilding"),"Increasing",
+                             ifelse(status == "Max Exploited","Constant",
+                                    ifelse(status %in% c("Over Exploited","Collapsed","Category C"),"Decreasing", "No Category")
                              )
   )
   ) %>% 
