@@ -3444,7 +3444,7 @@ Raw_Species_Data <- Tresholded_T_Data %>%
   rename(scientific_name = taxon_name) %>% 
   left_join(Species_environ_list) %>%
   mutate(DemersPelag = ifelse(is.na(DemersPelag),"Other",
-                              ifelse(DemersPelag %in% c("bathypelagic","benthopelagic"), "bathy-bento-pelagic",paste(DemersPelag)
+                              ifelse(DemersPelag %in% c("bathypelagic","benthopelagic"), "bathy-bentho-pelagic",paste(DemersPelag)
                               )
   ),
   n_trans_spp = ifelse(n_trans_spp > 100, 100, n_trans_spp),
