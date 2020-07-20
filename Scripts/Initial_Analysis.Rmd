@@ -49,15 +49,15 @@ my_lib(packages)
 Jursidiction <- "EEZ"
 
 # Set paths depending on machine Beast (jepa88), "carmelia" or Hall1000
-if(Sys.info()[7] == "jepa88"){
-  Data_Path <- "Z:/JULIANO_NEYMAR/FishForVisa/"
-}
-if(Sys.info()[7] == "carmelia"){
-  Data_Path <- paste(here::here(),"/Temporal_Data/",sep = "")
-}
-if(Sys.info()[7] == "hall1000"){
-  Data_Path <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/"
-}
+# if(Sys.info()[7] == "jepa88"){
+#   Data_Path <- "Z:/JULIANO_NEYMAR/FishForVisa/"
+# }
+# if(Sys.info()[7] == "carmelia"){
+#   Data_Path <- paste(here::here(),"/Temporal_Data/",sep = "")
+# }
+# if(Sys.info()[7] == "hall1000"){
+#   Data_Path <- "/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/"
+# }
 
 # Setting up paths 
 # If path exists overrite it, otherwise creats a new path for that year
@@ -1880,21 +1880,16 @@ UN_Regions <- read.csv(paste(my_path("D"),"Spatial/UN_Regions.csv",sep=""), head
     fishing_entity = ifelse(fishing_entity == "Congo","Congo, R. of",
                             ifelse(fishing_entity == "Democratic Republic of the Congo	","Congo (ex-Zaire)",paste(fishing_entity))
                             )
-  )
+  ) %>% 
+  filter(fishing_entity != "Solomon Isl." | sub_region != "Micronesia")
 
 # Manually change congo
 # UN_Regions[52,1] <- "Congo, R. of"
 
 # Load Land shapefile
-path_world_land <- paste(my_path("G"),"Spatial/ne_50m_admin_0_countries/ne_50m_admin_0_countries",sep="")
-
-# The File
-fnam_world_land <- "ne_50m_admin_0_countries.shp"
-
-# Load it!
-World_land_sf <- st_read(dsn = path_world_land,
-                         layer =file_path_sans_ext(fnam_world_land)) %>% 
-  rename(fishing_entity = NAME) %>% 
+World_land_sf <- rnaturalearth::ne_countries(scale = 'medium', returnclass = c("sf")) %>% 
+  st_transform(crs = "+proj=eck4") %>%
+  rename(fishing_entity = name) %>% 
   mutate(
     fishing_entity = gsub("Russia", "Russian Federation",fishing_entity),
     fishing_entity = gsub( "United States of America", "USA",fishing_entity),
@@ -1919,7 +1914,8 @@ fnam_world <- "SAUEEZ_July2015.shp"
 # Load it!
 World_sf <- st_read(dsn = path_world,
                     layer =file_path_sans_ext(fnam_world)) %>% 
-  rename(eez_name = Name)
+  rename(eez_name = Name) %>% 
+  st_transform(crs = "+proj=eck4")
 
 #### Determine polygon areas
 
@@ -1958,8 +1954,11 @@ Regional_Area <- World_sf %>%
 # Transboundary Results ####
 # ---------------------------- #
 
-# Read Sau Value Data (Thank you Tim!)
-SAU_Tim_Data <- fread(paste(my_path("D"),"Distribution/sau_catch_value_country_taxon_JEPA.csv", sep ="")) 
+# Read Sau Value Data (Thank you Tim!) reconstructede data
+# Gross Domestic Product Implicit Price Deflator according to the US Saint Louis Federal Reserve Bank (average of all 2019 quarters) to transform the original 2010 real USD revenue value to 2019 real USD (https://fred.stlouisfed.org/searchresults?st=GDP+Implicit+price+deflator).*
+
+SAU_Tim_Data <- fread(paste(my_path("D"),"Distribution/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>% 
+  mutate(value = value*1.62)
 
 # Set global values for catch and revenue (within EEZ with re-constructed catch)
 SAU_Global_Data <- Clean_sau_eez_fes %>%
@@ -1981,64 +1980,19 @@ Status_Data <- fread(paste(my_path("R"),"EEZ/Species_Status.csv", sep ="")) %>%
 Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
 
 # Read Results
-Clean_Results_Trans <- GetTransResults(Spp) %>% 
-  CleanResults(.) %>% 
-  clean_names() %>% 
-  rename(eez_name = territory,
-         fishing_entity = ct_fishing_entity,
-         eez_neighbour = neighbour) %>% 
-  mutate(fishing_entity = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",paste(fishing_entity)))
+# Clean_Results_Trans <- GetTransResults(Spp) %>% 
+#   CleanResults(.) %>% 
+#   clean_names() %>% 
+#   rename(eez_name = territory,
+#          fishing_entity = ct_fishing_entity,
+#          eez_neighbour = neighbour) %>% 
+#   mutate(fishing_entity = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",paste(fishing_entity)))
 
 
 # Read Results For Carmelia
 
-Clean_Results_Trans <- fread(paste(my_path("R"),"/EEZ/Clean_Results_Trans.csv", sep =""))
-
-# Vulnerabillity Data from William
-# cc_vul <- fread(paste(Data_Path,"Species_Data/vulspp310817.csv", sep ="")) %>% 
-#   rename(taxon_key = V1,
-#          ccvul = V2)
-
-# fish_vul <- fread(paste(Data_Path,"Species_Data/FishSenIndex.csv", sep ="")) %>% 
-# clean_names()
-
-# ---------------------------- #
-# RFMOs Results ####
-# ---------------------------- #
-
-# List of species
-Spp_rfmo <- list.files("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Results/RFMO/Trans_Results/")
-
-# List of RMOs
-rfmo_list <- read.csv("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Spatial_Data/RFMO/clean_rfmos.csv") %>% 
-  clean_names() %>% 
-  left_join(Exploited_Species) %>% 
-  filter(!rfmo_name %in% c("IPHC","PSC","NASCO")) # remove these
-
-# Load and clean transboundary results
-Results_rfmo <- GetTransResults(Spp_rfmo) %>% 
-  clean_names() %>% 
-  rename(rfmo_name = territory) %>% 
-  # left_join(rfmo_list,
-  #           by =c("rfmo_name","taxon_key"))
-  filter(
-    taxon_key %in% rfmo_list$taxon_key, # just the taxa managed by the rfmos
-    !rfmo_name %in% c("IPHC","PSC","NASCO"), # remove these
-    !neighbour %in% c("IPHC","PSC","NASCO") # remove these
-  )
-
-
-# The path
-path_world <- paste(Data_Path,"/Spatial_Data/","RFMO","/SAU_RFMO",sep="")
-# #The File
-fnam_world <- "SAU_RFMO_Sept_2015.shx"
-# #Load it!
-# 
-RFMOs_sf <- st_read(dsn = path_world,
-                    layer =file_path_sans_ext(fnam_world)) %>% 
-  dplyr::rename(Name = RFMO_nm_s)
-
-
+Clean_Results_Trans <- fread(paste(my_path("R"),"/EEZ/Clean_Results_Trans.csv", sep ="")) %>% 
+  mutate(fishing_entity = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",paste(fishing_entity)))
 
 ```
 
