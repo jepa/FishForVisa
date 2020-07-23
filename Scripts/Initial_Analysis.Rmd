@@ -81,6 +81,28 @@ if(file.exists(Figures_Path) == TRUE){
   Figures_Path = paste(Data_Path,"Figures/",sep = "")
 }
 
+
+ggtheme_map <- function(base_size = 9, Region = "NA") {
+  
+  theme(text             = element_text(#family = "Helvetica",
+    color = "gray30", size = base_size),
+    plot.title       = element_text(size = rel(1.25), hjust = 0, face = "bold"),
+    panel.background = element_blank(),
+    panel.border     = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "transparent"),
+    strip.background =element_rect(fill = "transparent"),
+    strip.text.x = element_text(size = 18, colour = "black",face= "bold.italic", angle = 0),
+    axis.line        = element_blank(), # element_line(colour = "grey30", size = .5))
+    axis.ticks       = element_blank(),
+    axis.text        = element_blank(),
+    axis.title       = element_blank(),
+    legend.key       = element_rect(colour = NA, fill = NA, size = 4),
+    legend.position = "bottom",
+    legend.key.width =unit(5,"line")
+  )
+}
+
 ### Message for my brain
 
 print("_____________________ WARNING DO NOT FORGET TO PULL/PUSH BEFORE YOU START_____________________")
@@ -1403,14 +1425,15 @@ CreateFigureOne <- function(Variable_Selected){
   
   # Total catch/Revenue shapefile
   World_sf_si_land <- World_land_sf %>%
-    st_transform(crs = 4326) %>% # 4326
+    # st_transform(crs = 4326) %>% # 4326
+    st_transform(crs = "+proj=eck4") %>%
     st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>% 
     left_join(Value_Trans_Country, by ="fishing_entity") %>% 
     filter(Variable %in% Variable_Selected)
   
   # Get the NA's to be grey
   Grey_land <- World_land_sf %>%  
-    filter(!NAME_EN %in% World_sf_si_land$NAME_EN)
+    filter(!fishing_entity %in% World_sf_si_land$fishing_entity)
   
   Bins <- Value_Trans_Country %>% 
     filter(Variable %in% Variable_Selected) %>% 
@@ -1442,8 +1465,10 @@ CreateFigureOne <- function(Variable_Selected){
     ggtheme_map() +
     # Transboundary labels
     annotate("text", 
-             x =(c(-85.5,-30,25,81,136)+5),
-             y = -93.5,
+             # x =(c(-85.5,-30,25,81,136)+5),
+             # y = -93.5,
+             x =(c(-85083333,-30000000,25000000,81000000,13600000)),
+             y = -9350000,
              label = Labels_Trans, 
              color="black", 
              size=3, 
@@ -1452,8 +1477,10 @@ CreateFigureOne <- function(Variable_Selected){
              hjust=0) +
     # Revenue labels
     annotate("text", 
-             x =(c(-85.5,-31,20,75,131)+5),
-             y = -110,
+             # x =(c(-85.5,-31,20,75,131)+5),
+             # y = -110,
+             x =(c(-85083333,-30000000,25000000,81000000,13600000)),
+             y = -1100000,
              label = Labels, 
              color="black", 
              size=3, 
@@ -1462,8 +1489,10 @@ CreateFigureOne <- function(Variable_Selected){
              hjust=0) +
     # Legend Titles
     annotate("text", 
-             x =-180,
-             y = -93.5,
+             # x =-180,
+             # y = -93.5,
+             x =-18000000,
+             y = -9350000,
              label = "Transboundary Spp. (n)", 
              color="black", 
              size=3, 
@@ -1471,8 +1500,10 @@ CreateFigureOne <- function(Variable_Selected){
              fontface="bold",
              hjust=0) +
     annotate("text", 
-             x =-180,
-             y = -110,
+             # x =-180,
+             # y = -110,
+             x =-18000000,
+             y = -1100000,
              label = Map_Label,
              color="black", 
              size=3, 
@@ -1480,7 +1511,7 @@ CreateFigureOne <- function(Variable_Selected){
              fontface="bold",
              hjust=0) +
     theme(
-      legend.box.margin = margin(t = -54, l = 130),
+      # legend.box.margin = margin(t = -54, l = 130),
       legend.text = element_blank(),
     ) +
     guides(fill = guide_legend(nrow = 1))
@@ -1806,9 +1837,15 @@ Species_Sampled <- fread(paste(my_path("D"),"Distribution/Sampled_Species.csv", 
 Spp_Clasification <- fread(paste(my_path("D"),"Distribution/Species/SppTaxonName.csv",sep="")) %>% 
   clean_names()
 
+# Conuntry Names relation
+
+# matching_country_names <- my_path("D","Spatial","matching_names.csv", read = T) %>% 
+#   mutate(eez_name = ifelse(is.na(eez_name),sf_eez_name,eez_name))
+
 # Spatial Data needed to remove duplicates
 sau_eez_fes <- fread(paste(my_path("G"),"Spatial/SAU/sau_eez_fes.csv",sep="")) %>% 
   clean_names()
+
 
 Clean_sau_eez_fes <- sau_eez_fes %>% 
   gather("Type","fishing_region",2,4) %>% 
@@ -1889,10 +1926,11 @@ UN_Regions <- read.csv(paste(my_path("D"),"Spatial/UN_Regions.csv",sep=""), head
 # Load Land shapefile
 World_land_sf <- rnaturalearth::ne_countries(scale = 'medium', returnclass = c("sf")) %>% 
   st_transform(crs = "+proj=eck4") %>%
+  # st_transform(crs = 4326) %>% # 4326
   rename(fishing_entity = name) %>% 
   mutate(
     fishing_entity = gsub("Russia", "Russian Federation",fishing_entity),
-    fishing_entity = gsub( "United States of America", "USA",fishing_entity),
+    fishing_entity = gsub( "United States", "USA",fishing_entity),
     fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),
     fishing_entity = gsub("Marshall Islands", "Solomon Isl.",fishing_entity),
     fishing_entity = gsub("Dem. Rep. Congo", "Congo, R. of",fishing_entity),
@@ -1912,10 +1950,11 @@ path_world <- paste(my_path("G"),"Spatial/SAU/SAU_Shapefile",sep="")
 fnam_world <- "SAUEEZ_July2015.shp"
 
 # Load it!
-World_sf <- st_read(dsn = path_world,
+World_sf <- World_sf st_read(dsn = path_world,
                     layer =file_path_sans_ext(fnam_world)) %>% 
   rename(eez_name = Name) %>% 
   st_transform(crs = "+proj=eck4")
+  # st_transform(crs = 4326) # 4326
 
 #### Determine polygon areas
 
@@ -1930,7 +1969,7 @@ Entity_Area <- World_sf %>%
   as.data.frame() %>% 
   left_join(Clean_Results_Trans,
             by = "eez_name") %>% 
-  group_by(fishing_entity) %>% 
+  group_by(fishing_entity,OBJECTID) %>% 
   summarise(Size_Entity = sum(Area_km2))
 
 # Regional EEZ area
@@ -1957,8 +1996,14 @@ Regional_Area <- World_sf %>%
 # Read Sau Value Data (Thank you Tim!) reconstructede data
 # Gross Domestic Product Implicit Price Deflator according to the US Saint Louis Federal Reserve Bank (average of all 2019 quarters) to transform the original 2010 real USD revenue value to 2019 real USD (https://fred.stlouisfed.org/searchresults?st=GDP+Implicit+price+deflator).*
 
-SAU_Tim_Data <- fread(paste(my_path("D"),"Distribution/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>% 
-  mutate(value = value*1.62)
+SAU_Tim_Data <- fread(paste(my_path("D"),"Distribution/sau_catch_value_country_taxon_JEPA.csv", sep ="")) #%>% 
+  # mutate(value = value*1.62)
+
+# Read SAU non-reconstructed catch data from 2006 for comparrisonwith Sumaila
+# SAU_Vicky_Data <- fread(paste(my_path("D"),"Distribution/ReportCatch_FEYrEEZTaxon_2010_14.csv", sep ="")) 
+
+SAU_Vicky_Data <- fread(paste(my_path("D"),"Distribution/ReportCatch_FEYrEEZTaxon_2005_09.csv", sep =""))
+
 
 # Set global values for catch and revenue (within EEZ with re-constructed catch)
 SAU_Global_Data <- Clean_sau_eez_fes %>%
@@ -1970,6 +2015,7 @@ SAU_Global_Data <- Clean_sau_eez_fes %>%
   summarise_at(c("catch","value"),
                mean,na.rm=T) %>% 
   gather("Variable","Value",catch:value)
+
 
 # Read Species Status Data (Sub-routine Species Status)
 Status_Data <- fread(paste(my_path("R"),"EEZ/Species_Status.csv", sep ="")) %>% 
@@ -1991,7 +2037,7 @@ Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
 
 # Read Results For Carmelia
 
-Clean_Results_Trans <- fread(paste(my_path("R"),"/EEZ/Clean_Results_Trans.csv", sep ="")) %>% 
+Clean_Results_Trans <- fread(paste(my_path("R"),"/EEZ/Clean_Results_Trans.csv", sep ="")) %>%
   mutate(fishing_entity = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",paste(fishing_entity)))
 
 ```
@@ -2058,6 +2104,7 @@ Total_SAU_Sampled <- SAU_Global_Data %>%
             Sampled_nspp = length(unique(taxon_key))
             )
 
+
 # Get the total values for the world excluding not identified species
 Total_SAU_id <- SAU_Global_Data %>% 
   left_join(Exploited_Species) %>% # list of SAU exploited species identified
@@ -2110,6 +2157,53 @@ SAU_Sampled_Data <- Clean_sau_eez_fes %>%
                mean,na.rm=T) %>% 
   gather("Variable","Value",catch:value)
 
+Summary_Trans <- Clean_sau_eez_fes %>%
+  group_by(fishing_entity,fishing_entity_id) %>% 
+  summarise(n=n()) %>% 
+  left_join(SAU_Sampled_Data) %>% 
+  semi_join(Tresholded_T_Data,
+            by = c("taxon_key","fishing_entity")) %>% # only counting the catch from transboundary speices (e.g. anchoveta from chile and peru but not from equador)
+  group_by(Variable) %>%
+  summarise(Total_Trans = sum(Value, na.rm=T)) %>% 
+  left_join(Total_SAU_Sampled) %>% 
+  left_join(Total_SAU_Global) %>% 
+  mutate(Per_sampled = Total_Trans/Total_Sampled*100,
+         Per_SAU = Total_Trans/Total_Global*100)
+
+
+
+
+### New estimates!!! 
+
+# Filter SAU data for only those sampled species
+
+
+SAU_Sampled_Data <- Clean_sau_eez_fes %>%
+  group_by(fishing_entity,fishing_entity_id,eez_name) %>% 
+  summarise(n=n()) %>% 
+  left_join(SAU_Tim_Data, by = "fishing_entity_id") %>% 
+  left_join(Exploited_Species) %>% 
+  filter(!is.na(taxon_name)) %>% 
+  clean_names() %>% 
+  group_by(fishing_entity_id,taxon_key) %>% 
+  summarise_at(c("catch","value"),
+               mean,na.rm=T) %>% 
+  gather("Variable","Value",catch:value)
+
+x <- Tresholded_T_Data %>% 
+  select(taxon_key,eez_name) %>% 
+  group_by(taxon_key,eez_name) %>% 
+  summarise(n=n()) %>% 
+  ungroup() %>% 
+  select(-n) %>% 
+  left_join(Clean_sau_eez_fes,
+            by = "eez_name") %>% 
+  left_join(SAU_Sampled_Data,
+            by = c("taxon_key","fishing_entity_id")) %>% 
+  # filter(eezid != 0) %>%
+  group_by(Variable) %>%
+  summarise(Total_Trans = sum(Value, na.rm=T)) %>% 
+  mutate(Per_sampled = Total_Trans/Total_SAU_Vicky*100)
 
 
 
@@ -2125,6 +2219,38 @@ Summary_Trans <- Clean_sau_eez_fes %>%
   left_join(Total_SAU_Global) %>% 
   mutate(Per_sampled = Total_Trans/Total_Sampled*100,
          Per_SAU = Total_Trans/Total_Global*100)
+
+```
+
+
+```{r comparriosn_wtih_teh}
+
+# Average data for the last 10 years
+
+SAU_Global_Vicky <- SAU_Vicky_Data %>% 
+  filter(#eezid != 0,
+         year == 2006) %>%
+  group_by(fishing_entity_id,taxon_key,eezid) %>% 
+  summarise_at(c("sumcatch"),
+               mean,na.rm=T)
+
+## Get the total of global data
+Total_SAU_Vicky <- sum(SAU_Global_Vicky$sumcatch,na.rm = T)
+
+Summary_Trans_vicky <- Tresholded_T_Data %>% 
+  select(taxon_key,eez_name) %>% 
+  group_by(taxon_key,eez_name) %>% 
+  summarise(n=n()) %>% 
+  ungroup() %>% 
+  select(-n) %>% 
+  left_join(Clean_sau_eez_fes,
+            by = "eez_name") %>% 
+  left_join(SAU_Global_Vicky,
+            by = c("taxon_key","fishing_entity_id")) %>% 
+  # filter(eezid != 0) %>%
+  group_by() %>%
+  summarise(Total_Trans = sum(sumcatch, na.rm=T)) %>% 
+  mutate(Per_sampled = Total_Trans/Total_SAU_Vicky*100);Summary_Trans_vicky
 
 ```
 
@@ -2335,9 +2461,10 @@ Subregion_Trans_Value$sub_region <- Subregion_Trans_raw_Value$sub_region %>%
 
 # Transboundary Species shapefile
 World_sf_si <- World_sf %>%
-  st_transform(crs = 4326) %>% # 4326
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
-  left_join(Transboundary_Spp, by ="eez_name")# %>% 
+  left_join(Transboundary_Spp, by ="eez_name") %>% 
+  st_transform(crs = "+proj=eck4")
+  # st_transform(crs = 4326)
 
 ### Prepare data for plot
 
@@ -2400,7 +2527,6 @@ pal <- wes_palette("Zissou1",100,type = "continuous")
 # Variable to plot (value or catch)
 Variable_plot <- "value"
 CreateFigureOne(Variable_plot)
-
 
 ```
 
