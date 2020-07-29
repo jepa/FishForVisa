@@ -1214,47 +1214,6 @@ head(Dis_Trans)
 ```
 
 
-# RFMO Analysis
-
-```{r RFMO_Data, eval = F}
-
-RFMO_Data <- read.delim("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Spatial_Data/RFMO/RFMO_procedure_outcome.csv")
-
-x <- RFMO_Data %>% 
-  mutate(
-    x = gsub("<.*?>", "", RFMO_Data$primary_species),
-    y = gsub("[\\(\\)]", "", regmatches(x, gregexpr("\\(.*?\\)", x)))
-  )
-
-# Save to remove "" and pass to colomuns in excell
-# write.csv(x,
-#           "rfmos.csv")           
-
-rfmos <- read.csv("~/Github/FishForVisa/rfmos.csv")
-View(rfmos)
-
-list <- rfmos$Taxa
-
-clean_rfmos <- rfmos %>% 
-  gather("taxa","taxon_name",y:X.21) %>% 
-  filter(taxon_name != "") %>% 
-  select(RFMO_name = name,
-         contracting_parties,
-         area,
-         taxon_name)
-
-# write_csv(clean_rfmos,
-#           "clean_rfmos.csv")    
-
-
-### Join with exploited species
-
-clean_rfmos <- clean_rfmos %>% 
-  left_join(Exploited_Species)
-
-```
-
-
 # Results
 
 ## Functions needed
@@ -1950,7 +1909,7 @@ path_world <- paste(my_path("G"),"Spatial/SAU/SAU_Shapefile",sep="")
 fnam_world <- "SAUEEZ_July2015.shp"
 
 # Load it!
-World_sf <- World_sf st_read(dsn = path_world,
+World_sf <- st_read(dsn = path_world,
                     layer =file_path_sans_ext(fnam_world)) %>% 
   rename(eez_name = Name) %>% 
   st_transform(crs = "+proj=eck4")
@@ -2039,6 +1998,37 @@ Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
 
 Clean_Results_Trans <- fread(paste(my_path("R"),"/EEZ/Clean_Results_Trans.csv", sep ="")) %>%
   mutate(fishing_entity = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",paste(fishing_entity)))
+
+# Entity Area (e.g. Mexico = Pacific EEZ + Atalntic EEZ)
+Entity_Area <- World_sf %>% 
+  as.data.frame() %>% 
+  left_join(Clean_Results_Trans,
+            by = "eez_name") %>% 
+  group_by(fishing_entity,OBJECTID) %>% 
+  summarise(Size_Entity = sum(Area_km2))
+
+
+### Tnas and billfish according to Pons 2016
+
+tunas <- c("Katsuwonus pelamis",
+"Thunnus alalunga",
+"Thunnus albacares",
+"Thunnus maccoyii",
+"Thunnus obesus",
+"Thunnus orientalis", 
+"Thunnus thynnus",
+"Xiphias gladius",
+"Istiophorus albicans",
+"Istiophorus platypterus", 
+"Istiompax indica",
+"Makaira nigricans",
+"Kajikia albidus",
+"Kajikia audax",
+"Tetrapturus angustirostris",
+"Tetrapturus belone",
+"Tetrapturus georgii",
+"Tetrapturus pfluegeri")
+
 
 ```
 
@@ -2403,8 +2393,8 @@ Value_Trans_Country <- sau_eez_fes %>%
   gather("Variable","Value",catch:value,catch_weight:value_weight) %>% 
   group_by(fishing_entity,Variable,Value) %>% 
   summarise(
-    Bins = cut(Value,breaks = Map_Breaks, dig.lab = 5 ),
-    Bins_Plot = cut(Value,breaks = Map_Breaks,
+    Bins = cut(Value, breaks = Map_Breaks, dig.lab = 5),
+    Bins_Plot = cut(Value, breaks = Map_Breaks,
                     labels = c('super low', 'low','median','high','super high'),
                     dig.lab = 5 # Removes scientific notaion
     )
@@ -2880,115 +2870,6 @@ TukeyHSD(Weight_aov) %>%
   filter(adj.p.value < 0.05) # Northern Europe
 ```
 
-### RFMO Map of Transboundary Species
-
-```{r RFMO_Map, eval =F, echo =F}
-
-Tresholded_rfmo_Data <- Results_rfmo %>% 
-  filter(
-    area_index >= Min_AI,
-    area_index <= Max_AI,
-    model_index >= MI
-  ) %>% 
-  group_by(rfmo_name) %>% 
-  summarise(
-    n_trans_spp = length(unique(taxon_key)),
-    n_neighbours = length(unique(neighbour)),
-    trans_Rrate = n_trans_spp/n_neighbours
-  )
-
-# Number of RFMOs
-rfmo_list %>% 
-  pull(rfmo_name) %>% 
-  unique() %>% 
-  length() # 15
-
-# Number of total taxa
-rfmo_list %>% 
-  pull(taxon_key) %>% 
-  unique() %>% 
-  length() # 99
-
-
-# Number of taxa per RFMO
-rfmo_list %>% 
-  group_by(rfmo_name) %>% 
-  summarise(in_trans_spp = length(unique(taxon_key)))
-
-# Number of shared taxa
-Results_rfmo %>% 
-  pull(taxon_key) %>% 
-  unique() %>% 
-  length() # 81
-
-### Bar plot
-
-Tresholded_rfmo_Data %>% 
-  ggplot() +
-  geom_bar(
-    aes(
-      x = reorder(rfmo_name,-n_trans_spp),
-      y = n_trans_spp
-    ),
-    stat = "identity"
-  ) +
-  coord_flip()
-
-head(RFMOs_sf)
-
-# Transboundary Species shapefile
-World_sf_si <- RFMOs_sf %>%
-  filter(!Name %in% c("IPHC","PSC","NASCO")) %>% 
-  rename(rfmo_name = Name) %>% 
-  st_transform(crs = 4326) %>% # 4326
-  # st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
-  left_join(Tresholded_rfmo_Data, by ="rfmo_name")
-
-# Total catch/Revenue shapefile
-World_sf_si_land <- World_land_sf %>%
-  st_transform(crs = 4326) #%>% # 4326
-# st_simplify(preserveTopology = TRUE, dTolerance = 0.1)
-
-# Get the NA's to be grey
-# Grey_land <- World_sf_si_land %>% 
-#   filter(is.na(Bins))
-
-# Make map
-Plot <- ggplot() +
-  geom_sf(data = World_sf_si,
-          aes(
-            fill =  n_trans_spp,
-            colour = n_trans_spp
-          ), 
-          size = 0.1
-  ) + # n_trans_spp or Bins
-  geom_sf(data = World_sf_si_land) +
-  # geom_sf_label(data = World_sf_si,
-  #               aes(label = eez_name)
-  #               ) +
-  scale_fill_gradientn("Number of Shared Species",
-                       colours = wes_palette("Zissou1", 100, type = "continuous"),
-                       limits = c(0,45),
-                       breaks = seq(0,45,5)
-  ) +
-  scale_colour_gradientn("Number of Shared Species",
-                         colours = wes_palette("Zissou1", 100, type = "continuous"),
-                         limits = c(0,45),
-                         breaks = seq(0,45,5)
-  ) +
-  ggtheme_map()
-
-
-Plot_Name <- paste("S2_RFMO.png", sep = "") 
-
-ggsave(Plot_Name,
-       plot = Plot,
-       width = 16,
-       height = 8,
-       units = "in",
-       path = Figures_Path
-)
-```
 
 ### OHI-inspired Circular plot for Territories
 
@@ -3858,34 +3739,6 @@ summary(Stat_spp_aov)
 TukeyHSD(Stat_spp_aov) %>% 
   tidy() %>% 
   filter(adj.p.value < 0.05) # Pelagic-Oceanic
-
-
-```
-
-## RFMO specifics
-
-```{r RFMOs, eval = T, echo = F}
-
-### Results exploration
-
-ICCAT_List <- rfmo_list %>% 
-  filter(rfmo_name == "ICCAT") %>% 
-  pull(taxon_key) %>% 
-  unique()
-
-Tresholded_T_Data %>% 
-  filter(taxon_key %in% ICCAT_List) %>% 
-  group_by(taxon_key) %>% 
-  summarise(
-    n_countries = length(unique(fishing_entity))
-  )
-
-
-ICCAT_Trans <- Species_Data %>% 
-  rename(taxon_name = individual) %>% 
-  left_join(Exploited_Species) %>% 
-  filter(taxon_key %in% ICCAT_List)
-
 
 
 ```
@@ -5947,4 +5800,183 @@ TukeyHSD(Rev_aov)
 # Eastern Asia sig with everyone except with Eastern Europe and North Am.
 
 
+```
+
+# RFMO Analysis
+
+```{r RFMO_Data, eval = F}
+
+RFMO_Data <- read.delim("/Volumes/DATA/JULIANO_NEYMAR/FishForVisa/Spatial_Data/RFMO/RFMO_procedure_outcome.csv")
+
+x <- RFMO_Data %>% 
+  mutate(
+    x = gsub("<.*?>", "", RFMO_Data$primary_species),
+    y = gsub("[\\(\\)]", "", regmatches(x, gregexpr("\\(.*?\\)", x)))
+  )
+
+# Save to remove "" and pass to colomuns in excell
+# write.csv(x,
+#           "rfmos.csv")           
+
+rfmos <- read.csv("~/Github/FishForVisa/rfmos.csv")
+View(rfmos)
+
+list <- rfmos$Taxa
+
+clean_rfmos <- rfmos %>% 
+  gather("taxa","taxon_name",y:X.21) %>% 
+  filter(taxon_name != "") %>% 
+  select(RFMO_name = name,
+         contracting_parties,
+         area,
+         taxon_name)
+
+# write_csv(clean_rfmos,
+#           "clean_rfmos.csv")    
+
+
+### Join with exploited species
+
+clean_rfmos <- clean_rfmos %>% 
+  left_join(Exploited_Species)
+
+```
+
+
+## RFMO specifics
+
+```{r RFMOs, eval = T, echo = F}
+
+### Results exploration
+
+ICCAT_List <- rfmo_list %>% 
+  filter(rfmo_name == "ICCAT") %>% 
+  pull(taxon_key) %>% 
+  unique()
+
+Tresholded_T_Data %>% 
+  filter(taxon_key %in% ICCAT_List) %>% 
+  group_by(taxon_key) %>% 
+  summarise(
+    n_countries = length(unique(fishing_entity))
+  )
+
+
+ICCAT_Trans <- Species_Data %>% 
+  rename(taxon_name = individual) %>% 
+  left_join(Exploited_Species) %>% 
+  filter(taxon_key %in% ICCAT_List)
+
+
+
+```
+
+## RFMO Map of Transboundary Species
+
+```{r RFMO_Map, eval =F, echo =F}
+
+Tresholded_rfmo_Data <- Results_rfmo %>% 
+  filter(
+    area_index >= Min_AI,
+    area_index <= Max_AI,
+    model_index >= MI
+  ) %>% 
+  group_by(rfmo_name) %>% 
+  summarise(
+    n_trans_spp = length(unique(taxon_key)),
+    n_neighbours = length(unique(neighbour)),
+    trans_Rrate = n_trans_spp/n_neighbours
+  )
+
+# Number of RFMOs
+rfmo_list %>% 
+  pull(rfmo_name) %>% 
+  unique() %>% 
+  length() # 15
+
+# Number of total taxa
+rfmo_list %>% 
+  pull(taxon_key) %>% 
+  unique() %>% 
+  length() # 99
+
+
+# Number of taxa per RFMO
+rfmo_list %>% 
+  group_by(rfmo_name) %>% 
+  summarise(in_trans_spp = length(unique(taxon_key)))
+
+# Number of shared taxa
+Results_rfmo %>% 
+  pull(taxon_key) %>% 
+  unique() %>% 
+  length() # 81
+
+### Bar plot
+
+Tresholded_rfmo_Data %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = reorder(rfmo_name,-n_trans_spp),
+      y = n_trans_spp
+    ),
+    stat = "identity"
+  ) +
+  coord_flip()
+
+head(RFMOs_sf)
+
+# Transboundary Species shapefile
+World_sf_si <- RFMOs_sf %>%
+  filter(!Name %in% c("IPHC","PSC","NASCO")) %>% 
+  rename(rfmo_name = Name) %>% 
+  st_transform(crs = 4326) %>% # 4326
+  # st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
+  left_join(Tresholded_rfmo_Data, by ="rfmo_name")
+
+# Total catch/Revenue shapefile
+World_sf_si_land <- World_land_sf %>%
+  st_transform(crs = 4326) #%>% # 4326
+# st_simplify(preserveTopology = TRUE, dTolerance = 0.1)
+
+# Get the NA's to be grey
+# Grey_land <- World_sf_si_land %>% 
+#   filter(is.na(Bins))
+
+# Make map
+Plot <- ggplot() +
+  geom_sf(data = World_sf_si,
+          aes(
+            fill =  n_trans_spp,
+            colour = n_trans_spp
+          ), 
+          size = 0.1
+  ) + # n_trans_spp or Bins
+  geom_sf(data = World_sf_si_land) +
+  # geom_sf_label(data = World_sf_si,
+  #               aes(label = eez_name)
+  #               ) +
+  scale_fill_gradientn("Number of Shared Species",
+                       colours = wes_palette("Zissou1", 100, type = "continuous"),
+                       limits = c(0,45),
+                       breaks = seq(0,45,5)
+  ) +
+  scale_colour_gradientn("Number of Shared Species",
+                         colours = wes_palette("Zissou1", 100, type = "continuous"),
+                         limits = c(0,45),
+                         breaks = seq(0,45,5)
+  ) +
+  ggtheme_map()
+
+
+Plot_Name <- paste("S2_RFMO.png", sep = "") 
+
+ggsave(Plot_Name,
+       plot = Plot,
+       width = 16,
+       height = 8,
+       units = "in",
+       path = Figures_Path
+)
 ```
