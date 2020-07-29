@@ -1403,6 +1403,31 @@ CreateFigureOne <- function(Variable_Selected){
   Labels_Trans <- c("(1-29]",paste(Bins_Trans[2:5]))
   Labels <- c("(1-10]",paste(Bins[2:5]))
   
+  
+  ####### For testing ###
+  
+  gc()
+
+  plot_all <- ggdraw() +
+  # map
+  draw_plot(Map, x = 0, y = 0.45, width = 1, height = 0.58) +
+  draw_plot_label(label = c("A", "B"), 
+                  size = 20,
+                  x = c(0, 0), 
+                  y = c(1, 0.45)
+  )
+
+  save_plot(
+    "Map.png",
+    plot_all,
+    base_height = 8,
+    base_width = 8
+  )
+  
+  
+  #######
+  
+  
   Map <- ggplot() +
     geom_sf(data = World_sf_si_land,
             aes(fill = reorder(Bins_Plot,Value)), 
@@ -1426,8 +1451,8 @@ CreateFigureOne <- function(Variable_Selected){
     annotate("text", 
              # x =(c(-85.5,-30,25,81,136)+5),
              # y = -93.5,
-             x =(c(-85083333,-30000000,25000000,81000000,13600000)),
-             y = -9350000,
+             x =(c(-8500000,-3000000,2500000,7500000,12800000)),
+             y = -9050000,
              label = Labels_Trans, 
              color="black", 
              size=3, 
@@ -1435,23 +1460,23 @@ CreateFigureOne <- function(Variable_Selected){
              # fontface="bold",
              hjust=0) +
     # Revenue labels
-    annotate("text", 
+    annotate("text",
              # x =(c(-85.5,-31,20,75,131)+5),
              # y = -110,
-             x =(c(-85083333,-30000000,25000000,81000000,13600000)),
-             y = -1100000,
-             label = Labels, 
-             color="black", 
-             size=3, 
-             angle=0, 
+             x =(c(-8500000,-3200000,2000000,7000000,12500000)),
+             y = -11000000,
+             label = Labels,
+             color="black",
+             size=3,
+             angle=0,
              # fontface="bold",
              hjust=0) +
     # Legend Titles
     annotate("text", 
              # x =-180,
              # y = -93.5,
-             x =-18000000,
-             y = -9350000,
+             x =-17000000,
+             y = -9050000,
              label = "Transboundary Spp. (n)", 
              color="black", 
              size=3, 
@@ -1461,8 +1486,8 @@ CreateFigureOne <- function(Variable_Selected){
     annotate("text", 
              # x =-180,
              # y = -110,
-             x =-18000000,
-             y = -1100000,
+             x =-17000000,
+             y = -11000000,
              label = Map_Label,
              color="black", 
              size=3, 
@@ -1470,7 +1495,7 @@ CreateFigureOne <- function(Variable_Selected){
              fontface="bold",
              hjust=0) +
     theme(
-      # legend.box.margin = margin(t = -54, l = 130),
+      legend.box.margin = margin(t = -55, l = 120),
       legend.text = element_blank(),
     ) +
     guides(fill = guide_legend(nrow = 1))
@@ -2392,7 +2417,7 @@ Value_Trans_Country <- sau_eez_fes %>%
   ) %>% 
   gather("Variable","Value",catch:value,catch_weight:value_weight) %>% 
   group_by(fishing_entity,Variable,Value) %>% 
-  summarise(
+  mutate(
     Bins = cut(Value, breaks = Map_Breaks, dig.lab = 5),
     Bins_Plot = cut(Value, breaks = Map_Breaks,
                     labels = c('super low', 'low','median','high','super high'),
@@ -2403,6 +2428,7 @@ Value_Trans_Country <- sau_eez_fes %>%
             by = c("fishing_entity", "Variable") 
             ) %>% # uncomment for estimating percentage
   # Convert catch to million tonnes
+  ungroup() %>% 
   mutate(
     Value = ifelse(Variable == "catch",Value/1000, #million
                          Value),
