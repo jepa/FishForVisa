@@ -3054,7 +3054,10 @@ Status_Plot_Data$id <- rep( seq(1, nrow(Status_Plot_Data)/nObsType) , each=nObsT
 label_data <- Status_Plot_Data %>% 
   # filter(value > 0) %>% 
   group_by(id, individual) %>% 
-  summarize(tot=sum(value,na.rm=T))
+  summarize(tot=sum(value,na.rm=T)) %>% 
+  mutate(
+    individual = ifelse(individual == "Saint Vincent & the Grenadines","Snt. Vincent & Grenadines", individual)
+    )
 
 number_of_bar <- nrow(label_data)
 angle <- 90 - 360 * (label_data$id-0.5) /number_of_bar     # I substract 0.5 because the letter must have the angle of the center of the bars. Not extreme right(1) or extreme left (0)
@@ -3111,9 +3114,9 @@ Status_Plot_Data %>%
   # Add text showing the value of each 100/75/50/25 lines
   ggplot2::annotate("text", 
                     # x = rep(max(data$id),3),
-                    x =c(0,0,0.2,0.2),
-                    y = c(-50, 0, 50, 100),
-                    label = c("50","0", "50", "100") , 
+                    x =c(0.2,0,0,0.2,0.2),
+                    y = c(-100,-50, 0, 50, 100),
+                    label = c(">100","50","0", "50", ">100") , 
                     color="black", 
                     size=5, 
                     angle=0, 
@@ -3123,7 +3126,7 @@ Status_Plot_Data %>%
   geom_text(data=label_data,
             aes(
               x = id,
-              y = 101,
+              y = 105,
               label=individual,
               hjust=hjust),
             color="black",
