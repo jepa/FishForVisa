@@ -1403,31 +1403,6 @@ CreateFigureOne <- function(Variable_Selected){
   Labels_Trans <- c("(1-29]",paste(Bins_Trans[2:5]))
   Labels <- c("(1-10]",paste(Bins[2:5]))
   
-  
-  ####### For testing ###
-  
-  gc()
-
-  plot_all <- ggdraw() +
-  # map
-  draw_plot(Map, x = 0, y = 0.45, width = 1, height = 0.58) +
-  draw_plot_label(label = c("A", "B"), 
-                  size = 20,
-                  x = c(0, 0), 
-                  y = c(1, 0.45)
-  )
-
-  save_plot(
-    "Map.png",
-    plot_all,
-    base_height = 8,
-    base_width = 8
-  )
-  
-  
-  #######
-  
-  
   Map <- ggplot() +
     geom_sf(data = World_sf_si_land,
             aes(fill = reorder(Bins_Plot,Value)), 
@@ -1495,7 +1470,7 @@ CreateFigureOne <- function(Variable_Selected){
              fontface="bold",
              hjust=0) +
     theme(
-      legend.box.margin = margin(t = -55, l = 120),
+      legend.box.margin = margin(t = -58, l = 120),
       legend.text = element_blank(),
     ) +
     guides(fill = guide_legend(nrow = 1))
@@ -1572,10 +1547,11 @@ CreateFigureOne <- function(Variable_Selected){
               inherit.aes = FALSE) +
     scale_fill_gradientn("",
                          colours = pal,
-                         limits = c(0,12000),
-                         breaks = seq(0,12000,3000)) +
+                         limits = c(0,14000),
+                         breaks = seq(0,14000,3500)
+                         ) +
     guides(fill = guide_colorbar(label.position = "left")
-    )
+    );Rev_Plot
   
   
   ###____________###
@@ -1644,7 +1620,7 @@ CreateFigureOne <- function(Variable_Selected){
                        limits = c(0,12),
                        breaks = seq(0,12,3),
                        colours = pal
-  )
+  );Catch_Plot
   
   ## Joining everything in one ploit
   
@@ -1667,7 +1643,7 @@ CreateFigureOne <- function(Variable_Selected){
                   y = c(0.31,0.29)
   )
   
-  
+  gc()
   save_plot(
     # paste(Figures_Path,"100_25_Bins_Value_Region.png",sep=""),
     Plot_Name,
@@ -1940,6 +1916,9 @@ World_sf <- st_read(dsn = path_world,
   st_transform(crs = "+proj=eck4")
   # st_transform(crs = 4326) # 4326
 
+
+# World_sf %>% filter(str_detect(eez_name, "Cu"))
+
 #### Determine polygon areas
 
 # EEZ Area
@@ -1980,8 +1959,9 @@ Regional_Area <- World_sf %>%
 # Read Sau Value Data (Thank you Tim!) reconstructede data
 # Gross Domestic Product Implicit Price Deflator according to the US Saint Louis Federal Reserve Bank (average of all 2019 quarters) to transform the original 2010 real USD revenue value to 2019 real USD (https://fred.stlouisfed.org/searchresults?st=GDP+Implicit+price+deflator).*
 
-SAU_Tim_Data <- fread(paste(my_path("D"),"Distribution/sau_catch_value_country_taxon_JEPA.csv", sep ="")) #%>% 
-  # mutate(value = value*1.62)
+SAU_Tim_Data <- fread(paste(my_path("D"),"Distribution/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>%
+  mutate(value = 1.16 * value)
+
 
 # Read SAU non-reconstructed catch data from 2006 for comparrisonwith Sumaila
 # SAU_Vicky_Data <- fread(paste(my_path("D"),"Distribution/ReportCatch_FEYrEEZTaxon_2010_14.csv", sep ="")) 
@@ -2004,7 +1984,9 @@ SAU_Global_Data <- Clean_sau_eez_fes %>%
 # Read Species Status Data (Sub-routine Species Status)
 Status_Data <- fread(paste(my_path("R"),"EEZ/Species_Status.csv", sep ="")) %>% 
   clean_names() %>% 
-  rename(sf_eez_name=territory)
+  rename(eez_name=territory) %>% 
+  mutate(eez_name = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",eez_name)
+         )
 
 # List of species
 Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
@@ -2021,8 +2003,14 @@ Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
 
 # Read Results For Carmelia
 
-Clean_Results_Trans <- fread(paste(my_path("R"),"/EEZ/Clean_Results_Trans.csv", sep ="")) %>%
-  mutate(fishing_entity = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",paste(fishing_entity)))
+Clean_Results_Trans <- fread(paste(my_path("R"),"/EEZ/Clean_Results_Trans.csv", sep ="")) %>% 
+  mutate(eez_name = ifelse(eez_name == "Cote dIvoire","Côte d'Ivoire",
+                           ifelse(eez_name == "Curacao (Netherlands)","Curaçao (Netherlands)",eez_name)
+                           ),
+         fishing_entity = ifelse(fishing_entity == "Cote dIvoire","Côte d'Ivoire",
+                                 ifelse(fishing_entity == "Curacao (Netherlands)","Curaçao (Netherlands)",fishing_entity))
+         )
+
 
 # Entity Area (e.g. Mexico = Pacific EEZ + Atalntic EEZ)
 Entity_Area <- World_sf %>% 
@@ -2191,7 +2179,6 @@ Summary_Trans <- Clean_sau_eez_fes %>%
 ### New estimates!!! 
 
 # Filter SAU data for only those sampled species
-
 
 SAU_Sampled_Data <- Clean_sau_eez_fes %>%
   group_by(fishing_entity,fishing_entity_id,eez_name) %>% 
@@ -2368,8 +2355,8 @@ Transboundary_Spp <- Tresholded_T_Data %>%
 # Get Catch and Revenue data for mapping 
 
 # Set manual breaks for bins
-Map_Breaks <- c(-1,10,100,1000,5000,10000)
-
+Map_Breaks <- c(-1,10,100,1000,2000,12000) 
+# Map_Breaks <- c(-1,20,200,2000,1000,20000)
 
 ###
 
@@ -2408,14 +2395,15 @@ Value_Trans_Country <- sau_eez_fes %>%
                          )
   ) %>% 
   spread(Variable,Trans_Total) %>% 
-  left_join(Entity_Area, 
-            by = "fishing_entity") %>% 
-  # Include the weighted method for supplementals
-  mutate_at(
-    vars(catch,value),
-    funs(weight= ./(Size_Entity/1000000))
-  ) %>% 
-  gather("Variable","Value",catch:value,catch_weight:value_weight) %>% 
+  # left_join(Entity_Area,
+  #           by = "fishing_entity") %>%
+  # # Include the weighted method for supplementals
+  # mutate_at(
+  #   vars(catch,value),
+  #   funs(weight= ./(Size_Entity/1000000))
+  # ) %>%
+  # gather("Variable","Value",catch:value,catch_weight:value_weight) %>%
+  gather("Variable","Value",catch:value) %>%
   group_by(fishing_entity,Variable,Value) %>% 
   mutate(
     Bins = cut(Value, breaks = Map_Breaks, dig.lab = 5),
@@ -2462,7 +2450,7 @@ Subregion_Trans_raw_Value <- Value_Trans_Country %>%
   # select(-Size_Entity,-Trans_Entity_n) %>% 
   arrange(Variable) %>%
   ungroup() %>% 
-  mutate(id = rep(seq(1,17),4)) %>% 
+  mutate(id = rep(seq(1,17),2)) %>% 
   mutate(Value_sum=ifelse(Variable == "catch" & Value_sum >= 12,12,Value_sum))
 
 # Fix names for plot
@@ -2942,8 +2930,13 @@ Status_Plot_Data <- tibble(
   full_join(Status_Data_Plot,
             by = c("individual","observation")
   ) %>% 
-  mutate(value = ifelse(is.na(value),0,value)#,
-         # group = ifelse(is.na(group),"Other",group)
+  mutate(value = ifelse(is.na(value),0,
+                        ifelse(value < -100,-100, # if less than 100, 100
+                               ifelse(value > 100,100, # if more than 100, 100
+                                      value)
+                        )#, # Ser NAs to 0's
+                        # group = ifelse(is.na(group),"Other",group)
+  )
   ) %>% 
   select(individual,observation,group=georegion,value) %>% 
   filter(group != "other")
@@ -3170,8 +3163,7 @@ ggsave(
   height = 15,
   units = "in",
   # filename = "Plot.png"
-  filename = "Territory_circular_status.png",
-  path = Figures_Path
+  filename = "Territory_circular_status.png"
 )
 
 
