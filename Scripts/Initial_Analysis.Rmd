@@ -1684,7 +1684,7 @@ Clean_sau_eez_fes <- sau_eez_fes %>%
                                                                                              ifelse(eez_name == "South Africa (Atlantic and Cape)","South Africa (Atlantic Coast)",
                                                                                                     ifelse(eez_name =="Viet Nam","Vietnam",
                                                                                                            ifelse(eez_name =="US Virgin Isl.","US Virgin Islands",
-                                                                                                                  ifelse(eez_name == "Spain (mainland, Med and Gulf of Cadiz)", "Spain (Mediterranean and Gulf of Cadiz)",
+                                                                                                                  ifelse(eez_name == "Spain (mainland, Med and Gulf of Cadiz)", "Spain",
                                                                                                                          paste(eez_name)
                                                                                                                   )
                                                                                                            )
@@ -1799,103 +1799,150 @@ Spp_Clasification <- fread(paste(my_path("D"),"Distribution/Species/SppTaxonName
 
 # Conuntry Names relation
 
-# matching_country_names <- my_path("D","Spatial","matching_names.csv", read = T) %>% 
-#   mutate(eez_name = ifelse(is.na(eez_name),sf_eez_name,eez_name))
+matching_country_names <- my_path("D","Spatial","matching_names.csv", read = T) %>%
+  mutate(eez_name = ifelse(is.na(eez_name),sf_eez_name,eez_name))
 
 # Spatial Data needed to remove duplicates
-sau_eez_fes <- fread(paste(my_path("G"),"Spatial/SAU/sau_eez_fes.csv",sep="")) %>% 
-  clean_names()
+# sau_eez_fes <- fread(paste(my_path("G"),"Spatial/SAU/sau_eez_fes.csv",sep="")) %>% 
+  # clean_names()
 
+# New dara produced by Vicky 
+sau_eez_fes <- read_excel("~/Desktop/EEZ_FishingEntityID_v2_9June2020.xlsx")
 
-Clean_sau_eez_fes <- sau_eez_fes %>% 
-  gather("Type","fishing_region",2,4) %>% 
-  left_join(sau_eez_fes,
-            by = ("fishing_entity_id")
-  ) %>% 
-  group_by(eez_name,fishing_entity,fishing_entity_id) %>% 
-  summarise(n()) %>% 
-  ungroup() %>% 
-  ### Manually Fix names for estimating catch
-  mutate(eez_name = ifelse(eez_name =="Greece (without Crete)","Greece", # Vicky
-                           ifelse(eez_name =="Greenland (Denmark)","Greenland",
-                                  ifelse(eez_name =="United Kingdom (UK)","United Kingdom",
-                                         ifelse(fishing_entity =="Italy","Italy",
-                                                ifelse(eez_name =="Chile (mainland)","Chile",
-                                                       ifelse(fishing_entity =="Brazil","Brazil",
-                                                              ifelse(eez_name == "Ecuador (mainland)", "Ecuador",
-                                                                     ifelse(eez_name =="Portugal (mainland)","Portugal",
-                                                                            ifelse(fishing_entity == "Korea (North)","Korea (North)",
-                                                                                   ifelse(fishing_entity == "Guadeloupe  (France)","Guadeloupe (France)",
-                                                                                          ifelse(eez_name == "South Africa (Atlantic and Cape)","South Africa (Atlantic Coast)",
-                                                                                          paste(eez_name)
-                                                                                          )
-                                                                                   )
-                                                                            )
-                                                       )))))))
-                           ),
-         fishing_entity = ifelse(fishing_entity == "Viet Nam","Vietnam",fishing_entity
-         )
-  )
-
+Clean_sau_eez_fes <- sau_eez_fes
 
 # UN Regions dataset
 UN_Regions <- read.csv(paste(my_path("D"),"Spatial/UN_Regions.csv",sep=""), header = TRUE) %>% 
   clean_names() %>% 
   # mutate(un_fishing_entity = country_or_area) %>% 
   group_by(#un_fishing_entity,
-           fishing_entity = country_or_area,
-           georegion = region_name,
-           sub_region = sub_region_name) %>% 
+    fishing_entity = country_or_area,
+    georegion = region_name,
+    sub_region = sub_region_name) %>% 
   summarise(n=n()) %>% #merge china's 3 rows
   select(-n) %>% 
   filter(fishing_entity != "") %>%  # there are three rows with "developing" status as in, the code
   ungroup() %>% 
   # Change names to match SAU data and for shorter versions
   mutate(
-    fishing_entity = gsub("\\s*\\([^\\)]+\\)","",fishing_entity),
+    fishing_entity = gsub("","",fishing_entity),
+    fishing_entity = gsub("British Indian Ocean Territory","Brit. Indian Ocean Terr. (UK)",fishing_entity),
+    fishing_entity = gsub("Bermuda","Bermuda (UK)",fishing_entity),
+    fishing_entity = gsub("British Virgin Islands","British Virgin Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("Cayman Islands","Cayman Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("Christmas Island","Christmas Isl. (Australia)",fishing_entity),
+    fishing_entity = gsub("Mayotte","Mayotte (France)",fishing_entity),
+    fishing_entity = gsub("Guadeloupe","Guadeloupe (France)",fishing_entity),
+    fishing_entity = gsub("Guam","Guam (USA)",fishing_entity),
+    fishing_entity = gsub("Martinique","Martinique (France)",fishing_entity),
+    fishing_entity = gsub("Montserrat","Montserrat (UK)",fishing_entity),
+    fishing_entity = gsub("New Caledonia","New Caledonia (France)",fishing_entity),
+    fishing_entity = gsub("Niue","Niue (New Zealand)",fishing_entity),
+    fishing_entity = gsub("Norfolk Island","Norfolk Isl. (Australia)",fishing_entity),
+    fishing_entity = gsub("Northern Mariana Islands","North Marianas (USA)",fishing_entity),
+    fishing_entity = gsub("Pitcairn","Pitcairn (UK)",fishing_entity),
+    fishing_entity = gsub("Puerto Rico","Puerto Rico (USA)",fishing_entity),
+    fishing_entity = gsub("Saint Helena","Saint Helena (UK)",fishing_entity),
+    fishing_entity = gsub("Anguilla","Anguilla (UK)",fishing_entity),
+    fishing_entity = gsub("Svalbard and Jan Mayen Islands","Svalbard Isl. (Norway)",fishing_entity),
+    fishing_entity = gsub("Tokelau","Tokelau (New Zealand)",fishing_entity),
+    fishing_entity = gsub("Turks & Caicos Islands","Turks & Caicos Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("United States Virgin Islands","US Virgin Isl.",fishing_entity),
+    fishing_entity = gsub("Wallis and Futuna Islands","Wallis & Futuna Isl. (France)",fishing_entity),
+    fishing_entity = gsub("Saint Barthélemy","St Barthelemy (France)",fishing_entity),
+    fishing_entity = gsub("Iran (Islamic Republic of)","Iran",fishing_entity),
+    fishing_entity = gsub("Bonaire","Bonaire (Netherlands)",fishing_entity),
+    fishing_entity = gsub("Aruba","Aruba (Netherlands)",fishing_entity),
     fishing_entity = gsub("Curaçao","Curacao",fishing_entity),
     fishing_entity = gsub("United Kingdom of Great Britain and Northern Ireland","United Kingdom",fishing_entity),
-    fishing_entity = gsub( "United States of America", "USA",fishing_entity),
+    fishing_entity = gsub("United States of America", "USA",fishing_entity),
     fishing_entity = gsub("Democratic People's Republic of Korea", "Korea (North)",fishing_entity),
     fishing_entity = gsub("Republic of Korea", "Korea (South)",fishing_entity),
-    fishing_entity = gsub("Iran (Islamic Republic of)", "Iran",fishing_entity),
-    fishing_entity = gsub("Democratic Republic of the Congo", "Congo (ex-Zaire)",fishing_entity),
-    # fishing_entity = gsub("Congo", "Congo, R. of",fishing_entity),
     fishing_entity = gsub("United Republic of Tanzania", "Tanzania",fishing_entity),
     fishing_entity = gsub("Cabo Verde", "Cape Verde",fishing_entity),
     fishing_entity = gsub("Timor-Leste", "Timor Leste",fishing_entity),
     fishing_entity = gsub(" and ", " & ",fishing_entity),
-    # fishing_entity = gsub("Puerto Rico (USA)", "Puerto Rico",fishing_entity),
-    fishing_entity = gsub("Taiwan", "Taiwan (China)",fishing_entity),
+    # fishing_entity = gsub("Taiwan", "Taiwan (China)",fishing_entity),
     fishing_entity = gsub("Côte d’Ivoire", "Côte d'Ivoire",fishing_entity),
-    # fishing_entity = gsub("Russian Federation", "Russia",fishing_entity)
-    fishing_entity = gsub("Viet Nam", "Vietnam",fishing_entity),
+    fishing_entity = gsub("Vietnam", "Viet Nam",fishing_entity),
     fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),
-    fishing_entity = gsub("Marshall Islands", "Solomon Isl.",fishing_entity),
-  ) %>% 
+    # fishing_entity = gsub("Marshall Islands", "Solomon Isl.",fishing_entity),
+    fishing_entity = gsub("Congo","Congo, R. of",fishing_entity),
+    # fishing_entity = gsub("Réunion","Réunion (France)",fishing_entity),
+  ) %>%
+  # Some of them do not work with gsub
   mutate(
-    fishing_entity = ifelse(fishing_entity == "Congo","Congo, R. of",
-                            ifelse(fishing_entity == "Democratic Republic of the Congo	","Congo (ex-Zaire)",paste(fishing_entity))
-                            )
-  ) %>% 
+    fishing_entity = ifelse(fishing_entity == "Venezuela (Bolivarian Republic of)","Venezuela",
+                                 ifelse(fishing_entity == "Democratic Republic of the Congo, R. of","Congo (ex-Zaire)",
+                                        ifelse(fishing_entity == "Iran (Islamic Republic of)","Iran",
+                                               ifelse(fishing_entity == "Saint Martin (French Part)","St Martin",
+                                                      ifelse(fishing_entity == "Cocos (Keeling) Islands","Cocos (Keeling) Isl. (Australia)",
+                                                             ifelse(fishing_entity == "Falkland Islands (Malvinas)","Falkland Isl. (UK)",
+                                                                    ifelse(fishing_entity =="Micronesia (Federated States of)","Micronesia",
+                                                                           ifelse(fishing_entity == "Saint Pierre & Miquelon","Saint Pierre & Miquelon (France)",
+                                                                                  ifelse(fishing_entity == "Sint Maarten (Dutch part)","Sint Maarten",
+                                                                                         paste(fishing_entity)
+                                                                                  )
+                                                                           )
+                                                                    )
+                                                             )
+                                                      )
+                                               )
+                                        )
+                                 )
+    )
+  ) %>%
   filter(fishing_entity != "Solomon Isl." | sub_region != "Micronesia")
-
-# Manually change congo
-# UN_Regions[52,1] <- "Congo, R. of"
 
 # Load Land shapefile
 World_land_sf <- rnaturalearth::ne_countries(scale = 'medium', returnclass = c("sf")) %>% 
   st_transform(crs = "+proj=eck4") %>%
   # st_transform(crs = 4326) %>% # 4326
-  rename(fishing_entity = name) %>% 
+  rename(fishing_entity = name_long) %>% 
   mutate(
-    fishing_entity = gsub("Russia", "Russian Federation",fishing_entity),
-    fishing_entity = gsub( "United States", "USA",fishing_entity),
+    fishing_entity = gsub(" and ", " & ",fishing_entity),
+    fishing_entity = gsub("Anguilla", "Anguilla (UK)",fishing_entity),
+    fishing_entity = gsub("American Samoa (USA of America)", "American Samoa",fishing_entity),
+    fishing_entity = gsub("Antigua & Barb.", "Antigua & Barbu",fishing_entity),
+    fishing_entity = gsub("Aruba","Aruba (Netherlands)",fishing_entity),
+    fishing_entity = gsub("Bermuda","Bermuda (UK)",fishing_entity),
+    fishing_entity = gsub("Bonaire","Bonaire (Netherlands)",fishing_entity),
+    fishing_entity = gsub("British Indian Ocean Territory","Brit. Indian Ocean Terr. (UK)",fishing_entity),
+    fishing_entity = gsub("British Virgin Islands","British Virgin Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("Cayman Islands","Cayman Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("Christmas Island","Christmas Isl. (Australia)",fishing_entity),
+    fishing_entity = gsub("Curaçao","Curacao",fishing_entity),
+    fishing_entity = gsub("Democratic Republic of the Congo", "Congo (ex-Zaire)",fishing_entity),
+    fishing_entity = gsub("Dem. Rep. Korea", "Korea (North)",fishing_entity),
+    fishing_entity = gsub("Falkland Islands","Falkland Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("Faeroe Islands","Faeroe Isl. (Denmark)",fishing_entity),
+    fishing_entity = gsub("Federated States of Micronesia", "Micronesia",fishing_entity),
+    fishing_entity = gsub("Guam","Guam (USA)",fishing_entity),
+    fishing_entity = gsub("Northern Mariana Islands","North Marianas (USA)",fishing_entity),
+    fishing_entity = gsub("Marshall Islands", "Marshall Isl.",fishing_entity),
+    fishing_entity = gsub("Montserrat", "Montserrat (UK)",fishing_entity),
+    fishing_entity = gsub("New Caledonia", "New Caledonia (France)",fishing_entity),
+    fishing_entity = gsub("Niue", "Niue (New Zealand)",fishing_entity),
+    fishing_entity = gsub("Norfolk Island", "Norfolk Isl. (Australia)",fishing_entity),
+    fishing_entity = gsub("Pitcairn Islands","Pitcairn (UK)",fishing_entity),
+    fishing_entity = gsub("Puerto Rico", "Puerto Rico (USA)",fishing_entity),
+    fishing_entity = gsub("Republic of Congo", "Congo, R. of",fishing_entity),
+    fishing_entity = gsub("Republic of Korea","Korea (South)",fishing_entity),
+    fishing_entity = gsub("Saint Helena","Saint Helena (UK)",fishing_entity),
+    fishing_entity = gsub("Saint-Martin","St Martin",fishing_entity),
+    fishing_entity = gsub("Saint-Barthélemy","St Barthelemy (France)",fishing_entity),
+    fishing_entity = gsub("Saint Pierre & Miquelon","Saint Pierre & Miquelon (France)",fishing_entity),
     fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),
-    fishing_entity = gsub("Marshall Islands", "Solomon Isl.",fishing_entity),
-    fishing_entity = gsub("Dem. Rep. Congo", "Congo, R. of",fishing_entity),
-    fishing_entity = ifelse(fishing_entity=="Congo", "Congo (ex-Zaire)",paste(fishing_entity))
+    fishing_entity = gsub("Syria", "Syrian Arab Republic",fishing_entity),
+    fishing_entity = gsub("Timor-Leste", "Timor Leste",fishing_entity),
+    fishing_entity = gsub("Turks & Caicos Islands", "Turks & Caicos Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("The Gambia","Gambia",fishing_entity),
+    fishing_entity = gsub("United States", "USA",fishing_entity),
+    fishing_entity = gsub("Vietnam", "Viet Nam",fishing_entity),
+    fishing_entity = gsub("Wallis & Futuna Islands","Wallis & Futuna Isl. (France)",fishing_entity),
+    fishing_entity = ifelse(fishing_entity == "USA Virgin Islands","US Virgin Isl.",fishing_entity)
   )
+
 
 # View(unique(World_land_sf$fishing_entity))
 
@@ -1912,30 +1959,14 @@ fnam_world <- "SAUEEZ_July2015.shp"
 # Load it!
 World_sf <- st_read(dsn = path_world,
                     layer =file_path_sans_ext(fnam_world)) %>% 
-  rename(eez_name = Name) %>% 
-  st_transform(crs = "+proj=eck4")
-  # st_transform(crs = 4326) # 4326
+  rename(eez_name = Name,
+         eez_id = EEZID) %>% 
+  st_transform(crs = "+proj=eck4") %>% 
+  mutate(
+    eez_id = ifelse(eez_name == "Russia (Laptev to Chukchi Sea)",913,eez_id)
+  )
 
-
-# World_sf %>% filter(str_detect(eez_name, "Cu"))
-
-#### Determine polygon areas
-
-# EEZ Area
-EEZ_Area <- World_sf %>% 
-  as.data.frame() %>% 
-  group_by(eez_name) %>% 
-  summarise(Size_EEZ = sum(Area_km2))
-
-# Entity Area (e.g. Mexico = Pacific EEZ + Atalntic EEZ)
-Entity_Area <- World_sf %>% 
-  as.data.frame() %>% 
-  left_join(Clean_Results_Trans,
-            by = "eez_name") %>% 
-  group_by(fishing_entity,OBJECTID) %>% 
-  summarise(Size_Entity = sum(Area_km2))
-
-# Regional EEZ area
+# Regional UN-sub region area
 Regional_Area <- World_sf %>% 
   as.data.frame() %>% 
   left_join(Clean_sau_eez_fes) %>% 
@@ -1960,36 +1991,30 @@ Regional_Area <- World_sf %>%
 # Gross Domestic Product Implicit Price Deflator according to the US Saint Louis Federal Reserve Bank (average of all 2019 quarters) to transform the original 2010 real USD revenue value to 2019 real USD (https://fred.stlouisfed.org/searchresults?st=GDP+Implicit+price+deflator).*
 
 SAU_Tim_Data <- fread(paste(my_path("D"),"Distribution/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>%
+  filter(!fishing_entity_id %in% c(213,223,207,208)) %>%  # Remove high seas and 207 and 208 that we do not know 
+  mutate(fishing_entity_id = ifelse(fishing_entity_id %in% c(219,220), 183,fishing_entity_id)) %>% 
   mutate(value = 1.16 * value)
 
 
 # Read SAU non-reconstructed catch data from 2006 for comparrisonwith Sumaila
 # SAU_Vicky_Data <- fread(paste(my_path("D"),"Distribution/ReportCatch_FEYrEEZTaxon_2010_14.csv", sep ="")) 
 
-SAU_Vicky_Data <- fread(paste(my_path("D"),"Distribution/ReportCatch_FEYrEEZTaxon_2005_09.csv", sep =""))
-
-
 # Set global values for catch and revenue (within EEZ with re-constructed catch)
-SAU_Global_Data <- Clean_sau_eez_fes %>%
-  group_by(fishing_entity,fishing_entity_id) %>% 
-  summarise(n=n()) %>% 
-  left_join(SAU_Tim_Data, by = "fishing_entity_id") %>% 
-  clean_names() %>% 
+SAU_Global_Data <- SAU_Tim_Data %>%
   group_by(fishing_entity_id,taxon_key) %>% 
   summarise_at(c("catch","value"),
                mean,na.rm=T) %>% 
   gather("Variable","Value",catch:value)
 
-
 # Read Species Status Data (Sub-routine Species Status)
 Status_Data <- fread(paste(my_path("R"),"EEZ/Species_Status.csv", sep ="")) %>% 
   clean_names() %>% 
-  rename(eez_name=territory) %>% 
-  mutate(eez_name = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",eez_name)
-         )
+  rename(eez_name=territory) #%>% 
+  # mutate(eez_name = ifelse(eez_name == "Spain (Mediterranean and Gulf of Cadiz)","Spain",eez_name)
+         # )
 
 # List of species
-Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
+# Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
 
 # Read Results
 # Clean_Results_Trans <- GetTransResults(Spp) %>% 
@@ -2006,42 +2031,12 @@ Spp <- list.files(paste(Results_Path,"Trans_Results/",sep=""))[-829]
 Clean_Results_Trans <- fread(paste(my_path("R"),"/EEZ/Clean_Results_Trans.csv", sep ="")) %>% 
   mutate(eez_name = ifelse(eez_name == "Cote dIvoire","Côte d'Ivoire",
                            ifelse(eez_name == "Curacao (Netherlands)","Curaçao (Netherlands)",eez_name)
-                           ),
-         fishing_entity = ifelse(fishing_entity == "Cote dIvoire","Côte d'Ivoire",
-                                 ifelse(fishing_entity == "Curacao (Netherlands)","Curaçao (Netherlands)",fishing_entity))
-         )
-
-
-# Entity Area (e.g. Mexico = Pacific EEZ + Atalntic EEZ)
-Entity_Area <- World_sf %>% 
-  as.data.frame() %>% 
-  left_join(Clean_Results_Trans,
-            by = "eez_name") %>% 
-  group_by(fishing_entity,OBJECTID) %>% 
-  summarise(Size_Entity = sum(Area_km2))
-
-
-### Tnas and billfish according to Pons 2016
-
-tunas <- c("Katsuwonus pelamis",
-"Thunnus alalunga",
-"Thunnus albacares",
-"Thunnus maccoyii",
-"Thunnus obesus",
-"Thunnus orientalis", 
-"Thunnus thynnus",
-"Xiphias gladius",
-"Istiophorus albicans",
-"Istiophorus platypterus", 
-"Istiompax indica",
-"Makaira nigricans",
-"Kajikia albidus",
-"Kajikia audax",
-"Tetrapturus angustirostris",
-"Tetrapturus belone",
-"Tetrapturus georgii",
-"Tetrapturus pfluegeri")
-
+  ),
+  fishing_entity = ifelse(fishing_entity == "Cote dIvoire","Côte d'Ivoire",
+                          ifelse(fishing_entity == "Curacao (Netherlands)","Curaçao (Netherlands)",
+                                 ifelse(eez_name == "Spain (mainland, Med and Gulf of Cadiz)","Spain",fishing_entity)))
+  )
+  
 
 ```
 
@@ -2079,7 +2074,8 @@ Tresholded_T_Data <- Clean_Results_Trans %>%
 # -------------------------- #
 
 # number of eezs
-length(unique(sau_eez_fes$eez_name))
+length(unique(World_sf$eez_name))
+
 # Number of coastal territories
 length(unique(sau_eez_fes$fishing_entity))
 
@@ -2093,7 +2089,7 @@ n_trans <- Tresholded_T_Data %>%
   length()
 
 # Percentage of transboundary species from sampled
-n_trans/938*100
+n_trans/nrow(Species_Sampled)*100
 
 # -------------------------- #
 # Percentage of capture analyzed
@@ -2106,7 +2102,6 @@ Total_SAU_Sampled <- SAU_Global_Data %>%
   summarize(Total_Sampled = sum(Value,na.rm=T),
             Sampled_nspp = length(unique(taxon_key))
             )
-
 
 # Get the total values for the world excluding not identified species
 Total_SAU_id <- SAU_Global_Data %>% 
@@ -2125,10 +2120,10 @@ Total_SAU_Global <- SAU_Global_Data %>%
             )
 
 # Percentage catch of species analyzed from the identified species
-Total_Catch_Spp <- Total_SAU_Sampled$Total_Sampled[1]/Total_SAU_id$Total_id[1] *100 #96.57%
+Total_Catch_Spp <- Total_SAU_Sampled$Total_Sampled[1]/Total_SAU_id$Total_id[1] *100 #96.52%
 
 # Percentage species analyzed from the identified species
-Total_spp_analyzed <-Total_SAU_Sampled$Sampled_nspp[1]/Total_SAU_id$id_nspp[1]*100 #63.2%
+Total_spp_analyzed <-Total_SAU_Sampled$Sampled_nspp[1]/Total_SAU_id$id_nspp[1]*100 #63.22%
 
 
 # When we do not remove the groups that are not species level the number sampled drops to ~60%
@@ -2160,61 +2155,15 @@ SAU_Sampled_Data <- Clean_sau_eez_fes %>%
                mean,na.rm=T) %>% 
   gather("Variable","Value",catch:value)
 
+# Numbers for paper
 Summary_Trans <- Clean_sau_eez_fes %>%
   group_by(fishing_entity,fishing_entity_id) %>% 
   summarise(n=n()) %>% 
   left_join(SAU_Sampled_Data) %>% 
+  filter(taxon_key %in% Species_Sampled$TaxonKey) %>%
   semi_join(Tresholded_T_Data,
-            by = c("taxon_key","fishing_entity")) %>% # only counting the catch from transboundary speices (e.g. anchoveta from chile and peru but not from equador)
-  group_by(Variable) %>%
-  summarise(Total_Trans = sum(Value, na.rm=T)) %>% 
-  left_join(Total_SAU_Sampled) %>% 
-  left_join(Total_SAU_Global) %>% 
-  mutate(Per_sampled = Total_Trans/Total_Sampled*100,
-         Per_SAU = Total_Trans/Total_Global*100)
-
-
-
-
-### New estimates!!! 
-
-# Filter SAU data for only those sampled species
-
-SAU_Sampled_Data <- Clean_sau_eez_fes %>%
-  group_by(fishing_entity,fishing_entity_id,eez_name) %>% 
-  summarise(n=n()) %>% 
-  left_join(SAU_Tim_Data, by = "fishing_entity_id") %>% 
-  left_join(Exploited_Species) %>% 
-  filter(!is.na(taxon_name)) %>% 
-  clean_names() %>% 
-  group_by(fishing_entity_id,taxon_key) %>% 
-  summarise_at(c("catch","value"),
-               mean,na.rm=T) %>% 
-  gather("Variable","Value",catch:value)
-
-x <- Tresholded_T_Data %>% 
-  select(taxon_key,eez_name) %>% 
-  group_by(taxon_key,eez_name) %>% 
-  summarise(n=n()) %>% 
-  ungroup() %>% 
-  select(-n) %>% 
-  left_join(Clean_sau_eez_fes,
-            by = "eez_name") %>% 
-  left_join(SAU_Sampled_Data,
-            by = c("taxon_key","fishing_entity_id")) %>% 
-  # filter(eezid != 0) %>%
-  group_by(Variable) %>%
-  summarise(Total_Trans = sum(Value, na.rm=T)) %>% 
-  mutate(Per_sampled = Total_Trans/Total_SAU_Vicky*100)
-
-
-
-Summary_Trans <- Clean_sau_eez_fes %>%
-  group_by(fishing_entity,fishing_entity_id) %>% 
-  summarise(n=n()) %>% 
-  left_join(SAU_Sampled_Data) %>% 
-  semi_join(Tresholded_T_Data,
-            by = c("taxon_key","fishing_entity")) %>% # only counting the catch from transboundary speices (e.g. anchoveta from chile and peru but not from equador)
+            by = c("taxon_key","fishing_entity")
+  ) %>% # only counting the catch from transboundary speices (e.g. anchoveta from chile and peru but not from equador)
   group_by(Variable) %>%
   summarise(Total_Trans = sum(Value, na.rm=T)) %>% 
   left_join(Total_SAU_Sampled) %>% 
@@ -2247,12 +2196,14 @@ Summary_Trans_vicky <- Tresholded_T_Data %>%
   select(-n) %>% 
   left_join(Clean_sau_eez_fes,
             by = "eez_name") %>% 
+  group_by(taxon_key,fishing_entity_id) %>% 
+  summarise(n()) %>% 
   left_join(SAU_Global_Vicky,
             by = c("taxon_key","fishing_entity_id")) %>% 
-  # filter(eezid != 0) %>%
+  # filter(eezid != 0) %>% # I think they used high seas data as well?
   group_by() %>%
   summarise(Total_Trans = sum(sumcatch, na.rm=T)) %>% 
-  mutate(Per_sampled = Total_Trans/Total_SAU_Vicky*100);Summary_Trans_vicky
+  mutate(Per_sampled = Total_Trans/Total_SAU_Vicky*100); Summary_Trans_vicky
 
 ```
 
@@ -2262,7 +2213,6 @@ Summary_Trans_vicky <- Tresholded_T_Data %>%
 Species_Left_Out <- Species_Sampled %>% 
   filter(!TaxonKey %in% Clean_Results_Trans$taxon_key) %>% 
   select(taxon_key = TaxonKey)
-
 
 ###_________________###
 # Discrete species
@@ -2275,11 +2225,10 @@ Discrete <- Clean_Results_Trans %>%
     area_index > Max_AI |
     model_index < MI
   ) %>% 
-  # bind_rows(Species_Left_Out) %>% 
   group_by(taxon_key,fishing_entity,eez_name) %>% 
   summarise(n()) %>% 
   anti_join(Tresholded_T_Data,
-            by = c("taxon_key","eez_name"))
+            by = c("taxon_key","fishing_entity"))
 
 # Both categories (trans and Discrete)
 n_discrete <- Tresholded_T_Data %>% 
@@ -2289,18 +2238,33 @@ n_discrete <- Tresholded_T_Data %>%
   summarise(n()) %>% 
   pull(unique(taxon_key)) %>% 
   length()
-  
+
+Summary_Discrete <- Clean_sau_eez_fes %>%
+  group_by(fishing_entity,fishing_entity_id) %>% 
+  summarise(n=n()) %>% 
+  left_join(SAU_Sampled_Data) %>% 
+  semi_join(Discrete,
+            by = c("taxon_key","fishing_entity")
+            ) %>% # only counting the catch from transboundary speices (e.g. anchoveta from chile and peru but not from equador)
+  group_by(Variable) %>%
+  summarise(Total_Dis = sum(Value, na.rm=T)) %>% 
+  left_join(Total_SAU_Sampled) %>% 
+  left_join(Total_SAU_Global) %>% 
+  mutate(Per_sampled = Total_Dis/Total_Sampled*100,
+         Per_SAU = Total_Dis/Total_Global*100)
+
 ###_________________###
 # Discrete Exclusive
 # Species that are only discrete and are not present in the transboundary category
 ###_________________###
   
   # Discrete species (not in Tresholded)
-Discrete_Exclusive <- Clean_Results_Trans %>% 
+Discrete_Exclusive <- Discrete %>% 
   filter(!taxon_key %in% Tresholded_T_Data$taxon_key) %>% 
-  bind_rows(Species_Left_Out) %>% 
+  bind_rows(Species_Left_Out) %>%
   group_by(taxon_key) %>% 
-  summarise(n())
+  summarise(n()) %>% 
+  left_join(Exploited_Species)
 
 ## double check 
 
@@ -2322,6 +2286,41 @@ Summary_Discrete_Exclusive <- Discrete_Exclusive %>%
   mutate(Per_sampled = Total_Discrete/Total_Sampled*100,
          Per_SAU = Total_Discrete/Total_Global*100)
   
+```
+
+```{r test, eval = F, echo = F}
+
+Tra <- Summary_Trans %>% 
+  mutate(Type = "Trans")
+
+Dis <- Summary_Discrete %>% 
+  mutate(Type = "Dis")
+
+Solo <- Summary_Discrete_Exclusive %>% 
+  mutate(Type = "Solo")
+
+
+All <- bind_rows(Tra,Dis,Solo) %>% 
+  select(1:7) %>% 
+  group_by(taxon_key,fishing_entity) %>% 
+  summarise(n())
+
+
+missing <- anti_join(Total_SAU_Sampled,All,
+          by = c("fishing_entity_id","taxon_key"))
+
+missing %>% 
+  group_by(Variable) %>% 
+  summarise(sum(Value))
+
+# Now
+58242635
+# Goal
+58986239
+
+58986239-58242635
+
+
 ```
 
 ## Results per Territory
@@ -3471,12 +3470,14 @@ Top_5_Ecosystem <- Raw_Species_Data %>%
 Country_Spp_Data <- Tresholded_T_Data %>%
   left_join(Exploited_Species) %>%
   left_join(Top_5_Ecosystem) %>% # includes the groups
-  filter(taxon_name %in% Top_5_Ecosystem$taxon_name) %>%
-  left_join(SAU_Catch_Data,
-            by = c("eez_name","taxon_key")
+  left_join(Clean_sau_eez_fes) %>% 
+  left_join(SAU_Sampled_Data,
+            by = c("fishing_entity_id","taxon_key")
   ) %>%
+  filter(taxon_name %in% Top_5_Ecosystem$taxon_name,
+         Variable == "catch") %>%
   group_by(fishing_entity,group) %>%
-  summarise(top_catch = sum(total_catch)) %>%
+  summarise(top_catch = sum(Value)) %>%
   group_by(group) %>%
   top_n(5) %>% 
   mutate(
@@ -3706,7 +3707,8 @@ Ecosystem_plots <- Country_Spp_Data %>%
   facet_wrap(~group,
              nrow=2,
              scales = "free") +
-  ggtheme_plot() +
+  # ggtheme_plot() +
+  my_ggtheme_p() +
   scale_x_reordered() +
   theme(legend.position = "",
         axis.text.x = element_text(size = 11,
@@ -3734,7 +3736,7 @@ spp_plot <- ggdraw() +
 
 
 save_plot(
-  paste(Figures_Path,"spp_circular_catch_country.png",sep=""),
+  paste("spp_circular_catch_country.png",sep=""),
   # "spp_plot.png",
   spp_plot,
   base_height = 14,
