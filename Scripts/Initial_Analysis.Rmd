@@ -3217,12 +3217,6 @@ summary(mano)
 # Df  Pillai approx F num Df den Df    Pr(>F)    
 # observation   2 0.21621   27.091      4    894 < 2.2e-16 ***
 # Residuals   447
-
-summary.aov(mano)
-#  Response Discrete_value :
-#              Df Sum Sq Mean Sq F value    Pr(>F)    
-# observation   2   7088  3544.1  26.305 1.584e-11 ***
-# Residuals   447  60226   134.7                      
 # ---
 # Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 # 
@@ -3268,11 +3262,21 @@ summary(Stat_Cat_aov)
 # observation   2  22778   11389   55.01 <2e-16 ***
 # Residuals   447  92555     207         
 
+     # Df Sum Sq Mean Sq F value Pr(>F)    
+# observation   2  24776   12388   53.93 <2e-16 ***
+# Residuals   459 105436     230                   
+
+
 TukeyHSD(Stat_Cat_aov)
 #                            diff       lwr       upr     p adj
 # Category B-Category A  5.946667  2.039431  9.853902 0.0011125
 # Category C-Category A 17.160000 13.252765 21.067235 0.0000000
 # Category C-Category B 11.213333  7.306098 15.120569 0.0000000
+
+#    diff       lwr      upr     p adj
+# Category B-Category A  5.948052  1.886814 10.00929 0.0018096
+# Category C-Category A 17.629870 13.568633 21.69111 0.0000000
+# Category C-Category B 11.681818  7.620581 15.74306 0.0000000
 
 #-----------------# 
 # Double check the Non parametic test
@@ -3311,6 +3315,10 @@ summary(Stat_discrete_cat_aov)
 #             Df Sum Sq Mean Sq F value   Pr(>F)    
 # observation   2   6442    3221   21.86 1.03e-09 ***
 # Residuals   380  55992     147    
+
+# f Sum Sq Mean Sq F value   Pr(>F)    
+# observation   2   5322    2661   25.58 3.76e-11 ***
+# Residuals   382  39740     104     
 
 TukeyHSD(Stat_discrete_cat_aov)
 # 
