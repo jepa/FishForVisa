@@ -1480,6 +1480,48 @@ CreateFigureOne <- function(Variable_Selected){
   ### Now create the Two circluar bar plots
   ####___________________________###
   
+  ### Labels
+  
+  # Label info Rev
+label_data_rev <- Subregion_Trans_Value %>% 
+  filter(Variable == "value") %>% 
+  arrange(Value_sum) %>% # soo it looks like a nice snail :)
+  mutate(
+    id = seq(1,number_of_bar),
+    angle = 90 -360 * (id-0.5)/number_of_bar,
+    hjust = ifelse(angle < -90,1,0),
+    angleb = ifelse(angle < -90, (angle +180), angle)
+  ) %>% 
+  mutate(
+    sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
+                        ifelse(sub_region =="Northern America","Northern\nAmerica",
+                               ifelse(sub_region =="Sub-Saharan Africa","Sub-Saharan\nAfrica",
+                               paste(sub_region))
+                        )
+    )#,
+    # sub_region_n = paste(sub_region," (n=",Trans_Entity_n_sum,")",sep = "")
+  )
+
+# Label info Catch
+label_data_catch <- Subregion_Trans_Value %>% 
+  filter(Variable == "catch") %>% 
+  arrange(Value_sum) %>% # soo it looks like a nice snail :)
+  mutate(
+    id = seq(1,number_of_bar),
+    angle = 90 -360 * (id-0.5)/number_of_bar,
+    hjust = ifelse(angle < -90,1,0),
+    angleb = ifelse(angle < -90, (angle +180), angle)
+  ) %>% 
+  mutate(
+    sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
+                        ifelse(sub_region =="Northern America","Northern\nAmerica",
+                               ifelse(sub_region =="Sub-Saharan Africa","Sub-Saharan\nAfrica",
+                                      paste(sub_region))
+                        )
+    )
+  )
+  
+  
   # Revenue Plot
   
   # Set plot limits
@@ -1655,12 +1697,31 @@ CreateFigureOne <- function(Variable_Selected){
     )
     
   }else{
-    ggsave(
-      plot = Map,
-      width = 17,
-      height = 12,
-      units = "in",
-      filename = Plot_Name
+    plot_all <- ggdraw() +
+      # map
+      draw_plot(Map, x = 0, y = 0, width = 1, height = 1) #+
+      # Revenue circular
+      # draw_plot(Rev_Plot, x = 0.1, y = 0.08, width = 0.5, height = 0.4) +
+      # # Catch circular
+      # draw_plot(Catch_Plot, x = 0.45, y = 0.08, width = 0.5, height = 0.4) +
+      # # Labeks
+      # draw_plot_label(label = c("A", "B"), 
+      #                 size = 20,
+      #                 x = c(0, 0), 
+      #                 y = c(1, 0.45)
+      # ) +
+      # draw_plot_label(label = c("Revenue (USD) | Catch (Tons)","(Million)"), 
+      #                 size = 8,
+      #                 x = c(0.330,0.485), 
+      #                 y = c(0.31,0.29)
+      # )
+    
+    save_plot(
+      # paste(Figures_Path,"100_25_Bins_Value_Region.png",sep=""),
+      Plot_Name,
+      plot_all,
+      base_height = 5,
+      base_width = 8
     )
   }
   
@@ -2215,22 +2276,21 @@ Entity_Area <- EEZ_Area %>%
 
 # Data per Territory (EEZ)
 Transboundary_Spp <- Tresholded_T_Data %>% 
-  group_by(eez_id,eez_name) %>% 
+  group_by(eez_name) %>% 
   summarise(
     n_trans_spp = length(unique(taxon_key)),
     n_neighbours = length(unique(eez_neighbour)),
     trans_Rrate = n_trans_spp/n_neighbours
   ) %>% 
-  left_join(EEZ_Area,
-            by = c("eez_id","eez_name")
-            ) %>%
+  left_join(EEZ_Area, 
+            by = "eez_name") %>% 
   mutate(
     Bins = cut(n_trans_spp,breaks = 5),
     Bins_Plot = cut(n_trans_spp,breaks = 5,
                     labels = c('super low', 'low','median', 'high','super high')),
     # Include the weighted method for supplementals
     Weight_Spp = ifelse(n_trans_spp/Size_EEZ < 1,1, n_trans_spp/Size_EEZ),
-    Weight_Bins = cut(Weight_Spp,breaks = 5),
+    # Weight_Bins = cut(Weight_Spp,breaks = 5),
     Weight_Bins_Plot = cut(Weight_Spp,breaks = 5,
                            labels = c('super low', 'low','median', 'high','super high')
     )
@@ -2354,50 +2414,11 @@ World_sf_si <- World_sf %>%
   # st_transform(crs = 4326)
 
 # Douuble check we are not missing EEZs
-# Transboundary_Spp %>% anti_join(World_sf, by = "eez_id")
+Transboundary_Spp %>% anti_join(World_sf, by = "eez_id")
 
 ### Prepare data for plot
 
 number_of_bar <- 17 # Number of regions
-
-# Label info Rev
-label_data_rev <- Subregion_Trans_Value %>% 
-  filter(Variable == "value") %>% 
-  arrange(Value_sum) %>% # soo it looks like a nice snail :)
-  mutate(
-    id = seq(1,number_of_bar),
-    angle = 90 -360 * (id-0.5)/number_of_bar,
-    hjust = ifelse(angle < -90,1,0),
-    angleb = ifelse(angle < -90, (angle +180), angle)
-  ) %>% 
-  mutate(
-    sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
-                        ifelse(sub_region =="Northern America","Northern\nAmerica",
-                               ifelse(sub_region =="Sub-Saharan Africa","Sub-Saharan\nAfrica",
-                               paste(sub_region))
-                        )
-    )#,
-    # sub_region_n = paste(sub_region," (n=",Trans_Entity_n_sum,")",sep = "")
-  )
-
-# Label info Catch
-label_data_catch <- Subregion_Trans_Value %>% 
-  filter(Variable == "catch") %>% 
-  arrange(Value_sum) %>% # soo it looks like a nice snail :)
-  mutate(
-    id = seq(1,number_of_bar),
-    angle = 90 -360 * (id-0.5)/number_of_bar,
-    hjust = ifelse(angle < -90,1,0),
-    angleb = ifelse(angle < -90, (angle +180), angle)
-  ) %>% 
-  mutate(
-    sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
-                        ifelse(sub_region =="Northern America","Northern\nAmerica",
-                               ifelse(sub_region =="Sub-Saharan Africa","Sub-Saharan\nAfrica",
-                                      paste(sub_region))
-                        )
-    )
-  )
 
 # Create labels for legend
 Bins_Trans <- Transboundary_Spp %>% 
@@ -2417,8 +2438,8 @@ gc()
 # Set color pal
 pal <- wes_palette("Zissou1",100,type = "continuous")
 
-# Variable to plot (value,  catch, weighted_catch, weighted_value)
-Variable_plot <- "value"
+# Variable to plot (value, catch, weighted_catch, weighted_value)
+Variable_plot <- "catch"
 CreateFigureOne(Variable_plot)
 
 ```
@@ -2463,6 +2484,18 @@ We used a one-way ANOVA to determine significant differences within regions for 
 
 ### Using ANOVA to estimate significan differences within regions for revenue and catch of transboundary species
 
+
+#-----------------#
+# Sub-regional differences
+#-----------------#
+
+Subregion_Data_stats <- Value_Trans_Country %>%
+  left_join(UN_Regions,
+            by = "fishing_entity") %>%
+  mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>%
+  select(fishing_entity,sub_region,Variable,Value) %>%
+  filter()
+
 ### Reveneu ANOVA
 
 Subregion_Rev_stats <- Subregion_Data_stats %>% 
@@ -2479,7 +2512,8 @@ summary(Rev_aov)
 #  Post-hoc analysis
 TukeyHSD(Rev_aov) %>% 
   tidy() %>% 
-  filter(adj.p.value < 0.05)
+  filter(adj.p.value < 0.05) %>% 
+  View()
 
 ### Catch ANOVA
 
@@ -2526,7 +2560,7 @@ TukeyHSD(Weight_aov) %>%
 
 ### Data for Weighted plot
 ```{r Weight_Revenue, eval =F, echo =F}
-r
+
 Continent_Trans_Value <- Subregion_Trans_raw_Value %>% 
   left_join(Regional_Area,
             by = "sub_region") %>% 
@@ -2534,8 +2568,6 @@ Continent_Trans_Value <- Subregion_Trans_raw_Value %>%
     Value_sum= Value_sum*1000000,
     weighted_value = Value_sum/Size_Region
     )
-
-
 
 Weighted_values <-c("value_weight","catch_weight")
 
@@ -5664,43 +5696,6 @@ data.frame(
                          )
   )
   )
-
-```
-
-
-```{r Sub-regional_differences, eval = F}
-
-#-----------------#
-# Sub-regional differences
-#-----------------#
-
-Subregion_Data_stats <- Value_Trans_Country %>%
-  left_join(UN_Regions,
-            by = "fishing_entity") %>%
-  mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>%
-  select(fishing_entity,sub_region,Variable,Value) %>%
-  filter()
-
-# Revenue ANOVA
-Subregion_Rev_stats <- Subregion_Data_stats %>%
-  filter(Variable == "value")
-
-Rev_aov <- aov(Value~sub_region, data = Subregion_Rev_stats)
-Rev_aov
-summary(Rev_aov)
-
-# Df    Sum Sq Mean Sq F value  Pr(>F)    
-# sub_region   16  75628526 4726783    4.91 4.2e-08 ***
-# Residuals   157 151140183  962676       
-
-#### There are significant differences. But between what?
-
-#  Post-hoc analysis
-TukeyHSD(Rev_aov)
-
-# Northern America sig than everyone except for Eastern Asia
-# Eastern Asia sig with everyone except with Eastern Europe and North Am.
-
 
 ```
 
