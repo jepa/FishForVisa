@@ -28,7 +28,7 @@ my_lib(packages)
 
 # Supplementary Figures
 
-```{r Call_Sup_1, eval = T, fig.width=5, fig.height=3, echo=FALSE, fig.pos= "H", fig.cap="Number of transboundary species per EEZ and their contributions to countries’ EEZ catch. The number of species is displayed in the EEZ while catch (in thousand tons) is displayed in the land polygon."}
+```{r Call_Sup_1, eval = T, fig.width = 9, fig.height = 7, echo=FALSE, fig.pos= "H", fig.cap="Number of transboundary species per EEZ and their contributions to countries’ EEZ catch. The number of species is displayed in the EEZ while catch (in thousand tons) is displayed in the land polygon."}
 
 img <- readPNG("../Figures/FigS1.png")
 grid.raster(img)
@@ -40,7 +40,7 @@ grid.raster(img)
 
 The number of grid cells in which a species is present (*Area Index*) is expected to directly influence whether or not a species is considered transboundary. Therefore, we tested the sensitivity of our results to the *Area Index* by estimating the number of transboundary species along a gradient of values (Supplementary Fig. S2). As expected, using a more relaxed value (e.g. the species is present within 10% or more of the EEZ) will result in a greater number of transboundary species (median of 40 EEZs shared per species), while a more restrictive value (e.g., 50%) results in a median estimate of 4. The current analysis utilized a 25% *Area Index* threshold (Supplementary Fig. S2 - darker histogram).
 
-```{r Call_Sup_4, eval = T, fig.width=6, fig.height=4, echo=FALSE, fig.pos= "H", fig.cap=" Histogram of number of transboundary species using different Area Index threshold values. The darker histogram represents the threshold (25%) used in the present analysis"}
+```{r Call_Sup_4, eval = T, fig.width=6, fig.height=9, echo=FALSE, fig.pos= "H", fig.cap=" Histogram of number of transboundary species using different Area Index threshold values. The darker histogram represents the threshold (25%) used in the present analysis"}
 
 img <- readPNG("../Figures/FigS2.png")
 grid.raster(img)
@@ -63,15 +63,21 @@ read.csv("~/GitHub/FishForVisa/Tables/Table_S1.csv") %>%
          "Area of EEZs (Km^2)" = size_entity_sum) %>% 
   kable("latex",
         booktabs = T,
-        caption= "Size of all the EEZs in each sub region determined by the United Nations")
+        caption= "Size of all the EEZs in each sub region determined by the United Nations") %>% 
+  kable_styling(full_width = T)
 
 ```
 
-```{r Call_SupT_2, eval = T, echo = F, fig.pos= "H"}
+```{r Call_SupT_2, eval = T, echo = F, fig.pos= "H", message = F, warning = F}
 
 read.csv("~/GitHub/FishForVisa/Tables/Table_S2.csv") %>% 
+  clean_names() %>% 
+  rename(
+    Category = category,
+    "Mean (s.d.) Transboundary" = mean_shared,
+    "Mean (s.d.) Discrete" = mean_discrete) %>% 
   kable("latex",
         booktabs = T,
-        caption= "Average number of transboundary and discrete species per EEZ for each catch trend")
+        caption= "Average (standard deviation) number of transboundary and discrete species per EEZ for each catch trend category")
 
 ```
