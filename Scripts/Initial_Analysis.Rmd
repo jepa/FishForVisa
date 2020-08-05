@@ -2348,7 +2348,7 @@ Transboundary_Spp <- Tresholded_T_Data %>%
 # Get Catch and Revenue data for mapping 
 
 # Set manual breaks for bins
-Map_Breaks <- c(-1,10,100,1,000,5000,12000) 
+Map_Breaks <- c(-1,10,100,1000,5000,12000) 
 
 # Estimate value per fishing entity
 Total_Value_Entity <- SAU_Global_Data %>% 
@@ -2599,6 +2599,18 @@ TukeyHSD(Weight_aov) %>%
 
 ### Data for Weighted plot
 ```{r Weight_Revenue, eval =F, echo =F}
+
+#--------------------------- #
+### Create Suplemental Table S1
+#--------------------------- #
+
+Subregion_Trans_raw_Value %>% 
+  select(sub_region,Size_Entity_sum) %>% 
+  distinct(sub_region,.keep_all = TRUE) %>% 
+  write_csv(.,
+            "Table_S1.csv")
+
+#--------------------------- #
 
 Weighted_values <-c("value_weight","catch_weight")
 
