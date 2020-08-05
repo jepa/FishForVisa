@@ -1383,12 +1383,12 @@ CreateFigureOne <- function(Variable_Selected){
     # st_transform(crs = 4326) %>% # 4326
     st_transform(crs = "+proj=eck4") %>%
     st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>% 
-    left_join(Value_Trans_Country, by ="fishing_entity_id") %>% 
+    left_join(Value_Trans_Country, by ="fishing_entity") %>% 
     filter(Variable %in% Variable_Selected)
   
   # Get the NA's to be grey
   Grey_land <- World_land_sf %>%  
-    filter(!fishing_entity_id %in% World_sf_si_land$fishing_entity_id)
+    filter(!fishing_entity %in% World_sf_si_land$fishing_entity)
   
   Bins <- Value_Trans_Country %>% 
     filter(Variable %in% Variable_Selected) %>% 
@@ -1415,7 +1415,8 @@ CreateFigureOne <- function(Variable_Selected){
                                     "#F98400",#"#F98400", #Orange
                                     "#FF0000"#,"#FF0000" #Red
     ),
-    na.translate = F
+    na.translate = F,
+    # labels = comma
     ) +
     ggtheme_map() +
     # Transboundary labels
@@ -1672,7 +1673,7 @@ label_data_catch <- Subregion_Trans_Value %>%
       # Catch circular
       draw_plot(Catch_Plot, x = 0.45, y = 0.08, width = 0.5, height = 0.4) +
       # Labeks
-      draw_plot_label(label = c("A", "B"), 
+      draw_plot_label(label = c("a", "b"), 
                       size = 20,
                       x = c(0, 0), 
                       y = c(1, 0.45)
@@ -2347,7 +2348,7 @@ Transboundary_Spp <- Tresholded_T_Data %>%
 # Get Catch and Revenue data for mapping 
 
 # Set manual breaks for bins
-Map_Breaks <- c(-1,10,100,1000,5000,12000) 
+Map_Breaks <- c(-1,10,100,1,000,5000,12000) 
 
 # Estimate value per fishing entity
 Total_Value_Entity <- SAU_Global_Data %>% 
@@ -2810,7 +2811,7 @@ Catch_Plot <- Catch_Plot +
   # Legend
   draw_plot(legend_plot, x = 0.2, y = 0.05, width = 0.59, height = 0.1) +
   # Labeks
-  draw_plot_label(label = c("A", "B"),
+  draw_plot_label(label = c("a", "b"),
                   size = 15,
                   x = c(0.1, 0.55),
                   y = c(1, 1)
@@ -3434,8 +3435,8 @@ Catch_Data <- SAU_Sampled_Data %>%
   filter(Variable == "catch")
 
 # Just country names
-country_names <- Clean_sau_eez_fes %>% 
-  select(fishing_entity,fishing_entity_id) %>% 
+country_names <- matching_names %>% 
+  select(fishing_entity=sau_fishing_entity,fishing_entity_id) %>% 
   distinct()
 
 # If you want to show catch  
@@ -3697,7 +3698,7 @@ spp_plot <- ggdraw() +
   # Environmental maps
   draw_plot(Ecosystem_plots, x = 0.02, y = -0.029, width = 0.95, height = 0.26) +
   # Labeks
-  draw_plot_label(label = c("A", "B"), 
+  draw_plot_label(label = c("a", "b"), 
                   size = 30,
                   x = c(0, 0), 
                   y = c(1, 0.27)
@@ -4849,53 +4850,53 @@ summary(Ccvul_aov)
 ```{r}
 
 # Load Land shapefile
-# World_land_sf <- rnaturalearth::ne_countries(scale = 'medium', returnclass = c("sf")) %>%
-#   st_transform(crs = "+proj=eck4") %>%
-#   # st_transform(crs = 4326) %>% # 4326
-#   rename(fishing_entity = name_long) %>%
-#   mutate(
-#     fishing_entity = gsub(" and ", " & ",fishing_entity),
-#     fishing_entity = gsub("Anguilla", "Anguilla (UK)",fishing_entity),
-#     fishing_entity = gsub("American Samoa (USA of America)", "American Samoa",fishing_entity),
-#     fishing_entity = gsub("Antigua & Barb.", "Antigua & Barbu",fishing_entity),
-#     fishing_entity = gsub("Aruba","Aruba (Netherlands)",fishing_entity),
-#     fishing_entity = gsub("Bermuda","Bermuda (UK)",fishing_entity),
-#     fishing_entity = gsub("Bonaire","Bonaire (Netherlands)",fishing_entity),
-#     fishing_entity = gsub("British Indian Ocean Territory","Brit. Indian Ocean Terr. (UK)",fishing_entity),
-#     fishing_entity = gsub("British Virgin Islands","British Virgin Isl. (UK)",fishing_entity),
-#     fishing_entity = gsub("Cayman Islands","Cayman Isl. (UK)",fishing_entity),
-#     fishing_entity = gsub("Christmas Island","Christmas Isl. (Australia)",fishing_entity),
-#     fishing_entity = gsub("Curaçao","Curacao",fishing_entity),
-#     fishing_entity = gsub("Democratic Republic of the Congo", "Congo (ex-Zaire)",fishing_entity),
-#     fishing_entity = gsub("Dem. Rep. Korea", "Korea (North)",fishing_entity),
-#     fishing_entity = gsub("Falkland Islands","Falkland Isl. (UK)",fishing_entity),
-#     fishing_entity = gsub("Faeroe Islands","Faeroe Isl. (Denmark)",fishing_entity),
-#     fishing_entity = gsub("Federated States of Micronesia", "Micronesia",fishing_entity),
-#     fishing_entity = gsub("Guam","Guam (USA)",fishing_entity),
-#     fishing_entity = gsub("Northern Mariana Islands","North Marianas (USA)",fishing_entity),
-#     fishing_entity = gsub("Marshall Islands", "Marshall Isl.",fishing_entity),
-#     fishing_entity = gsub("Montserrat", "Montserrat (UK)",fishing_entity),
-#     fishing_entity = gsub("New Caledonia", "New Caledonia (France)",fishing_entity),
-#     fishing_entity = gsub("Niue", "Niue (New Zealand)",fishing_entity),
-#     fishing_entity = gsub("Norfolk Island", "Norfolk Isl. (Australia)",fishing_entity),
-#     fishing_entity = gsub("Pitcairn Islands","Pitcairn (UK)",fishing_entity),
-#     fishing_entity = gsub("Puerto Rico", "Puerto Rico (USA)",fishing_entity),
-#     fishing_entity = gsub("Republic of Congo", "Congo, R. of",fishing_entity),
-#     fishing_entity = gsub("Republic of Korea","Korea (South)",fishing_entity),
-#     fishing_entity = gsub("Saint Helena","Saint Helena (UK)",fishing_entity),
-#     fishing_entity = gsub("Saint-Martin","St Martin",fishing_entity),
-#     fishing_entity = gsub("Saint-Barthélemy","St Barthelemy (France)",fishing_entity),
-#     fishing_entity = gsub("Saint Pierre & Miquelon","Saint Pierre & Miquelon (France)",fishing_entity),
-#     fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),
-#     fishing_entity = gsub("Syria", "Syrian Arab Republic",fishing_entity),
-#     fishing_entity = gsub("Timor-Leste", "Timor Leste",fishing_entity),
-#     fishing_entity = gsub("Turks & Caicos Islands", "Turks & Caicos Isl. (UK)",fishing_entity),
-#     fishing_entity = gsub("The Gambia","Gambia",fishing_entity),
-#     fishing_entity = gsub("United States", "USA",fishing_entity),
-#     fishing_entity = gsub("Vietnam", "Viet Nam",fishing_entity),
-#     fishing_entity = gsub("Wallis & Futuna Islands","Wallis & Futuna Isl. (France)",fishing_entity),
-#     fishing_entity = ifelse(fishing_entity == "USA Virgin Islands","US Virgin Isl.",fishing_entity)
-#   )
+World_land_sf <- rnaturalearth::ne_countries(scale = 'medium', returnclass = c("sf")) %>%
+  st_transform(crs = "+proj=eck4") %>%
+  # st_transform(crs = 4326) %>% # 4326
+  rename(fishing_entity = name_long) %>%
+  mutate(
+    fishing_entity = gsub(" and ", " & ",fishing_entity),
+    fishing_entity = gsub("Anguilla", "Anguilla (UK)",fishing_entity),
+    fishing_entity = gsub("American Samoa (USA of America)", "American Samoa",fishing_entity),
+    fishing_entity = gsub("Antigua & Barb.", "Antigua & Barbu",fishing_entity),
+    fishing_entity = gsub("Aruba","Aruba (Netherlands)",fishing_entity),
+    fishing_entity = gsub("Bermuda","Bermuda (UK)",fishing_entity),
+    fishing_entity = gsub("Bonaire","Bonaire (Netherlands)",fishing_entity),
+    fishing_entity = gsub("British Indian Ocean Territory","Brit. Indian Ocean Terr. (UK)",fishing_entity),
+    fishing_entity = gsub("British Virgin Islands","British Virgin Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("Cayman Islands","Cayman Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("Christmas Island","Christmas Isl. (Australia)",fishing_entity),
+    fishing_entity = gsub("Curaçao","Curacao",fishing_entity),
+    fishing_entity = gsub("Democratic Republic of the Congo", "Congo (ex-Zaire)",fishing_entity),
+    fishing_entity = gsub("Dem. Rep. Korea", "Korea (North)",fishing_entity),
+    fishing_entity = gsub("Falkland Islands","Falkland Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("Faeroe Islands","Faeroe Isl. (Denmark)",fishing_entity),
+    fishing_entity = gsub("Federated States of Micronesia", "Micronesia",fishing_entity),
+    fishing_entity = gsub("Guam","Guam (USA)",fishing_entity),
+    fishing_entity = gsub("Northern Mariana Islands","North Marianas (USA)",fishing_entity),
+    fishing_entity = gsub("Marshall Islands", "Marshall Isl.",fishing_entity),
+    fishing_entity = gsub("Montserrat", "Montserrat (UK)",fishing_entity),
+    fishing_entity = gsub("New Caledonia", "New Caledonia (France)",fishing_entity),
+    fishing_entity = gsub("Niue", "Niue (New Zealand)",fishing_entity),
+    fishing_entity = gsub("Norfolk Island", "Norfolk Isl. (Australia)",fishing_entity),
+    fishing_entity = gsub("Pitcairn Islands","Pitcairn (UK)",fishing_entity),
+    fishing_entity = gsub("Puerto Rico", "Puerto Rico (USA)",fishing_entity),
+    fishing_entity = gsub("Republic of Congo", "Congo, R. of",fishing_entity),
+    fishing_entity = gsub("Republic of Korea","Korea (South)",fishing_entity),
+    fishing_entity = gsub("Saint Helena","Saint Helena (UK)",fishing_entity),
+    fishing_entity = gsub("Saint-Martin","St Martin",fishing_entity),
+    fishing_entity = gsub("Saint-Barthélemy","St Barthelemy (France)",fishing_entity),
+    fishing_entity = gsub("Saint Pierre & Miquelon","Saint Pierre & Miquelon (France)",fishing_entity),
+    fishing_entity = gsub("Solomon Islands", "Solomon Isl.",fishing_entity),
+    fishing_entity = gsub("Syria", "Syrian Arab Republic",fishing_entity),
+    fishing_entity = gsub("Timor-Leste", "Timor Leste",fishing_entity),
+    fishing_entity = gsub("Turks & Caicos Islands", "Turks & Caicos Isl. (UK)",fishing_entity),
+    fishing_entity = gsub("The Gambia","Gambia",fishing_entity),
+    fishing_entity = gsub("United States", "USA",fishing_entity),
+    fishing_entity = gsub("Vietnam", "Viet Nam",fishing_entity),
+    fishing_entity = gsub("Wallis & Futuna Islands","Wallis & Futuna Isl. (France)",fishing_entity),
+    fishing_entity = ifelse(fishing_entity == "USA Virgin Islands","US Virgin Isl.",fishing_entity)
+  )
 
 
 ```
