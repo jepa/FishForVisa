@@ -1383,12 +1383,12 @@ CreateFigureOne <- function(Variable_Selected){
     # st_transform(crs = 4326) %>% # 4326
     st_transform(crs = "+proj=eck4") %>%
     st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>% 
-    left_join(Value_Trans_Country, by ="fishing_entity") %>% 
+    left_join(Value_Trans_Country, by ="fishing_entity_id") %>% 
     filter(Variable %in% Variable_Selected)
   
   # Get the NA's to be grey
   Grey_land <- World_land_sf %>%  
-    filter(!fishing_entity %in% World_sf_si_land$fishing_entity)
+    filter(!fishing_entity_id %in% World_sf_si_land$fishing_entity_id)
   
   Bins <- Value_Trans_Country %>% 
     filter(Variable %in% Variable_Selected) %>% 
@@ -1958,7 +1958,7 @@ Jurisdiction <- "EEZ"
 Results_Path <- paste(my_path("R"),Jurisdiction,"/",sep="")
 
 # Dataset to match all SAU names
-matching_names <- my_path("G"),"Spatial/SAU", "matching_names.csv", read = T)
+matching_names <- my_path("G","Spatial/SAU", "sau_matching_names.csv", read = T)
 
 # Species list to get species names
 Exploited_Species <- fread(paste(my_path("D"),"Distribution/Species/exploited_species_list.csv",sep="")) %>%
@@ -1975,8 +1975,9 @@ Spp_Clasification <- fread(paste(my_path("D"),"Distribution/Species/SppTaxonName
 
 # Load Transbonudary results
 Raw_Results_Trans <- my_path("R","EEZ","Raw_Results_Trans.xlsx", read = T)
+
 Clean_Results_Trans <- Raw_Results_Trans %>% 
-  CleanResults(.,clean_names) %>% 
+  CleanResults(.,matching_names) %>% 
   rename(sf_eez_name = eez_name) %>% 
   left_join(matching_names,
             by = "sf_eez_name") %>% 
@@ -1984,7 +1985,7 @@ Clean_Results_Trans <- Raw_Results_Trans %>%
          fishing_entity = sau_fishing_entity)
 
 # New data produced by Vicky to compare with Teh and Sumaila
-Clean_sau_eez_fes <- my_path("G","Spatial/SAU/","EEZ_FishingEntityID_v2_9June2020.xlsx", read =T)
+# Clean_sau_eez_fes <- my_path("G","Spatial/SAU/","EEZ_FishingEntityID_v2_9June2020.xlsx", read =T)
 
 # UN Regions dataset
 UN_Regions <- read.csv(paste(my_path("D"),"Spatial/UN_Regions.csv",sep=""), header = TRUE) %>% 
@@ -2004,7 +2005,8 @@ UN_Regions <- read.csv(paste(my_path("D"),"Spatial/UN_Regions.csv",sep=""), head
 World_land_sf <- rnaturalearth::ne_countries(scale = 'medium', returnclass = c("sf")) %>% 
   st_transform(crs = "+proj=eck4") %>%
   # st_transform(crs = 4326) %>% # 4326
-  left_join(matchig_names,
+    # rename(sau_fishing_entity = name_long) %>%
+  left_join(matching_names,
             by = "iso_a3") %>% 
   distinct(iso_a3,.keep_all = TRUE) %>% 
   rename(fishing_entity = sau_fishing_entity)
@@ -2039,28 +2041,22 @@ EEZ_Area <- World_sf %>%
 
 # Entity Area (e.g. Mexico = Pacific EEZ + Atalntic EEZ)
 Entity_Area <- EEZ_Area %>% 
-  left_join(matchig_names,
+  left_join(matching_names,
             by = "eez_id") %>% 
   group_by(fishing_entity = sau_fishing_entity,fishing_entity_id) %>% 
   summarise(Size_Entity = sum(Size_EEZ))
 
-
 # Regional UN-sub region area
-Regional_Area <- World_sf %>% 
-  as.data.frame() %>% 
-  left_join(Clean_sau_eez_fes) %>% 
+Regional_Area <- Entity_Area %>% 
   left_join(UN_Regions) %>% 
-  filter(fishing_entity_id %in% Clean_sau_eez_fes$fishing_entity_id) %>% 
-  select(-geometry) %>% 
   group_by(sub_region) %>% 
-  summarise(Size_Region = sum(Area_km2,na.rm=T)) %>% 
-  mutate(sub_region = ifelse(is.na(sub_region), "Other",paste(sub_region))) %>% 
-  arrange(sub_region)
+  summarise(size_region = sum(Size_Entity,na.rm=T))%>% 
+  arrange(size_region)
 
 # ---------------------------- #
 # Supplement table 2
 # write_csv(Regional_Area,
-          # "Table S1.csv")
+#           "Table S1.csv")
 # ---------------------------- #
 
 # ---------------------------- #
@@ -2087,7 +2083,7 @@ SAU_Global_Data <-fread(paste(my_path("D"),"Distribution/sau_catch_value_country
 Status_Data <- fread(paste(my_path("R"),"EEZ/Species_Status.csv", sep ="")) %>% 
   clean_names() %>% 
   rename(sf_eez_name=territory) %>% 
-  left_join(clean_names) %>% 
+  left_join(matching_names) %>% 
   rename(eez_name = sau_eez_name)
 ```
 
@@ -2131,9 +2127,8 @@ Tresholded_T_Data <- Clean_Results_Trans %>%
 
 # number of eezs
 length(unique(World_sf$eez_name))
-
 # Number of coastal territories
-length(unique(Clean_sau_eez_fes$fishing_entity))
+length(unique(matching_names$fishing_entity))
 
 # -------------------------- #
 # Number of Transboundary and Discrete Species
@@ -2252,10 +2247,6 @@ Discrete <- Clean_Results_Trans %>%
       area_index > Max_AI |
       model_index < MI
   ) %>% 
-  # Needed to correct for names
-  # select(-fishing_entity) %>% 
-  # left_join(Clean_sau_eez_fes,
-            # by = "eez_name") %>% 
   # Remove Countries that share with other countries
   anti_join(Tresholded_T_Data,
             by = c("taxon_key","fishing_entity")
@@ -2339,7 +2330,6 @@ We group countries according to the United Nations sub-regions and found that tr
 
 # Data per Territory (EEZ)
 Transboundary_Spp <- Tresholded_T_Data %>% 
-  left_join(Clean_sau_eez_fes) %>% 
   group_by(eez_name, eez_id) %>% 
   summarise(
     n_trans_spp = length(unique(taxon_key)),
