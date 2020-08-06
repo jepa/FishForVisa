@@ -70,14 +70,28 @@ read.csv("~/GitHub/FishForVisa/Tables/Table_S1.csv") %>%
 
 ```{r Call_SupT_2, eval = T, echo = F, fig.pos= "H", message = F, warning = F}
 
+# read.csv("~/GitHub/FishForVisa/Tables/Table_S2.csv") %>% 
+#   clean_names() %>% 
+#   rename(
+#     Category = category,
+#     "Mean (s.d.) Transboundary" = mean_shared,
+#     "Mean (s.d.) Discrete" = mean_discrete) %>% 
+#   kable("latex",
+#         booktabs = T,
+#         caption= "Average (standard deviation) number of transboundary and discrete species per EEZ for each catch trend category")
+
 read.csv("~/GitHub/FishForVisa/Tables/Table_S2.csv") %>% 
   clean_names() %>% 
-  rename(
-    Category = category,
-    "Mean (s.d.) Transboundary" = mean_shared,
-    "Mean (s.d.) Discrete" = mean_discrete) %>% 
+  mutate(
+    "Mean shared" = paste(round(mean_value_x,2)," \u00B1 (",round(sd_value_x,2),")",sep=""),
+    "Mean not-shared" = paste(round(mean_value_y,2)," \u00B1 (",round(sd_value_y,2),")",sep="")
+  ) %>%
+  select(1,8:9) %>%
+  filter(observation != "No Category") %>%
+  rename(Category = observation) %>%
+  arrange(Category) %>% 
   kable("latex",
         booktabs = T,
-        caption= "Average (standard deviation) number of transboundary and discrete species per EEZ for each catch trend category")
+        caption= "Average \u00B1 (standard deviation) number of shared and non-shared transboundary species per EEZ for each catch trend category")
 
 ```
