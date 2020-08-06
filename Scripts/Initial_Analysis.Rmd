@@ -1366,7 +1366,7 @@ CreateFigureOne <- function(Variable_Selected){
   
   
   if(Variable_Selected == "catch"){
-    Map_Label <- "Catch (Thousand Tons)"
+    Map_Label <- "Catch (Thousand Tonnes)"
     Plot_Name <- "Catch_plot.png"
   }else{
     Map_Label <- "Revenue (Million USD)"
@@ -1396,8 +1396,10 @@ CreateFigureOne <- function(Variable_Selected){
     pull(Bins) %>% 
     unique()
   
-  Labels_Trans <- c("(1-29]",paste(Bins_Trans[2:5]))
-  Labels <- c("(1-10]",paste(Bins[2:5]))
+  # Labels_Trans <- c("(1-29]",paste(Bins_Trans[2:5]))
+  Labels_Trans <- c("(1-29]","(29-57]","(57-85]","(85-113]","(113-141]")
+  # Labels <- c("(1-10]",paste(Bins[2:5]))
+  Labels <- c("(1-10]","(10-100]","(100-1000]","(1000-5000]","(5000-12000]")
   
   Map <- ggplot() +
     geom_sf(data = World_sf_si_land,
@@ -1678,9 +1680,9 @@ label_data_catch <- Subregion_Trans_Value %>%
                       x = c(0, 0), 
                       y = c(1, 0.45)
       ) +
-      draw_plot_label(label = c("Revenue (USD) | Catch (Tons)","(Million)"), 
+      draw_plot_label(label = c("Revenue (USD) | Catch (Tonnes)","(Million)"), 
                       size = 8,
-                      x = c(0.330,0.485), 
+                      x = c(0.325,0.485), 
                       y = c(0.31,0.29)
       )
     
@@ -2293,14 +2295,14 @@ Within these species, 305 were considered exclusively discrete, that is, they co
 Discrete_Exclusive <- Discrete %>% 
   filter(!taxon_key %in% Tresholded_T_Data$taxon_key) %>% 
   bind_rows(Species_Left_Out) %>%
-  group_by(taxon_key) %>% 
+  group_by(taxon_key) %>%
   summarise(n()) %>% 
   left_join(Exploited_Species)
 
 ## Double check no double counting
 
-Discrete_Exclusive %>% 
-  semi_join(Tresholded_T_Data, by = "taxon_key") # 0 ok thes
+# Discrete_Exclusive %>% 
+#   semi_join(Tresholded_T_Data, by = "taxon_key") # 0 ok thes
 
 # Number of discrete species
 n_discrete_exclusive <- length(unique(Discrete_Exclusive$taxon_key))
@@ -2971,19 +2973,41 @@ D_Summary <- Discrete_Status_Data %>%
   arrange(desc(tot))
 
 
-#### Supplemental Table 3
+#### Supplemental Table S2
 
-# T_Summary %>%
-#   left_join(D_Summary, by = "observation") %>%
-#   mutate(
-#     "Mean Shared" = paste(round(`mean(value).x`,2)," \u00B1 (",round(`sd(value).x`,2),")",sep=""),
-#     "Mean Discrete" = paste(round(`mean(value).y`,2)," \u00B1 (",round(`sd(value).y`,2),")",sep="")
-#     ) %>%
-#   select(1,8:9) %>%
-#   filter(observation != "No Category") %>%
-#   rename(Category = observation) %>%
-#   arrange(Category) %>%
-#   write_csv("Category_summary.csv")
+T_Summary %>%
+  left_join(D_Summary, by = "observation") %>%
+    write_csv("Table_S2.csv")
+
+
+# -------------------------- #
+# Soley Discrete data
+# -------------------------- #
+
+Exclusive_Discrete_Status_Data <- Discrete_Exclusive %>% 
+  left_join(Status_Data, 
+            by =c("eez_name","taxon_key")
+  ) %>%
+  mutate(status = ifelse(is.na(status),"No Status",status)) %>% 
+  group_by(fishing_entity,status) %>% 
+  summarise(value = length(unique(taxon_key))) %>% 
+  left_join(UN_Regions, by ="fishing_entity") %>%
+  mutate(Georegion = ifelse(is.na(georegion),"Other",paste(georegion))) %>% 
+  # mutate(value = ifelse(value > 100,100,value)) %>% 
+  filter(!is.na(fishing_entity),
+         !str_detect(fishing_entity, ".\\(.") # remove associated territories
+  ) %>% 
+  select(individual = fishing_entity,observation = status,group = Georegion,value) %>% 
+  arrange(group,value) %>% 
+  mutate(value = ifelse(observation %in% c("Collapsed","Over Exploited"),value*-1,value),
+         observation = ifelse(observation %in% c("Developing","Rebuilding"),"Category A",
+                              ifelse(observation == "Max Exploited","Category B",
+                                     ifelse(observation %in% c("Over Exploited","Collapsed","Category C"),"Category C", "No Category")
+                              )
+         )
+  ) %>% 
+  group_by(individual,observation,group) %>% 
+  summarise(value = sum(value))
 
 
 
@@ -3170,10 +3194,16 @@ Transboundary_Data_Stats <- Status_Plot_Data %>%
 filter(observation != "No Category") %>%
   mutate(value = abs(value))
 
-# Discrete Data
-Discrete_Data_Stats <- Discrete_Status_Data %>% 
+# Discrete Data (trans.not shared)
+Trans_Dis_Data_Stats <- Discrete_Status_Data %>% 
   filter(observation != "No Category") %>%
   mutate(value = abs(value))
+
+# Discrete Data (just desrete and not trans.not shared)
+Discrete_Data_Stats <- Exclusive_Discrete_Status_Data %>% 
+  filter(observation != "No Category") %>%
+  mutate(value = abs(value))
+
 
 #### By Category (Manova)
 
@@ -3185,7 +3215,10 @@ Manova_Differences <- Transboundary_Data_Stats %>%
   left_join(Discrete_Data_Stats, by = c("individual","observation","group")
   ) %>% 
   rename(Discrete_value= value) %>% 
-  mutate(Discrete_value = ifelse(is.na(Discrete_value),0,Discrete_value))
+  mutate(Discrete_value = ifelse(is.na(Discrete_value),0,Discrete_value)) %>% 
+  left_join(Trans_Dis_Data_Stats, by = c("individual","observation","group")) %>% 
+  rename(Trans_Discrete_value= value) %>% 
+  mutate(Trans_Discrete_value = ifelse(is.na(Trans_Discrete_value),0,Trans_Discrete_value))
 
 #-----------------# 
 ## Test assumptions
@@ -3210,7 +3243,7 @@ cor(Manova_Differences$Trans_value,Manova_Differences$Discrete_value)
 ## MANOVA test
 #-----------------# 
 
-mano <- manova(cbind(Discrete_value,Trans_value) ~ observation, data = Manova_Differences)
+mano <- manova(cbind(Discrete_value,Trans_value,Trans_Discrete_value) ~ observation, data = Manova_Differences)
 
 summary(mano)
 # Df  Pillai approx F num Df den Df    Pr(>F)    
@@ -3225,6 +3258,17 @@ summary(mano)
 # Residuals   447  92555   207.1   
 
 
+# 
+#             Df  Pillai approx F num Df den Df    Pr(>F)    
+# observation   2 0.17329   21.771      4    918 < 2.2e-16 ***
+# Residuals   459                                             
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+
+summary.aov(mano)
+
+
 #-----------------# 
 ## Run non-parametric to make sure
 # Same result
@@ -3232,6 +3276,9 @@ summary(mano)
 
 # kruskal.test(Trans_value~Discrete_value, data = Manova_Differences)
 # Kruskal-Wallis chi-squared = 100.24, df = 45, p-value = 4.358e-06
+
+# New only comparing shared trans to discrete exclusive
+# Kruskal-Wallis chi-squared = 50.723, df = 13, p-value = 2.24e-06
 
 
 #-----------------# 
@@ -3319,14 +3366,6 @@ summary(Stat_discrete_cat_aov)
 # observation   2   5322    2661   25.58 3.76e-11 ***
 # Residuals   382  39740     104     
 
-TukeyHSD(Stat_discrete_cat_aov)
-# 
-#  diff         lwr       upr     p adj
-# Category B-Category A 3.627759 -0.02854633  7.284065 0.0523425
-# Category C-Category A 9.917391  6.31117452 13.523608 0.0000000
-# Category C-Category B 6.289632  2.79874173  9.780522 0.0000835
-
-
 #-----------------# 
 # Double check the Non parametic test
 # All different... But it does not show any distance, just the categorial difference
@@ -3336,6 +3375,11 @@ Stat_discrete_cat_kt <- kruskal.test(observation~value, data = Discrete_Data_Sta
 Stat_discrete_cat_kt
 
 kruskalmc(Discrete_Data_Stats$value,Discrete_Data_Stats$observation)
+
+
+
+
+Trans_Dis_Data_Stats
 
 ```
 
@@ -3673,7 +3717,7 @@ Ecosystem_plots <- Country_Spp_Data %>%
   geom_bar(
     aes(
       x = name,
-      y = top_catch/1000,
+      y = top_catch/1000, # thusand tons
       fill = group
     ), 
     stat = "identity"
