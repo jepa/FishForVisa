@@ -28,7 +28,7 @@ my_lib(packages)
 
 # Supplementary Figures
 
-```{r Call_Sup_1, eval = T, fig.width = 9, fig.height = 7, echo=FALSE, fig.pos= "H", fig.cap="Number of transboundary species per EEZ and their contributions to countries’ EEZ catch. The number of species is displayed in the EEZ while catch (in thousand tons) is displayed in the land polygon."}
+```{r Call_Sup_1, eval = T, fig.width = 12, fig.height = 10, echo=FALSE, fig.pos= "H", fig.cap="Number of transboundary species per EEZ and their contributions to countries’ EEZ catch. The number of species is displayed in the EEZ while catch (in thousand tonnes) is displayed in the land polygon."}
 
 img <- readPNG("../Figures/FigS1.png")
 grid.raster(img)

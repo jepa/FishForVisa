@@ -2069,13 +2069,16 @@ Regional_Area <- Entity_Area %>%
 # Read Sau Value Data (Thank you Tim!) reconstructede data
 # Gross Domestic Product Implicit Price Deflator according to the US Saint Louis Federal Reserve Bank (average of all 2019 quarters) to transform the original 2010 real USD revenue value to 2019 real USD (https://fred.stlouisfed.org/searchresults?st=GDP+Implicit+price+deflator).*
 
+
+# CPI in 2019/ CPI in 2010 × 2010  value = 2019  value
+
 SAU_Global_Data <-fread(paste(my_path("D"),"Distribution/sau_catch_value_country_taxon_JEPA.csv", sep ="")) %>%
   # Remove high seas and 207 and 208 that are unknown
   filter(!fishing_entity_id %in% c(213,223)) %>%  # 207,208
   # Allocate catch of islands to UK
   mutate(fishing_entity_id = ifelse(fishing_entity_id %in% c(219,220), 183,fishing_entity_id)) %>% 
   # Convert to 2019 real USD
-  mutate(value = 1.16 * value) %>%
+  mutate(values = 1.16 * value) %>%
   # Average 10 years of data
   group_by(fishing_entity_id,taxon_key) %>% 
   summarise_at(c("catch","value"),
@@ -2176,7 +2179,9 @@ Total_SAU_Global <- SAU_Global_Data %>%
 Total_Catch_Spp <- Total_SAU_Sampled$Total_Sampled[1]/Total_SAU_id$Total_id[1] *100 #96.49%
 
 # Percentage species analyzed from the identified species
-Total_spp_analyzed <-Total_SAU_Sampled$Sampled_nspp[1]/Total_SAU_id$id_nspp[1]*100 #63.23%
+936/length(unique(SAU_Global_Data$taxon_key))
+
+Total_spp_analyzed <- Total_SAU_Sampled$Sampled_nspp[1]/Total_SAU_id$id_nspp[1]*100 #63.23%
 
 # -------------------------- #
 # Total and percentage Catch and Revenue from Transboundary species
@@ -2208,12 +2213,43 @@ Summary_Trans <- SAU_Sampled_Data %>%
 
 # Read SAU non-reconstructed catch data from 2006 for comparrisonwith Sumaila
 # Provided by Vicky Lam
-SAU_FAO_Data <- fread(paste(my_path("D"),"Distribution/LVCatch_byYrEEZFETaxa_2005_09.csv", sep ="")) %>% 
+SAU_FAO_Data <- fread(paste(my_path("D"),"Distribution/LVCatch_byYrEEZFETaxa_2010_14.csv", sep ="")) %>% 
   filter(#eezid != 0,
          year == 2006) %>%
   group_by(fishing_entity_id,taxon_key,eezid) %>% 
   summarise_at(c("sumcatch"),
                sum,na.rm=T)
+
+
+SAU_FAO_Data_a <- fread(paste(my_path("D"),"Distribution/LVCatch_byYrEEZFETaxa_2010_14.csv", sep =""))
+SAU_FAO_Datab <- fread(paste(my_path("D"),"Distribution/LVCatch_byYrEEZFETaxa_2005_09.csv", sep =""))
+
+# FAO data
+total_FAO_catch <- bind_rows(SAU_FAO_Data_a,SAU_FAO_Datab) %>% 
+  filter(eezid != 0) %>% 
+  group_by(fishing_entity_id,taxon_key,eezid) %>% 
+  summarise(mean_c = mean(sumcatch,na.rm=T)) %>% 
+  group_by() %>% 
+  summarise_at(vars(mean_c),sum)
+
+
+total_sampled_FO_catch <- bind_rows(SAU_FAO_Data_a,SAU_FAO_Datab) %>% 
+  filter(eezid != 0) %>% 
+  filter(taxon_key %in% Species_Sampled$TaxonKey) %>% 
+  group_by(fishing_entity_id,taxon_key,eezid) %>% 
+  summarise(mean_c = mean(sumcatch,na.rm=T)) %>% 
+  group_by() %>% 
+  summarise_at(vars(mean_c),sum)
+  
+
+
+
+SAU_FAO_Data %>% 
+  filter(taxon_key %in% Species_Sampled$TaxonKey) %>%
+  group_by() %>% 
+  summarise(sum(sumcatch))
+
+
 
 ## Get the total of global data
 Total_SAU_FAO <- sum(SAU_FAO_Data$sumcatch,na.rm = T)
@@ -2480,7 +2516,7 @@ gc()
 pal <- wes_palette("Zissou1",100,type = "continuous")
 
 # Variable to plot (value, catch, weighted_catch, weighted_value)
-Variable_plot <- "value"
+Variable_plot <- "catch"
 CreateFigureOne(Variable_plot)
 
 ```
@@ -2838,15 +2874,15 @@ Catch_Plot <- Catch_Plot +
   # )
     draw_plot_label(
     label = c("Revenue     |     Catch",
-              "(Thousand)  |     (Tons)",
-              "(Per Km2)"),
+              "(Thousand)  |    (Tonnes)",
+              "  (Per km  )"),
                   size = 6,
                   x = c(0.41,
-                        0.40,
+                        0.395,
                         0.48),
                   y = c(0.675,
                         0.65,
-                        0.625)
+                        0.623)
   )
   
   
