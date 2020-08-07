@@ -2808,6 +2808,149 @@ for(v in 1:length(Mod)){
 
 
 # Old code
+
+## From FishForVisa Main script
+
+## RFMO specifics
+
+```{r RFMOs, eval = T, echo = F}
+
+### Results exploration
+
+ICCAT_List <- rfmo_list %>% 
+  filter(rfmo_name == "ICCAT") %>% 
+  pull(taxon_key) %>% 
+  unique()
+
+Tresholded_T_Data %>% 
+  filter(taxon_key %in% ICCAT_List) %>% 
+  group_by(taxon_key) %>% 
+  summarise(
+    n_countries = length(unique(fishing_entity))
+  )
+
+
+ICCAT_Trans <- Species_Data %>% 
+  rename(taxon_name = individual) %>% 
+  left_join(Exploited_Species) %>% 
+  filter(taxon_key %in% ICCAT_List)
+
+
+
+```
+
+## RFMO Map of Transboundary Species
+
+```{r RFMO_Map, eval =F, echo =F}
+
+Tresholded_rfmo_Data <- Results_rfmo %>% 
+  filter(
+    area_index >= Min_AI,
+    area_index <= Max_AI,
+    model_index >= MI
+  ) %>% 
+  group_by(rfmo_name) %>% 
+  summarise(
+    n_trans_spp = length(unique(taxon_key)),
+    n_neighbours = length(unique(neighbour)),
+    trans_Rrate = n_trans_spp/n_neighbours
+  )
+
+# Number of RFMOs
+rfmo_list %>% 
+  pull(rfmo_name) %>% 
+  unique() %>% 
+  length() # 15
+
+# Number of total taxa
+rfmo_list %>% 
+  pull(taxon_key) %>% 
+  unique() %>% 
+  length() # 99
+
+
+# Number of taxa per RFMO
+rfmo_list %>% 
+  group_by(rfmo_name) %>% 
+  summarise(in_trans_spp = length(unique(taxon_key)))
+
+# Number of shared taxa
+Results_rfmo %>% 
+  pull(taxon_key) %>% 
+  unique() %>% 
+  length() # 81
+
+### Bar plot
+
+Tresholded_rfmo_Data %>% 
+  ggplot() +
+  geom_bar(
+    aes(
+      x = reorder(rfmo_name,-n_trans_spp),
+      y = n_trans_spp
+    ),
+    stat = "identity"
+  ) +
+  coord_flip()
+
+head(RFMOs_sf)
+
+# Transboundary Species shapefile
+World_sf_si <- RFMOs_sf %>%
+  filter(!Name %in% c("IPHC","PSC","NASCO")) %>% 
+  rename(rfmo_name = Name) %>% 
+  st_transform(crs = 4326) %>% # 4326
+  # st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
+  left_join(Tresholded_rfmo_Data, by ="rfmo_name")
+
+# Total catch/Revenue shapefile
+World_sf_si_land <- World_land_sf %>%
+  st_transform(crs = 4326) #%>% # 4326
+# st_simplify(preserveTopology = TRUE, dTolerance = 0.1)
+
+# Get the NA's to be grey
+# Grey_land <- World_sf_si_land %>% 
+#   filter(is.na(Bins))
+
+# Make map
+Plot <- ggplot() +
+  geom_sf(data = World_sf_si,
+          aes(
+            fill =  n_trans_spp,
+            colour = n_trans_spp
+          ), 
+          size = 0.1
+  ) + # n_trans_spp or Bins
+  geom_sf(data = World_sf_si_land) +
+  # geom_sf_label(data = World_sf_si,
+  #               aes(label = eez_name)
+  #               ) +
+  scale_fill_gradientn("Number of Shared Species",
+                       colours = wes_palette("Zissou1", 100, type = "continuous"),
+                       limits = c(0,45),
+                       breaks = seq(0,45,5)
+  ) +
+  scale_colour_gradientn("Number of Shared Species",
+                         colours = wes_palette("Zissou1", 100, type = "continuous"),
+                         limits = c(0,45),
+                         breaks = seq(0,45,5)
+  ) +
+  ggtheme_map()
+
+
+Plot_Name <- paste("S2_RFMO.png", sep = "") 
+
+ggsave(Plot_Name,
+       plot = Plot,
+       width = 16,
+       height = 8,
+       units = "in",
+       path = Figures_Path
+)
+```
+
+
+
 ```{r OLD_funEstNeighbours, eval = F, echo=T}
 # Determine which countries are Neighbours
 
