@@ -44,4 +44,4 @@ In this repository you will find all of the code related to the manuscript *Mari
 
 ### Data
 
-The raw data used in this analysis comes from different sources including *OBIS*, *GBIF*, *The Sea Around Us*, and *FishBase*, among others. These can be sourced directly from their respectively webpages and/or the references provided on the text. Moreover, we did not include the final dataset due to in *GitHub's* limitation on large-volume data-storage. Please email me to discuss other ways to share the data.
+The raw data used in this analysis comes from different sources including *OBIS*, *GBIF*, *The Sea Around Us*, and *FishBase*, among others. These can be sourced directly from their respectively webpages and/or the references provided on the text. The data containing the identification of transboundary species per eez and fishing nation (e.g. the main result of this work) and the catch trend of each taxon per eez can be found in the `Data` folder. Please email me to discuss anything related to data sharing or code reproducibility, 
