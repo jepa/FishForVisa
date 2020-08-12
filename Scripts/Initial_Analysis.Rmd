@@ -351,7 +351,7 @@ write.csv(EEZ_Neighbour_List,
 
 ## Determine Catch Trends
 
-This sub routine determines the species exploitation status based on the SAU methodology. **Note:** For the current project we do not consider this method to determine the species exploitation status *per se*, but rather a catch trend that *could* indicate that a species is under/over/max exploited.
+This sub routine determines the species exploitation trend based on the SAU methodology. **Note:** For the current project we do not consider this method to determine the species exploitation trend *per se*, but rather a catch trend that *could* indicate that a species is under/over/max exploited.
 
 In the original method the authors analyze stocks, while we analyze at the species level within each EEZ. Also (n), the number of species, is defined as a time series of a given species, genus or family (higher and pooled groups have been excluded) for which the first and last reported landings are at least 10 years apart, for which there are at least 5 years of consecutive catches and for which the catch in a given area (LME) is at least 1000 tonnes. We removed the last one (LME) and computed all of the species that only followed the first two;
 
@@ -359,7 +359,7 @@ In the original method the authors analyze stocks, while we analyze at the speci
 
 2) There are at least five years of consecutive catches
 
-Once those thresholds are met, the status of the species is determined as follows:
+Once those thresholds are met, the trend of the species is determined as follows:
 
 - Rebuilding (Recovering),	Year of landing > year of post-max. min. landing AND post-max. min. landing < 10% of max. landing AND landing is 10-50% of max. landing
 - Developing,	Year of landing < year of max. landing AND landing is < or = 50% of max. landing OR year of max. landing = final year of landing
@@ -369,7 +369,7 @@ Once those thresholds are met, the status of the species is determined as follow
 
 *Notes* = 3 years average mean
 
-Finally we choose the reporting year based on the most frequent status in the last 10 years of data. In cases where there was a mach between status (e.g. Cayman Islands for species 6000006 had 5 *Max Exploited* and 5 *Overexploted*) then we report the status at the last year of data.
+Finally we choose the reporting year based on the most frequent trend in the last 10 years of data. In cases where there was a mach between trend (e.g. Cayman Islands for species 6000006 had 5 *Max Exploited* and 5 *Overexploted*) then we report the trend at the last year of data.
 
 Categories are:
 
@@ -516,16 +516,16 @@ GetSppDist=function(Spp,Model,Coord){
 
 ```
 
-### Function `EstSppStatus`
+### Function `EstCatchTrend`
 
-This function estimates the exploitation status of a species based on catch data.
+This function estimates the exploitation trend of a species based on catch data.
 
-```{r funEstSppStatus, eval = T, echo =F}
+```{r funEstCatchTrend, eval = T, echo =F}
 
 # Spp <- 601417
 # Coord = CoorG
 
-EstSppStatus <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
+EstCatchTrend <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
   
   # Load species' data
   Data <- GetSppDist(Spp, Model = "SAU_C", Coord = Coord) %>% 
@@ -547,7 +547,7 @@ EstSppStatus <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
     ungroup() %>% 
     mutate(Year = as.numeric(Year))
   
-  # Tresholds to evaluate stocks if these are not met, then soecies status = "No Status"
+  # Tresholds to evaluate stocks if these are not met, then soecies Trend = "No Trend"
   Tresholds_Data <- Data %>% 
     arrange(Territory) %>% 
     group_by(TaxonKey,Territory, grp = cumsum(c(1, diff(Year) != 65))) %>% 
@@ -563,17 +563,17 @@ EstSppStatus <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
   
   # Remove species that do not met the criterias
   
-  No_Status_Data <- Tresholds_Data %>% 
+  No_Trend_Data <- Tresholds_Data %>% 
     filter(Met_Criteria != "Yes") %>% 
     select(TaxonKey,Territory) %>% 
-    mutate(Status = "No Trend")
+    mutate(Trend = "No Trend")
   
   # Evaluate species that met the criteria
   
-  # Get Variables to perform status metric
-  Status_Data <- Data %>% 
+  # Get Variables to perform Trend metric
+  Trend_Data <- Data %>% 
     # filter(Territory == "Israel (Red Sea)") %>%  # For testing
-    anti_join(No_Status_Data, # Removes no status data
+    anti_join(No_Trend_Data, # Removes no Trend data
               by = c("TaxonKey","Territory")
     ) %>% 
     # Get Max catch and max catch year
@@ -597,8 +597,8 @@ EstSppStatus <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
     left_join(Data,
               by = c("TaxonKey","Territory")
     ) %>% 
-    # Final Species Status Evaluation 
-    mutate(Status = ifelse(Year > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & ((RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50))),"Rebuilding",
+    # Final Catch Trend Evaluation 
+    mutate(Trend = ifelse(Year > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & ((RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50))),"Rebuilding",
                            ifelse((Year < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Year)),"Developing",
                                   ifelse(RMean > (Max_Peak*0.50),"Max Exploited",
                                          ifelse(Year > Y_Max_Peak & ((RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50))),"Over Exploited",
@@ -619,9 +619,9 @@ EstSppStatus <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
   if(Per_Taxa == T){
     
     # Select onlyZ 
-    Status_Data <- Status_Data %>%
+    Trend_Data <- Trend_Data %>%
       ungroup() %>%
-      select(TaxonKey,Territory,Year, Status)
+      select(TaxonKey,Territory,Year, Trend)
     
     if(is.na(Save_Path) == TRUE){
       
@@ -629,25 +629,25 @@ EstSppStatus <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
     }
     
     # File name for each species
-    Name <- paste(Save_Path,Spp,"_Status.csv",sep="")
+    Name <- paste(Save_Path,Spp,"_Trend.csv",sep="")
     
     # Save file for each species
-    write_csv(Status_Data,
+    write_csv(Trend_Data,
               Name)
   }else{
     
-    ### Determine the final status using the top category over the last 10 years
+    ### Determine the final Trend using the top category over the last 10 years
     
-    Determine_Status_Data <- Status_Data %>% 
+    Determine_Trend_Data <- Trend_Data %>% 
       filter(Year > 2004) %>% # last 10 years of data (2005-2014)
-      group_by(TaxonKey,Territory,Status) %>%
-      summarise(n_Status= n()) %>%
+      group_by(TaxonKey,Territory,Trend) %>%
+      summarise(n_Trend= n()) %>%
       group_by(TaxonKey,Territory) %>%
-      top_n(1,n_Status)
+      top_n(1,n_Trend)
     
     # Fix cases where you have equal categories.
     suppressMessages( # supresses "No duplicate combinations found of: Territ"
-      Duplicates <- Determine_Status_Data %>% 
+      Duplicates <- Determine_Trend_Data %>% 
         ungroup() %>% 
         janitor::get_dupes(Territory) %>% 
         select(TaxonKey,Territory) %>% 
@@ -656,43 +656,43 @@ EstSppStatus <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
     )
     
     # In case we have a tide, we use the last year's category
-    Duplicates_Status <- Status_Data %>% 
+    Duplicates_Trend <- Trend_Data %>% 
       filter(Territory %in% Duplicates,
              Year == 2014) %>%
       ungroup() %>%
-      select(TaxonKey,Territory,Status)
+      select(TaxonKey,Territory,Trend)
     
-    # Build Final Status database
-    Final_Status_Data <- Determine_Status_Data %>% 
+    # Build Final Trend database
+    Final_Trend_Data <- Determine_Trend_Data %>% 
       filter(!Territory %in% Duplicates) %>% 
-      bind_rows(Duplicates_Status)
+      bind_rows(Duplicates_Trend)
     
     # If both datasets have value RETURN BOTH
-    if(nrow(No_Status_Data) > 0 & nrow(Final_Status_Data) > 0){
+    if(nrow(No_Trend_Data) > 0 & nrow(Final_Trend_Data) > 0){
       
-      Fun_Result <- bind_rows(No_Status_Data,
-                              Final_Status_Data)
+      Fun_Result <- bind_rows(No_Trend_Data,
+                              Final_Trend_Data)
     }
     
-    # If only No status data, then just return No Status Data
-    if(nrow(No_Status_Data) > 0 & nrow(Final_Status_Data) == 0){
-      return(No_Status_Data)
+    # If only No trend data, then just return No Trend Data
+    if(nrow(No_Trend_Data) > 0 & nrow(Final_Trend_Data) == 0){
+      return(No_Trend_Data)
     }else{
-      return(Final_Status_Data)
+      return(Final_Trend_Data)
     }
   } # close if per taxa
 }
 
 # Testing
-# Test_1 <- EstSppStatus(Species_List[1],CoorG)
+# Test_1 <- EstSppTrend(Species_List[1],CoorG)
 
 ```
 
-### Data Species Status
+### Data Catch Trend
 
-### Sub routine for Species Status
+### Sub routine for Catch Trend
 
-```{r Spp_Status_Control_Pannel, eval = T, echo = F}
+```{r Spp_Trend_Control_Pannel, eval = T, echo = F}
 
 # SAU relations between INDEX and Country's EEZs
 EEZIDs_List <- read_excel(paste(Data_Path,"Spatial_Data/V_Lam/Updated_EEZList_17June2016.xlsx",sep=""))
@@ -715,23 +715,23 @@ Species_List <- gsub("\\..*","",Step_One)
 
 ```
 
-```{r Spp_Status_Sub_Routine, eval = T, echo = F}
+```{r Spp_trend_Sub_Routine, eval = T, echo = F}
 # Needs to have trans species 
-Species_Status <- bind_rows(
+Species_Trend <- bind_rows(
   mclapply(
     Species_List[1:2],
-    FUN = EstSppStatus,
+    FUN = EstCatchTrend,
     Coord = CoorG,  # Gabriels coordinate system for read species dist
     Per_Taxa = T,
-    Save_Path = "Z:/Vicky/Stock_Status/"
+    Save_Path = "Z:/Vicky/Stock_Trend/"
   )
 )
 
 # Save data
-readr::write_csv(Species_Status,
-                 paste(Results_Path,"Species_Status.csv",sep="")
+readr::write_csv(Catch_Trend,
+                 paste(Results_Path,"Species_Trend.csv",sep="")
 )
-# head(Species_Status)
+# head(Species_Trend)
 ```
 
 ## Get Catch Data
@@ -1756,7 +1756,7 @@ UN_Regions <- read.csv(paste(my_path("D"),"Spatial/UN_Regions.csv",sep=""), head
     country_or_area) %>% 
   summarise(n=n()) %>% #merge china's 3 rows
   select(-n) %>% 
-  filter(fishing_entity != "") %>%  # there are three rows with "developing" status as in, the code
+  filter(fishing_entity != "") %>%  # there are three rows with "developing" trend as in, the code
   ungroup() %>% 
   # Change names to match SAU data and for shorter versions
   mutate(
@@ -1994,6 +1994,13 @@ Clean_Results_Trans <- Raw_Results_Trans %>%
   rename(eez_name = sf_eez_name,
          fishing_entity = sau_fishing_entity)
 
+# For upload to github
+Clean_Results_Trans %>%
+  left_join(Exploited_Species) %>%
+  select(1,taxon_name,2:5,fishing_entity,un_sub_region) %>%
+  write_csv(.,"Clean_Results_Trans.csv")
+
+
 # New data produced by Vicky to compare with Teh and Sumaila
 # Clean_sau_eez_fes <- my_path("G","Spatial/SAU/","EEZ_FishingEntityID_v2_9June2020.xlsx", read =T)
 
@@ -2092,8 +2099,8 @@ SAU_Global_Data <-fread(paste(my_path("D"),"Distribution/sau_catch_value_country
                mean,na.rm=T) %>% 
   gather("Variable","Value",catch:value)
 
-# Read Species Status Data (Sub-routine Species Status)
-Status_Data <- fread(paste(my_path("R"),"EEZ/Species_Status.csv", sep ="")) %>% 
+# Read Scatch trend Data (Sub-routine Catch Trend)
+Trend_Data <- fread(paste(my_path("R"),"EEZ/Species_Trend.csv", sep ="")) %>% 
   clean_names() %>% 
   rename(sf_eez_name=territory) %>% 
   left_join(matching_names) %>% 
@@ -2883,18 +2890,18 @@ Catch_Plot <- Catch_Plot +
 
 ### Data for Circular plot
 
-```{r Status_Plot_Data, eval = F, echo = F}
+```{r Trend_Plot_Data, eval = F, echo = F}
 
 # -------------------------- #
 # Transboundary data
 # -------------------------- #
-# Stock status Data
-Status_Data_Plot <- Tresholded_T_Data %>% 
-  left_join(Status_Data, 
+# Stock trend Data
+Trend_Data_Plot <- Tresholded_T_Data %>% 
+  left_join(Trend_Data, 
             by =c("eez_name","taxon_key")
   ) %>%
-  mutate(status = ifelse(is.na(status),"No Status",status)) %>% 
-  group_by(fishing_entity,status) %>% 
+  mutate(trend = ifelse(is.na(trend),"No Trend",trend)) %>% 
+  group_by(fishing_entity,trend) %>% 
   summarise(value = length(unique(taxon_key))) %>% 
   left_join(UN_Regions, by ="fishing_entity") %>%
   mutate(Georegion = ifelse(is.na(georegion),"Other",paste(georegion))) %>% 
@@ -2902,7 +2909,7 @@ Status_Data_Plot <- Tresholded_T_Data %>%
   filter(!is.na(fishing_entity),
          !str_detect(fishing_entity, ".\\(.") # remove associated territories
   ) %>% 
-  select(individual = fishing_entity,observation = status,group = Georegion,value) %>% 
+  select(individual = fishing_entity,observation = trend,group = Georegion,value) %>% 
   arrange(group,value) %>% 
   mutate(value = ifelse(observation %in% c("Collapsed","Over Exploited"),value*-1,value),
          observation = ifelse(observation %in% c("Developing","Rebuilding"),"Category A",
@@ -2915,16 +2922,16 @@ Status_Data_Plot <- Tresholded_T_Data %>%
   summarise(value = sum(value))
 
 
-length(unique(Status_Data_Plot$individual))
-length(unique(Status_Data_Plot$observation))
+length(unique(Trend_Data_Plot$individual))
+length(unique(Trend_Data_Plot$observation))
 
-Status_Plot_Data <- tibble(
-  fishing_entity = rep(unique(Status_Data_Plot$individual),4),
-  observation = rep(unique(Status_Data_Plot$observation),157)
+Trend_Plot_Data <- tibble(
+  fishing_entity = rep(unique(Trend_Data_Plot$individual),4),
+  observation = rep(unique(Trend_Data_Plot$observation),157)
 ) %>% 
   left_join(UN_Regions) %>% 
   rename(individual = fishing_entity) %>% 
-  full_join(Status_Data_Plot,
+  full_join(Trend_Data_Plot,
             by = c("individual","observation")
   ) %>% 
   mutate(value = ifelse(is.na(value),0,
@@ -2940,7 +2947,7 @@ Status_Plot_Data <- tibble(
 
 # Summary for manuscipt
 
-T_Summary <- Status_Data_Plot %>% 
+T_Summary <- Trend_Data_Plot %>% 
   mutate(value = ifelse(value <0, value*-1,value)) %>% 
   group_by(observation) %>% 
   summarise(tot=sum(value),
@@ -2953,12 +2960,12 @@ T_Summary <- Status_Data_Plot %>%
 # Discrete data
 # -------------------------- #
 
-Discrete_Status_Data <- Discrete %>% 
-  left_join(Status_Data, 
+Discrete_Trend_Data <- Discrete %>% 
+  left_join(Trend_Data, 
             by =c("eez_name","taxon_key")
   ) %>%
-  mutate(status = ifelse(is.na(status),"No Status",status)) %>% 
-  group_by(fishing_entity,status) %>% 
+  mutate(trend = ifelse(is.na(trend),"No Trend",trend)) %>% 
+  group_by(fishing_entity,trend) %>% 
   summarise(value = length(unique(taxon_key))) %>% 
   left_join(UN_Regions, by ="fishing_entity") %>%
   mutate(Georegion = ifelse(is.na(georegion),"Other",paste(georegion))) %>% 
@@ -2966,7 +2973,7 @@ Discrete_Status_Data <- Discrete %>%
   filter(!is.na(fishing_entity),
          !str_detect(fishing_entity, ".\\(.") # remove associated territories
   ) %>% 
-  select(individual = fishing_entity,observation = status,group = Georegion,value) %>% 
+  select(individual = fishing_entity,observation = trend,group = Georegion,value) %>% 
   arrange(group,value) %>% 
   mutate(value = ifelse(observation %in% c("Collapsed","Over Exploited"),value*-1,value),
          observation = ifelse(observation %in% c("Developing","Rebuilding"),"Category A",
@@ -2981,7 +2988,7 @@ Discrete_Status_Data <- Discrete %>%
 
 # Summary for manuscipt
 
-D_Summary <- Discrete_Status_Data %>% 
+D_Summary <- Discrete_Trend_Data %>% 
   mutate(value = ifelse(value <0, value*-1,value)) %>% 
   group_by(observation) %>% 
   summarise(tot=sum(value),
@@ -3001,12 +3008,12 @@ T_Summary %>%
 # Soley Discrete data
 # -------------------------- #
 
-Exclusive_Discrete_Status_Data <- Discrete_Exclusive %>% 
-  left_join(Status_Data, 
+Exclusive_Discrete_Trend_Data <- Discrete_Exclusive %>% 
+  left_join(Trend_Data, 
             by =c("eez_name","taxon_key")
   ) %>%
-  mutate(status = ifelse(is.na(status),"No Status",status)) %>% 
-  group_by(fishing_entity,status) %>% 
+  mutate(trend = ifelse(is.na(trend),"No Trend",trend)) %>% 
+  group_by(fishing_entity,trend) %>% 
   summarise(value = length(unique(taxon_key))) %>% 
   left_join(UN_Regions, by ="fishing_entity") %>%
   mutate(Georegion = ifelse(is.na(georegion),"Other",paste(georegion))) %>% 
@@ -3014,7 +3021,7 @@ Exclusive_Discrete_Status_Data <- Discrete_Exclusive %>%
   filter(!is.na(fishing_entity),
          !str_detect(fishing_entity, ".\\(.") # remove associated territories
   ) %>% 
-  select(individual = fishing_entity,observation = status,group = Georegion,value) %>% 
+  select(individual = fishing_entity,observation = trend,group = Georegion,value) %>% 
   arrange(group,value) %>% 
   mutate(value = ifelse(observation %in% c("Collapsed","Over Exploited"),value*-1,value),
          observation = ifelse(observation %in% c("Developing","Rebuilding"),"Category A",
@@ -3039,30 +3046,30 @@ Exclusive_Discrete_Status_Data <- Discrete_Exclusive %>%
 # -------------------------- #
 
 # Set a number of 'empty bar' to add at the end of each Georegion
-Char <- as.factor(Status_Plot_Data$group) # Set groups to factors
+Char <- as.factor(Trend_Plot_Data$group) # Set groups to factors
 
 
 ##### COPY PASTE
 
 # Transform data in a tidy format (long format)
-# data <- Status_Data_Plot
+# data <- Trend_Data_Plot
 
 # Set a number of 'empty bar' to add at the end of each group
 empty_bar <- 2
-nObsType <- nlevels(as.factor(Status_Plot_Data$observation))
-to_add <- data.frame(matrix(NA, empty_bar*nlevels(Char)*nObsType, ncol(Status_Plot_Data)) )
-colnames(to_add) <- colnames(Status_Plot_Data)
+nObsType <- nlevels(as.factor(Trend_Plot_Data$observation))
+to_add <- data.frame(matrix(NA, empty_bar*nlevels(Char)*nObsType, ncol(Trend_Plot_Data)) )
+colnames(to_add) <- colnames(Trend_Plot_Data)
 to_add$group <- rep(levels(Char), each=empty_bar*nObsType)
-Status_Plot_Data <- rbind(Status_Plot_Data, to_add) # Problem converts to list
-# Status_data <- bind_rows(data,to_add)
-Status_Plot_Data <- Status_Plot_Data %>% arrange(group, individual)
-Status_Plot_Data$id <- rep( seq(1, nrow(Status_Plot_Data)/nObsType) , each=nObsType)
+Trend_Plot_Data <- rbind(Trend_Plot_Data, to_add) # Problem converts to list
+# Trend_data <- bind_rows(data,to_add)
+Trend_Plot_Data <- Trend_Plot_Data %>% arrange(group, individual)
+Trend_Plot_Data$id <- rep( seq(1, nrow(Trend_Plot_Data)/nObsType) , each=nObsType)
 
 # to_add$value <- NA
 # to_add$observation <- NA
 # to_add$individual <- to_add$group
 
-# Status_data <- Status_Data_Plot %>%
+# Trend_data <- Trend_Data_Plot %>%
 #   bind_rows(to_add) %>%
 #   ungroup() %>%
 #   mutate(individual = forcats::fct_explicit_na(individual),
@@ -3072,7 +3079,7 @@ Status_Plot_Data$id <- rep( seq(1, nrow(Status_Plot_Data)/nObsType) , each=nObsT
 #          order = as.integer(group))
 
 # Get the name and the y position of each label
-label_data <- Status_Plot_Data %>% 
+label_data <- Trend_Plot_Data %>% 
   # filter(value > 0) %>% 
   group_by(id, individual) %>% 
   summarize(tot=sum(value,na.rm=T)) %>% 
@@ -3093,7 +3100,7 @@ label_data <- label_data %>%
 
 
 # prepare a data frame for base lines
-base_data <-  Status_Plot_Data %>% 
+base_data <-  Trend_Plot_Data %>% 
   group_by(group) %>% 
   summarize(start=min(id,na.rm=T), 
             end=max(id,na.rm=T) - empty_bar,
@@ -3108,7 +3115,7 @@ grid_data$start <- grid_data$start - 1
 grid_data <- grid_data[-1,]
 
 
-Status_Plot_Data %>%
+Trend_Plot_Data %>%
   ggplot() + 
   geom_bar(aes(x=id,
                y=value, 
@@ -3190,13 +3197,13 @@ ggsave(
   height = 15,
   units = "in",
   # filename = "Plot.png"
-  filename = "Territory_circular_status.png"
+  filename = "Territory_circular_trend.png"
 )
 
 
 ```
 
-### Statistical differences between species status
+### Statistical differences between Catch Trend
 
 Using MANOVA to investigate differences in catch category between discrete and transboundary species
 
@@ -3207,17 +3214,17 @@ Using MANOVA to investigate differences in catch category between discrete and t
 #-----------------# 
 
 # Transboundary Data
-Transboundary_Data_Stats <- Status_Plot_Data %>% 
+Transboundary_Data_Stats <- Trend_Plot_Data %>% 
 filter(observation != "No Category") %>%
   mutate(value = abs(value))
 
 # Discrete Data (trans.not shared)
-Trans_Dis_Data_Stats <- Discrete_Status_Data %>% 
+Trans_Dis_Data_Stats <- Discrete_Trend_Data %>% 
   filter(observation != "No Category") %>%
   mutate(value = abs(value))
 
 # Discrete Data (just desrete and not trans.not shared)
-Discrete_Data_Stats <- Exclusive_Discrete_Status_Data %>% 
+Discrete_Data_Stats <- Exclusive_Discrete_Trend_Data %>% 
   filter(observation != "No Category") %>%
   mutate(value = abs(value))
 
