@@ -1995,10 +1995,10 @@ Clean_Results_Trans <- Raw_Results_Trans %>%
          fishing_entity = sau_fishing_entity)
 
 # For upload to github
-Clean_Results_Trans %>%
-  left_join(Exploited_Species) %>%
-  select(1,taxon_name,2:5,fishing_entity,un_sub_region) %>%
-  write_csv(.,"Clean_Results_Trans.csv")
+# Clean_Results_Trans %>%
+#   left_join(Exploited_Species) %>%
+#   select(1,taxon_name,2:5,fishing_entity,un_sub_region) %>%
+#   write_csv(.,"Clean_Results_Trans.csv")
 
 
 # New data produced by Vicky to compare with Teh and Sumaila
@@ -2343,7 +2343,7 @@ Summary_Discrete_Exclusive <- Discrete_Exclusive %>%
 
 ## Results per Territory
 
-### Data For Map (Fig. 1)
+### Fig. 1 - Data For Map 
 
 We group countries according to the United Nations sub-regions and found that transboundary species are particularly economically important for Northern America and Eastern Asia
 
@@ -2615,7 +2615,7 @@ TukeyHSD(Weight_aov) %>%
   filter(adj.p.value < 0.05) # Northern Europe
 ```
 
-## Weighted bar plots
+## Fig. 2 - Weighted bar plots
 
 ### Data for Weighted plot
 ```{r Weight_Revenue, eval =F, echo =F}
@@ -2627,8 +2627,9 @@ TukeyHSD(Weight_aov) %>%
 Subregion_Trans_raw_Value %>% 
   select(sub_region,Size_Entity_sum) %>% 
   distinct(sub_region,.keep_all = TRUE) %>% 
-  write_csv(.,
-            "Table_S1.csv")
+  arrange(Size_Entity_sum)
+  # write_csv(.,
+            # "Table_S1.csv")
 
 #--------------------------- #
 

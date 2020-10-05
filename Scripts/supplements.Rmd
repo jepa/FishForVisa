@@ -1,6 +1,6 @@
 ---
-title: "Supplementary information for Marine species do not need visas: the transboundary nature of the world’s exploited marine species"
-author: "Authors: Juliano Palacios-Abrantes, Gabriel Reygondeau, Colette Wabnitz and William W.L. Cheung"
+title: "Supplementary information for The transboundary nature of the world’s exploited marine species"
+author: "Authors: Juliano Palacios-Abrantes, Gabriel Reygondeau, Colette C.C. Wabnitz and William W.L. Cheung"
 output: pdf_document
 header-includes: #allows you to add in your own Latex packages
 - \usepackage{float} #use the 'float' package
