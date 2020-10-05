@@ -1,0 +1,5 @@
+Source,Abreviation,Main Method,Sources
+Occurrence data,Occurrence,Occurrence data from multiple sources,"Reygondeau, 2019"
+Ecological niche model,ENM-Nereus,Environmental niche model based on environmental variables and different model algorithms,"Asch et al., 2017 & Reygondeau, 2019"
+Species distribution model,SDM-SAU,Species distribution model based on species traits,"Palomares et al., 2016"
+Catch data,Catch-SAU,Spatial catch allocation based on country-by-country reconstructions,"Zeller et al., 2016"
