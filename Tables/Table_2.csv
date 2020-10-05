@@ -1,0 +1,5 @@
+Categories,Rules
+A - Increasing trend,(Year of Catch > Year Post Max. Min. & Post Max Min Catch < (Max Catch*0.10)) & (Catch > (Max Catch*0.10) & Catch < (Max Catch*0.50)) or Year of Catch < Year of Max. Catch & Catch <= (Max Catch*0.50) or Year of Max Catch = Last Year of data)
+B - Constant trend,Catch > (Max Catch*0.50)
+C - Decreasing trend,Year of Catch > Year of Max. Catch & (Catch > (Max. Catch*0.10) & Catch < (Max. Catch*0.50) or Catch < Max. Catch*0.10
+No Status,Non of the above rules applied
