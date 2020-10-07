@@ -2104,7 +2104,7 @@ Trend_Data <- fread(paste(my_path("R"),"EEZ/Species_Trend.csv", sep ="")) %>%
   clean_names() %>% 
   rename(sf_eez_name=territory) %>% 
   left_join(matching_names) %>% 
-  rename(eez_name = sau_eez_name)
+  rename(eez_name = sf_eez_name)
 ```
 
 ## Determine Thresholds
@@ -2898,10 +2898,10 @@ Catch_Plot <- Catch_Plot +
 # -------------------------- #
 # Stock trend Data
 Trend_Data_Plot <- Tresholded_T_Data %>% 
-  left_join(Trend_Data, 
-            by =c("eez_name","taxon_key")
+  left_join(Trend_Data#, 
+            # by =c("eez_name","taxon_key","sf_object_id")
   ) %>%
-  mutate(trend = ifelse(is.na(trend),"No Trend",trend)) %>% 
+  mutate(trend = ifelse(is.na(status),"No Trend",status)) %>% 
   group_by(fishing_entity,trend) %>% 
   summarise(value = length(unique(taxon_key))) %>% 
   left_join(UN_Regions, by ="fishing_entity") %>%
@@ -2921,6 +2921,19 @@ Trend_Data_Plot <- Tresholded_T_Data %>%
   ) %>% 
   group_by(individual,observation,group) %>% 
   summarise(value = sum(value))
+
+
+#### Convert trends to percentage for plot
+
+Totals_trend <- Trend_Data_Plot %>% 
+  group_by(individual) %>% 
+  summarise(total_trend = sum(abs(value)))
+
+Trend_Data_Plot <- Trend_Data_Plot %>% 
+  left_join(Totals_trend) %>% 
+  mutate(
+    value = round(value/total_trend*100)
+  )
 
 
 length(unique(Trend_Data_Plot$individual))
@@ -2965,7 +2978,7 @@ Discrete_Trend_Data <- Discrete %>%
   left_join(Trend_Data, 
             by =c("eez_name","taxon_key")
   ) %>%
-  mutate(trend = ifelse(is.na(trend),"No Trend",trend)) %>% 
+  mutate(trend = ifelse(is.na(status),"No Trend",status)) %>% 
   group_by(fishing_entity,trend) %>% 
   summarise(value = length(unique(taxon_key))) %>% 
   left_join(UN_Regions, by ="fishing_entity") %>%
@@ -3038,7 +3051,7 @@ Exclusive_Discrete_Trend_Data <- Discrete_Exclusive %>%
 
 ```
 
-### Circular plot
+### Fig. 3- Circular plot
 
 ```{r Territories_Circluar_Plot, eval = F, echo = T}
 
@@ -3148,7 +3161,7 @@ Trend_Plot_Data %>%
                     # x = rep(max(data$id),3),
                     x =c(0.2,0,0,0.2,0.2),
                     y = c(-100,-50, 0, 50, 100),
-                    label = c(">100","50","0", "50", ">100") , 
+                    label = c("100","50","0", "50", "100") , 
                     color="black", 
                     size=5, 
                     angle=0, 
