@@ -2,10 +2,8 @@
 title: "The transboundary nature of the world’s exploited marine species"
 author: "Authors: Juliano Palacios-Abrantes*^1^, Gabriel Reygondeau^1,2^, Colette C.C. Wabnitz^1,3,4^ and William W.L. Cheung^1^"
 date: "Affiliations: ^1^Institute for the Oceans and Fisheries, University of British Columbia, Vancouver, Canada. ^2^Yale University, New Haven, Connecticut, USA. ^3^Stockholm Resilience Center, Stockholm University, Stockholm, Sweden. ^4^Center for Ocean Solutions, Stanford University, Stanford, United States"
-# subtitle: "WORKING PAPAER. PLEASE DO NOT SHARE"
 output:
   word_document:
-    # reference_docx: ./Manuscript_Instructions/science_template.docx
   pdf_document:
     fig_caption: yes
 geometry: margin=1in
