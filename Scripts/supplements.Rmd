@@ -7,8 +7,8 @@ header-includes: #allows you to add in your own Latex packages
 - \floatplacement{figure}{H} #make every figure with caption = h
 - \floatplacement{table}{H}
 - \usepackage{caption}
-- \captionsetup[figure]{name= Figure S}
-- \captionsetup[table]{name= Table S}
+- \captionsetup[figure]{name = Figure S}
+- \captionsetup[table]{name = Table S}
 ---
 
 ```{r setup, eval = T, echo=F, warning=F,message=F, results='hide'}
@@ -74,7 +74,7 @@ grid.raster(img)
 read.csv("~/GitHub/FishForVisa/Tables/Table_S1.csv") %>% 
   clean_names() %>% 
   filter(sub_region != "Other") %>% 
-  arrange(sub_region) %>% 
+  arrange(size_entity_sum) %>% 
   rename("UN sub region" = sub_region,
          "Area of EEZs (Km^2)" = size_entity_sum) %>% 
   kable("latex",
@@ -118,11 +118,13 @@ read.csv("~/GitHub/FishForVisa/Tables/Table_S2.csv") %>%
 
 ## Español
 
-Es frecuente que los límites de las herramientas de manejo ambiental y la distribución de especies no coincidan como sucede en el caso de especies marinas que cruzan múltiples Zonas Económicas Exclusivas (ZEE). Este tipo de movimiento representa un desafío para el manejo pesquero, ya que las políticas públicas tienden a enfocarse en el nivel nacional; sin embargo, es necesario establecer colaboraciones internacionales para maximizar los beneficios ecológicos, sociales y económicos a largo plazo obtenidos con la captura de especies marinas compartidas. En este artículo se combinó la distribución de especies con la delimitación espacial de las ZEE para identificar el número de especies marinas explotadas comercialmente que son compartidas por naciones vecinas (especies transfronterizas). Los resultados revelaron que el 67% de las especies analizadas pertenecen a esa categoría (n = 633). Entre 2005 y 2014, las pesquerías que tenían como objetivo estas especies y que operaban dentro de las ZEE mundiales capturaron un promedio de 48 millones de toneladas por año, lo que equivale a un promedio de 77 mil millones de dólares en ingresos anuales por pesca. Durante este tiempo, más del 90% de las capturas y beneficios económicos de algunos países fue resultado de unos pocos recursos compartidos. Así mismo, se demuestra que las capturas de especies transfronterizas están disminuyendo a un ritmo mayor que las no transfronterizas. Este estudio tiene implicaciones directas para el manejo pesquero de dichas especies, destacando la necesidad de fortalecer una cooperación internacional eficiente y equitativa.
+Es frecuente que los límites de las herramientas de manejo ambiental y la distribución de especies no coincidan, como sucede en el caso de especies marinas que cruzan múltiples Zonas Económicas Exclusivas (ZEE). Este tipo de movimiento representa un desafío para el manejo pesquero, ya que las políticas públicas tienden a enfocarse en el nivel nacional; sin embargo, es necesario establecer colaboraciones internacionales para maximizar los beneficios ecológicos, sociales y económicos a largo plazo obtenidos con la captura de especies marinas compartidas. En este artículo se combinó la distribución de especies con la delimitación espacial de las ZEE para identificar el número de especies marinas explotadas comercialmente que son compartidas por naciones vecinas (especies transfronterizas). Los resultados revelaron que el 67% de las especies analizadas pertenecen a esta categoría (n = 633). Entre 2005 y 2014, las pesquerías que tenían como objetivo estas especies y que operaban dentro de las ZEE mundiales capturaron un promedio de 48 millones de toneladas por año, lo que equivale a un promedio de 77 mil millones de dólares en ingresos anuales por pesca. Durante este tiempo, más del 90% de las capturas y beneficios económicos de algunos países fue resultado de unos pocos recursos compartidos. Así mismo, se demuestra que las capturas de especies transfronterizas están disminuyendo a un ritmo mayor que las no transfronterizas. Este estudio tiene implicaciones directas para el manejo pesquero de dichas especies, destacando la necesidad de fortalecer una cooperación internacional eficiente y equitativa.
 
-## Portugues
+## Português
 
 É frequente que os limites dos instrumentos de gestão de recursos naturais e a distribuição das espécies não coincidam como acontece no caso das espécies marinhas que cruzam múltiplas Zonas Econômicas Exclusivas (ZEE). Este tipo de movimento representa um desafio para a gestão pesqueira, já que as políticas públicas tendem a ser focadas ao nível nacional; portanto, colaborações internacionais precisam ser estabelecidas para maximizar os benefícios ecológicos, sociais e econômicos de longo prazo alcançados com a captura de espécies marinhas compartilhadas. Neste artigo, a distribuição das espécies foi combinada com a delimitação espacial de ZEEs para identificar o número de espécies marinhas exploradas comercialmente que são compartilhadas por nações vizinhas (espécies transfronteiriças). Os resultados revelaram que 67% das espécies analisadas pertencem a essa categoria (n = 633). Entre 2005 e 2014, as pescarias que operavam nas ZEEs globais que visam essas espécies capturaram uma média de 48 milhões de toneladas por ano, o que equivale a uma média de $ 77 bilhões em receitas anuais de pesca. Durante este tempo, mais de 90% das capturas e benefícios econômicos de alguns países foi resultado de alguns recursos compartilhados. Da mesma forma, se mostra que as capturas de essas espécies estão diminuindo a um ritmo maior do que as das não transfronteiriças. Este estudo tem implicações diretas para a gestão da pesca de espécies referidas, destacando a necessidade de fortalecer uma cooperação internacional eficiente e equitativa.
 
 
-## Françuais
+## Français
+
+Dans la grande majorité des cas, les limitations spatiales des zones internationales de pêche et la distribution des espèces ne s’alignent pas. C’est particulièrement le cas pour les espèces à large distribution qui occupent et migrent à travers plusieurs zones économiques exclusives (ZEE). Les mouvements de ces espèces représentent donc un défi pour la gestion durable de leurs stocks. En effet, l’évaluation des stocks est actuellement effectuée à une échelle nationale alors qu’une approche internationale est préconisée afin de maximiser les avantages écologiques, sociaux et économiques liés à ces espèces. Dans cette étude, nous avons combiné, à l’échelle mondiale, la distribution des espèces marines exploitées ainsi que la distribution des ZEE afin d’identifier le nombre d’espèces marines partagées entre pays avoisinants. Nos résultats démontrent que 67% des espèces considérées sont transfrontalières (n = 633). Entre 2005 et 2014, les pêcheries ciblant ces espèces dans les ZEE ont capturé, en moyenne, 48 millions de tonnes par an, ce qui équivaut à 77 milliards USD en revenus moyen par an. Dans certains cas, plus de 90% des captures et revenus sont attribuables à un nombre restreint d’espèces partagées. Notre analyse suggère par ailleurs que les captures d’espèces transfrontalières marquent un déclin plus marqué que celles des autres espèces . Dans un contexte de gestion écosystémique des pêches, les résultats de notre étude soulignent l'importance d’une coopération internationale efficace et équitable afin d’atteindre une pêcherie globale durable
