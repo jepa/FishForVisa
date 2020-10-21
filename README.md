@@ -2,12 +2,13 @@
 
 This repository is intended to support the project *The transboundary nature of the world’s exploited marine species* 
 
-**Authors**: Juliano Palacios-Abrantes<sup>1</sup>, Gabriel Reygondeau<sup>2</sup>, Colette Wabnitz<sup>3</sup> and William W.L. Cheung<sup>1</sup>.
+**Authors**: Juliano Palacios-Abrantes<sup>1</sup>, Gabriel Reygondeau<sup>1,2</sup>, Colette Wabnitz<sup>3,4</sup>, and William W.L. Cheung<sup>1</sup>.
 
 
 1. Institute for the Oceans and Fisheries, University of British Columbia, Vancouver, Canada.  
 2. Yale University, New Haven, Connecticut, USA.  
 3. Stockholm Resilience Center, Stockholm University, Stockholm, Sweden.  
+4. Centre for Ocean Solutions, Stanford University, Stanford, United States
 
 \*Corresponding author: Juliano Palacios-Abrantes, j.palacios@oceans.ubc.ca
 
