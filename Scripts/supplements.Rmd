@@ -9,8 +9,8 @@ header-includes: #allows you to add in your own Latex packages
 - \floatplacement{figure}{H} #make every figure with caption = h
 - \floatplacement{table}{H}
 - \usepackage{caption}
-- \captionsetup[figure]{name = Figure A1}
-- \captionsetup[table]{name = Table A1}
+- \captionsetup[figure]{name = Figure A2}
+- \captionsetup[table]{name = Table A2}
 ---
 
 ```{r setup, eval = T, echo=F, warning=F,message=F, results='hide'}
@@ -29,7 +29,7 @@ my_lib(packages)
 
 <!-- ## Supplementary Figures -->
 
-```{r FigureS1, eval = T, fig.width = 12, fig.height = 10, echo=FALSE, fig.pos= "H", fig.cap="Number of transboundary species per EEZ and their contributions to countries’ EEZ catch. The number of species is displayed in the EEZ while catch (in thousand tonnes) is displayed in the land polygon. Figure created using R version 3.5.2. Land and EEZ shapefiles from Natural Earth (www.naturalearthdata.com) and Sea Around Us (www.seaaroundus.org), respectively."}
+```{r ffvFigureS1, eval = T, fig.width = 12, fig.height = 10, echo=FALSE, fig.pos= "H", fig.cap="Number of transboundary species per EEZ and their contributions to countries’ EEZ catch. The number of species is displayed in the EEZ while catch (in thousand tonnes) is displayed in the land polygon. Figure created using R version 3.5.2. Land and EEZ shapefiles from Natural Earth (www.naturalearthdata.com) and Sea Around Us (www.seaaroundus.org), respectively."}
 img <- readPNG("../Figures/FigS1.png")
 grid.raster(img)
 ```
@@ -37,7 +37,7 @@ grid.raster(img)
 
 \clearpage
 
-```{r FigureS2, eval = T, fig.width = 12, fig.height = 10, echo=FALSE, fig.pos= "H", fig.cap="Percentage of transboundary species by catch trend and EEZ. Category A, Increasing; Category B, Constant; Category C, Decreasing. “No Category” reflects species with less than 10 years of catch data and/ or less than 5 consecutive years of catch data. Figure created using R version 3.5.2."}
+```{r ffvFigureS2, eval = T, fig.width = 12, fig.height = 10, echo=FALSE, fig.pos= "H", fig.cap="Percentage of transboundary species by catch trend and EEZ. Category A, Increasing; Category B, Constant; Category C, Decreasing. “No Category” reflects species with less than 10 years of catch data and/ or less than 5 consecutive years of catch data. Figure created using R version 3.5.2."}
 img <- readPNG("../Figures/FigS2.png")
 grid.raster(img)
 ```
@@ -47,9 +47,9 @@ grid.raster(img)
 
 \clearpage
 
-The number of grid cells in which a species is present (Area Index) is expected to directly influence whether or not a species is considered transboundary. Therefore, we tested the sensitivity of our results to the Area Index by estimating the number of transboundary species along a gradient of values (Figure \@ref(fig:FigureS3)). As expected, using a more relaxed value (e.g. the species is present within 10% or more of the EEZ) will result in a greater number of transboundary species (median of 40 EEZs shared per species), while a more restrictive value (e.g., 50%) results in a median estimate of 4. The current analysis utilized a 25% Area Index threshold (Figure \@ref(fig:FigureS3)) - darker histogram).
+The number of grid cells in which a species is present (Area Index) is expected to directly influence whether or not a species is considered transboundary. Therefore, we tested the sensitivity of our results to the Area Index by estimating the number of transboundary species along a gradient of values (Figure \@ref(fig:ffvFigureS3)). As expected, using a more relaxed value (e.g. the species is present within 10% or more of the EEZ) will result in a greater number of transboundary species (median of 40 EEZs shared per species), while a more restrictive value (e.g., 50%) results in a median estimate of 4. The current analysis utilized a 25% Area Index threshold (Figure \@ref(fig:ffvFigureS3)) - darker histogram).
 
-```{r FigureS3, eval = T, fig.width=6, fig.height=9, echo=FALSE, fig.pos= "H", fig.cap="Histogram of number of transboundary species using different Area Index threshold values. The darker histogram represents the threshold (25%) used in the present analysis. Figure created using R version 3.5.2."}
+```{r ffvFigureS3, eval = T, fig.width=6, fig.height=9, echo=FALSE, fig.pos= "H", fig.cap="Histogram of number of transboundary species using different Area Index threshold values. The darker histogram represents the threshold (25%) used in the present analysis. Figure created using R version 3.5.2."}
 img <- readPNG("../Figures/FigS3.png")
 grid.raster(img)
 ```
@@ -63,7 +63,7 @@ grid.raster(img)
 <!-- ## Supplementary Tables -->
 
 
-```{r TableS1, eval = T, echo = F, fig.pos= "H"}
+```{r ffvTableS1, eval = T, echo = F, fig.pos= "H"}
 read.csv("~/GitHub/FishForVisa/Tables/Table_S1.csv") %>% 
   clean_names() %>% 
   filter(sub_region != "Other") %>% 
@@ -78,7 +78,7 @@ read.csv("~/GitHub/FishForVisa/Tables/Table_S1.csv") %>%
 ```
 
 
-```{r TableS2, eval = T, echo = F, fig.pos= "H", message = F, warning = F}
+```{r ffvTableS2, eval = T, echo = F, fig.pos= "H", message = F, warning = F}
 # read.csv("~/GitHub/FishForVisa/Tables/Table_S2.csv") %>% 
 #   clean_names() %>% 
 #   rename(
