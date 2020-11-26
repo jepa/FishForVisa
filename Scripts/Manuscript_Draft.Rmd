@@ -1,20 +1,15 @@
 ---
 output:
-  bookdown::pdf_book:
-    toc : no
-    keep_tex: no
-    number_sections: yes
-    fig_width: 6 
-    fig_height: 4 
-geometry: margin=1in
-editor_options:
-  chunk_output_type: inline
+  bookdown::word_document2
+  # bookdown::pdf_book:
+#     toc : no
+#     keep_tex: no
+#     number_sections: yes
+#     fig_width: 6 
+#     fig_height: 4 
+# geometry: margin=1in
 bibliography: ../References/FishForVisa_Ref.bib
 csl: ../References/nature_cc.csl
-header-includes: #allows you to add in your own Latex packages
-- \usepackage{float} #use the 'float' package
-- \floatplacement{figure}{H} #make every figure with caption = h
-- \floatplacement{table}{H}
 ---
 
 
@@ -35,7 +30,7 @@ ipak <- function(pkg){
 packages <- c(
   "dplyr", # Data manipulation
   "knitr",
-  "kableExtra",
+  # "kableExtra",
   "png",
   "grid",
   "here"
@@ -95,13 +90,16 @@ data.frame(Source,
            Abreviation,
            Main_Method,
            Sources) %>% 
-  rename("Main Method"=Main_Method) %>% 
-  kable("latex", 
-        booktabs = T,
-        caption = "Summary of data sources to estimate species' distributions. All data has a ressolution of 0.5 degrees latitude x 0.5 degrees longitude. All data is publically available, see references for details") %>%
-  kable_styling(full_width = T) %>%
-  column_spec(2,width = "2cm") %>% #wraps text in column2
-  column_spec(3,width = "5cm") # #wraps text in column2
+  rename("Main Method"=Main_Method) %>%
+  knitr::kable(caption = "Summary of data sources to estimate species' distributions. All data has a ressolution of 0.5 degrees latitude x 0.5 degrees longitude. All data is publically available, see references for details")
+
+  # kable("latex",
+  #       booktabs = T,
+  #       caption = "Summary of data sources to estimate species' distributions. All data has a ressolution of 0.5 degrees latitude x 0.5 degrees longitude. All data is publically available, see references for details") %>%
+  # kable_styling(full_width = T) %>%
+  # column_spec(2,width = "2cm") %>% #wraps text in column2
+  # column_spec(3,width = "5cm") %>%  # #wraps text in column2
+  # as_image()
 ```
 
 #### *Occurrence data*
@@ -161,12 +159,13 @@ Rules <- c(
 
 data.frame(Categories,
            Rules) %>% 
-  kable("latex", 
-        booktabs = T,
-        caption = "Rules to determine the category of each transboundary species") %>%
-  kable_styling(full_width = T) %>%
-  column_spec(1,width = "3cm") %>% #wraps text in column2
-  column_spec(2,width = "13cm") #%>% #wraps text in column2
+  kable(caption = "Rules to determine the category of each transboundary species") #%>%
+  # kable("latex", 
+  #       booktabs = T,
+  #       caption = "Rules to determine the category of each transboundary species") #%>%
+  # kable_styling(full_width = T) %>%
+  # column_spec(1,width = "3cm") %>% #wraps text in column2
+  # column_spec(2,width = "13cm") #%>% #wraps text in column2
   # write_csv("Table_2.csv")
 ```
 
@@ -222,7 +221,7 @@ grid.raster(img)
 
 Empirical analysis suggests that in most cases, management of transboundary species will yield better outcomes in terms of fish catches when nations cooperate [@Munro:2002uf]. Yet, cooperation can be a complex process [@Jensen:2015cf], and in specific cases joint management might not be the best strategy [@Munro:2015df]. Examples of successful joint management include agreements between Norway and Russia over Atlantic cod (*Gadus morhua*) [@Eide:2013dha] and Namibia and South Africa over hake (*Merluccius spp*) [@Sumaila:2003vw]. Lack of collaboration over shared stocks may threaten stock sustainability, reduce the future profitability potential of the fishery, and result in conflict between neighboring nations [@Clark:1980js; @Spijkers:2017ij].
 
-Transboundary fisheries are important to a number of countries with notorious fisheries-related conflicts, including Canada, the USA, the European Union (EU) and Russia [@Spijkers:2019cz]. For example, since 2007, the EU, Norway, Iceland, and the Faroe Islands (Denmark) have been at odds over the size and relative allocation of the total allowable catch for Atlantic mackerel (*Scomber scombrus*) due to the species' climate-driven shift in distribution [@Spijkers:2017ij]. Atlantic Mackerel is a transboundary species that straddles into the high seas. Among the countries involved in the 2007 fisheries dispute, Atlantic mackerel contributed an annual average (between 2005 and 2014) of 598.4 thousand tonnes (8.19%) in total catch and USD 850.2 million (7.17%) in total fishing revenue. Climate change is expected to continue changing the distribution and shared proportion of fish stocks among countries, resulting in the emergence of new transboundary species [@Pinsky:2018cb], and disappearance of some species from EEZs [@Oremus:2020id]. Exploring the detailed effects of climate change on the distribution of shared species is key to the development of local adaptation methods that can anticipate negative impacts to sustainability. For example, understanding how climate change will modify the proportion of transboundary species shared by neighboring EEZs, the time-frame over which such changes will happen [@PalaciosAbrantes:2020vt], and the economic consequence of such effects can inform the development of more anticipatory and climate-resilient international treaties improving fisheries management [@Sumaila:2020tp].
+Transboundary fisheries are important to a number of countries with notorious fisheries-related conflicts, including Canada, the USA, the European Union (EU) and Russia [@Spijkers:2019cz]. For example, since 2007, the EU, Norway, Iceland, and the Faroe Islands (Denmark) have been at odds over the size and relative allocation of the total allowable catch for Atlantic mackerel (*Scomber scombrus*) due to the species' climate-driven shift in distribution [@Spijkers:2017ij]. Atlantic Mackerel is a transboundary species that straddles into the high seas. Among the countries involved in the 2007 fisheries dispute, Atlantic mackerel contributed an annual average (between 2005 and 2014) of 598.4 thousand tonnes (8.19%) in total catch and USD 850.2 million (7.17%) in total fishing revenue. Climate change is expected to continue changing the distribution and shared proportion of fish stocks among countries, resulting in the emergence of new transboundary species [@Pinsky:2018cb, Chapter 4], and disappearance of some species from EEZs [@Oremus:2020id]. Exploring the detailed effects of climate change on the distribution of shared species is key to the development of local adaptation methods that can anticipate negative impacts to sustainability. For example, understanding how climate change will modify the proportion of transboundary species shared by neighboring EEZs, the time-frame over which such changes will happen (Chapter 4), and the economic consequence of such effects can inform the development of more anticipatory and climate-resilient international treaties improving fisheries management [@Sumaila:2020tp].
 
 Most marine fish species occur in tropical and subtropical waters around the world [@Nelson:2016kk; @Reygondeau:2019uh], from highly migratory species associated with pelagic-oceanic ecosystems like tunas (*Thunnus sp.*), to less mobile reef-associated species like greater amberjack (*Seriola dumerili*), and species found in demersal ecosystems like gilthead seabream (*Sparus aurata*). Species associated with pelagic-oceanic ecosystems are the only group whose EEZ range (i.e., the number of EEZs where the species occur as transboundary) is significantly different from other groups (one-way ANOVA; DF(5,597) = 53.82, p < 0.001, $\alpha$ = 0.05; Tukey's post hoc test p < 0.05), with a median of 40 EEZs per species. The median for species of all other ecosystem preferences is close to, or less than, 20, as many of these species have a narrower distribution or are less mobile (Figure \@ref(fig:ffvFigure4)a). This result is likely an effect of the broad distribution that many of the species with preference for pelagic-oceanic ecosystems have. Many pelagic-oceanic species are highly migratory and straddle across EEZs while crossing the high seas. Thus, the number of non-neighboring EEZs sharing a highly migratory species can be over 100, as in the case of bigeye tuna (*Thunnus obesus*) (Figure \@ref(fig:ffvFigure4)a). Due to their vast migration patterns and presence in areas beyond national jurisdiction, many highly migratory species are managed by Regional Fisheries Management Organizations (RFMOs).
 
