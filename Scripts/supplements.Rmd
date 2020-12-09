@@ -19,7 +19,7 @@ library(MyFunctions)
 packages <- c(
   "dplyr", # Data manipulation
   "knitr",
-  "kableExtra",
+  # "kableExtra",
   "png",
   "grid",
   "janitor"
@@ -70,11 +70,11 @@ read.csv("~/GitHub/FishForVisa/Tables/Table_S1.csv") %>%
   arrange(size_entity_sum) %>% 
   rename("UN sub region" = sub_region,
          "Area of EEZs (Km^2)" = size_entity_sum) %>% 
-  kable("latex",
+  kable(
         booktabs = T,
         caption= "Size of all the EEZs in each sub region determined by the United Nations"
-        ) %>%
-  kable_styling(full_width = T)
+        )# %>%
+  # kable_styling(full_width = T)
 ```
 
 
@@ -98,7 +98,7 @@ read.csv("~/GitHub/FishForVisa/Tables/Table_S2.csv") %>%
   filter(observation != "No Category") %>%
   rename(Category = observation) %>%
   arrange(Category) %>% 
-  kable("latex",
+  kable(
         booktabs = T,
         caption= "Average \u00B1 (standard deviation) number of shared and non-shared transboundary species per EEZ for each catch trend category")
 ```
