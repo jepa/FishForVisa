@@ -1,15 +1,15 @@
 ---
 output:
-  bookdown::word_document2
-  # bookdown::pdf_book:
-#     toc : no
-#     keep_tex: no
-#     number_sections: yes
-#     fig_width: 6 
-#     fig_height: 4 
+  # bookdown::word_document2
+  bookdown::pdf_book:
+    toc: no
+    keep_tex: no
+    number_sections: yes
+    fig_width: 6
+    fig_height: 4
 # geometry: margin=1in
-bibliography: ../References/FishForVisa_Ref.bib
-csl: ../References/nature_cc.csl
+# bibliography: ../References/FishForVisa_Ref.bib
+# csl: ../References/nature_cc.csl
 ---
 
 
@@ -250,5 +250,5 @@ In this chapter, I identified species currently shared by neighboring coastal na
 
 <!-- ## Supplements -->
 
-```{r supplements, child = 'supplements.Rmd', eval = F}
+```{r supplements, child = 'supplements.Rmd', eval = T}
 ```
