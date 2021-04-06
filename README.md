@@ -1,6 +1,6 @@
 # Marine species do not need visas: the transboundary nature of the world’s exploited marine species.
 
-This repository is intended to support the project *The transboundary nature of the world’s exploited marine species* 
+This repository is intended to support the project *The transboundary nature of the world’s exploited marine species.*
 
 **Authors**: Juliano Palacios-Abrantes<sup>1</sup>, Gabriel Reygondeau<sup>1,2</sup>, Colette Wabnitz<sup>3,4</sup>, and William W.L. Cheung<sup>1</sup>.
 
