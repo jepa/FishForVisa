@@ -1,17 +1,18 @@
 ---
 output:
-  bookdown::word_document2:
-  # bookdown::pdf_book:
+  bookdown::pdf_book:
     toc: no
     keep_tex: no
     number_sections: yes
     fig_width: 6
     fig_height: 4
+    latex_engine: xelatex
+header-includes:
+   - \usepackage[utf8]{inputenc}
 # geometry: margin=1in
 bibliography: ../References/FishForVisa_Ref.bib
 # csl: ../References/nature_cc.csl
 ---
-
 
 ```{r ffsetup, eval = T, echo=F, warning=F,message=F, results='hide'}
 
@@ -244,11 +245,4 @@ Many transboundary species are not considered highly migratory but are still sha
 
 In this chapter, I identified species currently shared by neighboring coastal nations and highlights the importance of these species’ contribution to global catch and revenue derived from wild fisheries. My results show that captures and revenues from shared species are substantially higher than previously estimated [@Teh:2015gd] and also much greater than catches and revenues obtained from discrete species. This result highlights the importance of transboundary fisheries and their potential contribution to food and nutrition security, as well as livelihoods. Moreover, I show significant differences in the catch trends of transboundary and discrete species, suggesting a need to improve the management of transboundary fisheries. Previous work has highlighted that collaboration is key to better outcomes for shared marine resources [@Munro:2002uf]. Identifying existing transboundary species is the first step towards cooperative joint management frameworks that are precautionary, strive for sustainability, and can be flexible to accommodate the uncertain future driven by climate change.
 
-<!-- ## References -->
 
-<!-- <div id="refs"></div> -->
-
-<!-- ## Supplements -->
-
-```{r supplements, child = 'supplements.Rmd', eval = T}
-```
