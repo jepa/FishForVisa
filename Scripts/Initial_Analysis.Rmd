@@ -599,14 +599,14 @@ EstCatchTrend <- function(Spp,Coord, Save_Path = "NA", Per_Taxa = NA){
     ) %>% 
     # Final Catch Trend Evaluation 
     mutate(Trend = ifelse(Year > Y_Post_Max_Min & Post_Max_Min < (Max_Peak*0.10) & ((RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50))),"Rebuilding",
-                           ifelse((Year < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Year)),"Developing",
-                                  ifelse(RMean > (Max_Peak*0.50),"Max Exploited",
-                                         ifelse(Year > Y_Max_Peak & ((RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50))),"Over Exploited",
-                                                ifelse(Year > Y_Max_Peak & RMean < (Max_Peak*0.10),"Collapsed",
-                                                       "No Trend")
-                                         )
-                                  )
-                           )
+                          ifelse((Year < Y_Max_Peak & RMean <= (Max_Peak*0.50) | Y_Max_Peak == max(Year)),"Developing",
+                                 ifelse(RMean > (Max_Peak*0.50),"Max Exploited",
+                                        ifelse(Year > Y_Max_Peak & ((RMean > (Max_Peak*0.10) & RMean < (Max_Peak*0.50))),"Over Exploited",
+                                               ifelse(Year > Y_Max_Peak & RMean < (Max_Peak*0.10),"Collapsed",
+                                                      "No Trend")
+                                        )
+                                 )
+                          )
     )
     ) 
   
@@ -1249,7 +1249,7 @@ world_land <- ne_countries(scale = 'medium', returnclass = c("sf")) %>%
 fao_regions <- my_sf("FAO") %>% 
   filter(F_LEVEL == "MAJOR")
 st_crs(fao_regions) = 4326
-  
+
 # head(fao_regions)
 
 # fao_regions %>% 
@@ -1281,7 +1281,7 @@ complete_lon_lat_dbem <- my_path("Spa","DBEM","Lon_Lat_DBEM.txt",read = T, heade
 # Save for fouture
 # write_csv(complete_lon_lat_dbem, my_path("Spa", "DBEM","complete_lon_lat_dbem.csv"))
 
-  ggplot(complete_lon_lat_dbem) +
+ggplot(complete_lon_lat_dbem) +
   geom_tile(
     aes(
       x = lon,
@@ -1295,9 +1295,9 @@ complete_lon_lat_dbem <- my_path("Spa","DBEM","Lon_Lat_DBEM.txt",read = T, heade
 #   geom_sf(data = fao_regions, aes()) +
 #   geom_sf(data = world_land, aes()) +
 #   geom_sf(data = world_eez, aes())
-  
-  
-  # First get Vicky's data to get high seas
+
+
+# First get Vicky's data to get high seas
 EEZ_SAU <- my_path("Spa","DBEM", "Updated_EEZList_17June2016.xlsx", read = TRUE)
 colnames(EEZ_SAU) <- c("sau_code","eez")
 
@@ -1313,9 +1313,9 @@ complete_sau <- EEZ_SAU %>%
 #   left_join(EEZ_CellID) %>% 
 #     rename(sau_eez_id = EEZID) %>% 
 #     gather("code_na","code",f_code:sau_eez_id) %>%
-  
 
-  # write_csv(Coord, my_path("Spa", "DBEM","complete_lon_lat_dbem.csv"))
+
+# write_csv(Coord, my_path("Spa", "DBEM","complete_lon_lat_dbem.csv"))
 ```
 
 
@@ -1448,7 +1448,7 @@ StraddIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code){
   # Get model data from spps
   SppDist <- GetSppDist(Spp,Model,Coord)
   
-    # Result 1. Number of Countries that share the species
+  # Result 1. Number of Countries that share the species
   
   #____________ ESTIMATING MODEL INDEX (TRESHOLD 1)_________ #
   Trans_Spp <- SppDist %>%
@@ -1487,7 +1487,7 @@ StraddIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code){
   
   # Distributional test
   # test <- Trans_Spp %>% 
-    # left_join(coords)
+  # left_join(coords)
   
   # ggplot(test) +
   #   geom_tile(
@@ -1497,7 +1497,7 @@ StraddIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code){
   #       fill = category
   #     )
   #   )
-
+  
   
   
   # Step 2.1. Determines not a straddling stock
@@ -1643,7 +1643,7 @@ StraddIndex <- function(Spp,Model = "All",Neighbours,Coord,Index_Code){
   }
 } # closes function
 
- #Test me  
+#Test me  
 # suppressMessages(
 #   StraddIndex(600069, Model = "All", Coord = coords, Index_Code = Index_Code)
 # )
@@ -1730,18 +1730,18 @@ suppressWarnings(
 
 This function simply reads in the files and import them all as on large d.f
 
-```{r Fun_GetTransResults, eval = F}
+```{r Fun_GetTransResults, eval = T}
 
 GetTransResults=function(Spp, type = "NA"){
   
   if(type == "strad"){
     # Set the path for each file
-  Distpath <- paste(my_path("R","EEZ/Straddling_Results/"),Spp,"_straddling.csv",sep="")
-  
+    Distpath <- paste(my_path("R","EEZ/Straddling_Results/"),Spp,"_straddling.csv",sep="")
+    
   }else{
-  # Set the path for each file
-  Distpath <- paste(Results_Path,"Trans_Results/",Spp,sep="")
-  
+    # Set the path for each file
+    Distpath <- paste(Results_Path,"Trans_Results/",Spp,sep="")
+    
   }
   
   # Loads all files in a df
@@ -1858,11 +1858,11 @@ CleanResults <- function(Data,names_data){
     ) %>% 
     filter(Same_Nation == "No") %>% 
     select(taxon_key,
-          eez_name = territory,
-          eez_neighbour = neighbour,
-          model_index,
-          area_index
-          )
+           eez_name = territory,
+           eez_neighbour = neighbour,
+           model_index,
+           area_index
+    )
   
   return(Clean_Results)
 }
@@ -1996,43 +1996,43 @@ CreateFigureOne <- function(Variable_Selected){
   ### Labels
   
   # Label info Rev
-label_data_rev <- Subregion_Trans_Value %>% 
-  filter(Variable == "value") %>% 
-  arrange(Value_sum) %>% # soo it looks like a nice snail :)
-  mutate(
-    id = seq(1,number_of_bar),
-    angle = 90 -360 * (id-0.5)/number_of_bar,
-    hjust = ifelse(angle < -90,1,0),
-    angleb = ifelse(angle < -90, (angle +180), angle)
-  ) %>% 
-  mutate(
-    sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
-                        ifelse(sub_region =="Northern America","Northern\nAmerica",
-                               ifelse(sub_region =="Sub-Saharan Africa","Sub-Saharan\nAfrica",
-                               paste(sub_region))
-                        )
-    )#,
-    # sub_region_n = paste(sub_region," (n=",Trans_Entity_n_sum,")",sep = "")
-  )
-
-# Label info Catch
-label_data_catch <- Subregion_Trans_Value %>% 
-  filter(Variable == "catch") %>% 
-  arrange(Value_sum) %>% # soo it looks like a nice snail :)
-  mutate(
-    id = seq(1,number_of_bar),
-    angle = 90 -360 * (id-0.5)/number_of_bar,
-    hjust = ifelse(angle < -90,1,0),
-    angleb = ifelse(angle < -90, (angle +180), angle)
-  ) %>% 
-  mutate(
-    sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
-                        ifelse(sub_region =="Northern America","Northern\nAmerica",
-                               ifelse(sub_region =="Sub-Saharan Africa","Sub-Saharan\nAfrica",
-                                      paste(sub_region))
-                        )
+  label_data_rev <- Subregion_Trans_Value %>% 
+    filter(Variable == "value") %>% 
+    arrange(Value_sum) %>% # soo it looks like a nice snail :)
+    mutate(
+      id = seq(1,number_of_bar),
+      angle = 90 -360 * (id-0.5)/number_of_bar,
+      hjust = ifelse(angle < -90,1,0),
+      angleb = ifelse(angle < -90, (angle +180), angle)
+    ) %>% 
+    mutate(
+      sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
+                          ifelse(sub_region =="Northern America","Northern\nAmerica",
+                                 ifelse(sub_region =="Sub-Saharan Africa","Sub-Saharan\nAfrica",
+                                        paste(sub_region))
+                          )
+      )#,
+      # sub_region_n = paste(sub_region," (n=",Trans_Entity_n_sum,")",sep = "")
     )
-  )
+  
+  # Label info Catch
+  label_data_catch <- Subregion_Trans_Value %>% 
+    filter(Variable == "catch") %>% 
+    arrange(Value_sum) %>% # soo it looks like a nice snail :)
+    mutate(
+      id = seq(1,number_of_bar),
+      angle = 90 -360 * (id-0.5)/number_of_bar,
+      hjust = ifelse(angle < -90,1,0),
+      angleb = ifelse(angle < -90, (angle +180), angle)
+    ) %>% 
+    mutate(
+      sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
+                          ifelse(sub_region =="Northern America","Northern\nAmerica",
+                                 ifelse(sub_region =="Sub-Saharan Africa","Sub-Saharan\nAfrica",
+                                        paste(sub_region))
+                          )
+      )
+    )
   
   
   # Revenue Plot
@@ -2213,21 +2213,21 @@ label_data_catch <- Subregion_Trans_Value %>%
     plot_all <- ggdraw() +
       # map
       draw_plot(Map, x = 0, y = 0, width = 1, height = 1) #+
-      # Revenue circular
-      # draw_plot(Rev_Plot, x = 0.1, y = 0.08, width = 0.5, height = 0.4) +
-      # # Catch circular
-      # draw_plot(Catch_Plot, x = 0.45, y = 0.08, width = 0.5, height = 0.4) +
-      # # Labeks
-      # draw_plot_label(label = c("A", "B"), 
-      #                 size = 20,
-      #                 x = c(0, 0), 
-      #                 y = c(1, 0.45)
-      # ) +
-      # draw_plot_label(label = c("Revenue (USD) | Catch (Tons)","(Million)"), 
-      #                 size = 8,
-      #                 x = c(0.330,0.485), 
-      #                 y = c(0.31,0.29)
-      # )
+    # Revenue circular
+    # draw_plot(Rev_Plot, x = 0.1, y = 0.08, width = 0.5, height = 0.4) +
+    # # Catch circular
+    # draw_plot(Catch_Plot, x = 0.45, y = 0.08, width = 0.5, height = 0.4) +
+    # # Labeks
+    # draw_plot_label(label = c("A", "B"), 
+    #                 size = 20,
+    #                 x = c(0, 0), 
+    #                 y = c(1, 0.45)
+    # ) +
+    # draw_plot_label(label = c("Revenue (USD) | Catch (Tons)","(Million)"), 
+    #                 size = 8,
+    #                 x = c(0.330,0.485), 
+    #                 y = c(0.31,0.29)
+    # )
     
     save_plot(
       # paste(Figures_Path,"100_25_Bins_Value_Region.png",sep=""),
@@ -2479,7 +2479,7 @@ nrow(high_mig_spp) # 21
 # ---------------- 
 # Missing 4 species
 # missing_hm_spp <- as.data.frame(x = high_mig_taxa) %>% 
-  # filter(!high_mig_taxa %in% high_mig_spp$taxon_name)
+# filter(!high_mig_taxa %in% high_mig_spp$taxon_name)
 
 
 # Tetrapturus belone # only found in the med				
@@ -2512,7 +2512,7 @@ stradling_spp <- str_replace(spp_complete,"\\_.*","")
 
 stradd_data <- bind_rows(
   lapply(stradling_spp,GetTransResults, type = "strad")
-  ) %>% 
+) %>% 
   left_join(taxon_list) %>% 
   select(taxon_key,taxon_name,dem_pel, everything()) %>% 
   mutate(category = ifelse(taxon_key %in% high_mig_spp$taxon_key,"high_migratory","straddling"))
@@ -2522,9 +2522,13 @@ stradd_data <- bind_rows(
 
 stradd_hs_spp <- stradd_data %>% 
   select(taxon_key,category,sf_eez_name = territory, eez_neighbour = neighbour) %>% 
-  unique()
+  unique() %>% 
+  left_join(matching_names,
+            by = "sf_eez_name") %>% 
+  select(1:4,fishing_entity_id)
 
-
+# STRADDLING: Dataset to match all SAU names
+matching_names <- my_path("G","Spatial/SAU", "sau_matching_names.csv", read = T)
 # ----------------- #
 # Misc.
 # ----------------- #
@@ -2540,9 +2544,6 @@ Jurisdiction <- "EEZ"
 
 # Updates result's path for the jurisdiction
 Results_Path <- paste(my_path("R"),Jurisdiction,"/",sep="")
-
-# Dataset to match all SAU names
-matching_names <- my_path("G","Spatial/SAU", "sau_matching_names.csv", read = T)
 
 # Species list to get species names
 Exploited_Species <- fread(paste(my_path("D"),"Distribution/Species/exploited_species_list.csv",sep="")) %>%
@@ -2569,6 +2570,7 @@ Raw_Results_Trans <- my_path("R","EEZ","Raw_Results_Trans.xlsx", read = T)
 #   rename(eez_name = sf_eez_name,
 #          fishing_entity = sau_fishing_entity)
 
+# STRADDLING
 Clean_Results_Trans <- my_path("R","EEZ","Clean_Results_Trans.csv", read = T) %>% 
   rename(sf_eez_name = eez_name) %>% 
   left_join(matching_names)
@@ -2596,13 +2598,13 @@ UN_Regions <- read.csv(paste(my_path("D"),"Spatial/UN_Regions.csv",sep=""), head
   ungroup() %>% 
   distinct(un_country,.keep_all = TRUE) %>% 
   select(fishing_entity = sau_fishing_entity,georegion,sub_region)
-  
+
 
 # Load Land shapefile
 World_land_sf <- rnaturalearth::ne_countries(scale = 'medium', returnclass = c("sf")) %>% 
   st_transform(crs = "+proj=eck4") %>%
   # st_transform(crs = 4326) %>% # 4326
-    # rename(sau_fishing_entity = name_long) %>%
+  # rename(sau_fishing_entity = name_long) %>%
   left_join(matching_names,
             by = "iso_a3") %>% 
   distinct(iso_a3,.keep_all = TRUE) %>% 
@@ -2673,7 +2675,7 @@ SAU_Global_Data <-fread(paste(my_path("D"),"Distribution/sau_catch_value_country
   # Allocate catch of islands to UK
   mutate(fishing_entity_id = ifelse(fishing_entity_id %in% c(219,220), 183,fishing_entity_id)) %>% 
   # Convert to 2019 real USD
-  mutate(values = 1.16 * value) %>%
+  mutate(value = 1.16 * value) %>%
   # Average 10 years of data
   group_by(fishing_entity_id,taxon_key) %>% 
   summarise_at(c("catch","value"),
@@ -2709,19 +2711,17 @@ Tresholded_T_Data <- Clean_Results_Trans %>%
     area_index >= Min_AI,
     area_index <= Max_AI,
     model_index >= MI
-  )
+  ) %>% 
+  ## Adding STRADLING component
+  left_join(stradd_hs_spp) %>% 
+  mutate(category = replace_na(category,"transboundary"))
 
 ### Duble check for NA's
 # map(Tresholded_T_Data, ~sum(is.na(.))) # No NA's
 
-## STRADLING
-shared_species <- Tresholded_T_Data %>% 
-  left_join(stradd_hs_spp) %>% 
-  mutate(category = replace_na(category,"transboundary"))
-
-shared_classification <- shared_species %>% 
-  select(taxon_key,category,sf_eez_name) %>% 
-  unique()
+# shared_classification <- shared_species %>% 
+# select(taxon_key,category,fishing_entity_id) %>% 
+# unique()
 
 ```
 
@@ -2738,7 +2738,7 @@ stradd_data %>%
   summarize(
     n_spp = length(unique(taxon_key)),
     prop = round((length(unique(taxon_key))/633)*100)
-    )
+  )
 
 # RESULT
 # category  n_spp   prop of transboundary
@@ -2746,21 +2746,145 @@ stradd_data %>%
 # stradd	   84	    13	
 # total     104     16
 
-EEZIDs_List <- my_path("Spa","DBEM", "Updated_EEZList_17June2016.xlsx", read = T) %>% 
-  rename(eez_name = name)
 
+stradd_hs_fentity <- stradd_hs_spp %>% 
+  group_by(taxon_key,category, fishing_entity_id) %>% 
+  tally() %>% 
+  select(-n)
 
-# Econ value
-Summary_Trans <- SAU_Sampled_Data %>% 
+# Econ value WITHOUT HIGH SEAS!!!
+Summary_Stradd <-
+  SAU_Sampled_Data %>% 
   semi_join(Tresholded_T_Data,
             by = c("taxon_key","fishing_entity_id")
   ) %>% 
-  group_by(Variable) %>%
-  summarise(Total_Trans = sum(Value, na.rm=T)) %>% 
-  left_join(Total_SAU_Sampled) %>% 
-  left_join(Total_SAU_Global) %>% 
-  mutate(Per_sampled = Total_Trans/Total_Sampled*100,
-         Per_SAU = Total_Trans/Total_Global*100)
+  left_join(stradd_hs_fentity,
+            by = c("taxon_key","fishing_entity_id")
+  ) %>%
+  mutate(Category = ifelse(is.na(category),"trans",category)) %>%
+  group_by(Variable,Category) %>%
+  summarise(Category_Total = sum(Value, na.rm=T))
+
+Summary_Stradd %>% 
+  group_by(Variable) %>% 
+  summarise(Total_Trans = sum(Category_Total)) %>% 
+  left_join(Summary_Stradd,
+            by = "Variable") %>% 
+  mutate(
+    percentages = (Category_Total/Total_Trans)*100
+  )
+
+
+# Econ value WITH HIGH SEAS!!!
+
+# Used for STRADDLING too
+SAU_hs_Data <- bind_rows(
+  my_path("G","SAU/SAU HighSeas 18,48,34,27,21,47 v48-0","SAU HighSeas 18,48,34,27,21,47 v48-0.csv",read = T),
+  my_path("G","SAU/SAU HighSeas 41,31,58,57,51,88 v48-0","SAU HighSeas 41,31,58,57,51,88 v48-0.csv",read = T),
+  my_path("G","SAU/SAU HighSeas 77,67,61,87,81,71 v48-0","SAU HighSeas 77,67,61,87,81,71 v48-0.csv",read = T)
+) %>% 
+  rename(taxon_name = scientific_name) %>% 
+  left_join(taxon_list) %>% 
+  filter(
+    taxon_key %in% stradd_hs_spp$taxon_key,
+    year >= 2005 & year <= 2014,
+    catch_type == "Landings",
+    reporting_status == "Reported"
+  ) %>% 
+  # aggregate all gears
+  group_by(area_name,fishing_entity,taxon_key,taxon_name,year) %>%
+  summarise_at(vars("tonnes","landed_value"),
+               .funs = sum,na.rm = T) %>% 
+  group_by(area_name,fishing_entity,taxon_key) %>% 
+  summarise_at(vars("tonnes","landed_value"),
+               .funs = mean,na.rm = T) %>% 
+    #filter only straddling species
+  semi_join(stradd_hs_fentity,
+            by = c("taxon_key")
+  ) %>% 
+  left_join(stradd_hs_fentity_x) %>% 
+  group_by(area_name,fishing_entity,category) %>% 
+  summarise_at(vars("tonnes","landed_value"),
+               .funs = sum,na.rm = T) %>% 
+  gather("variable","value",tonnes:landed_value)
+
+
+
+stradd_hs_fentity_x <- stradd_hs_fentity %>% 
+  group_by(taxon_key,category) %>% 
+  tally()
+
+
+SAU_hs_Data %>% 
+  group_by(variable,category) %>% 
+  summarise_at(vars(value),sum) %>% 
+  mutate(val_million = value/1000000)
+
+
+```
+
+## Figures straddling
+
+### MAP straddling
+
+```{r}
+
+World_sf_si <- World_sf %>%
+  st_transform(crs = 4326) %>% # 4326
+  st_simplify(preserveTopology = TRUE, dTolerance = 100)
+
+
+plot_eez <- stradd_data %>% 
+  group_by(eez_name = territory,category) %>% 
+  summarise(
+    n_species = length(unique(taxon_key))
+  )
+
+plot_fao <- stradd_data %>% 
+  group_by(fao_name,category) %>% 
+  summarise(
+    n_species = length(unique(taxon_key))
+  )
+
+# FAO
+
+fao_regions <- my_sf("FAO") %>% 
+  filter(F_LEVEL == "MAJOR") %>% 
+  select(fao_name= NAME_EN,geometry = the_geom) %>% 
+  left_join(plot_fao) %>% 
+  filter(!is.na(category))
+
+eez_regions <- World_sf %>% 
+  left_join(plot_eez) %>% 
+  filter(!is.na(category))
+
+
+st_crs(fao_regions) = 4326
+fao_regions <- st_transform(fao_regions, crs = "+proj=eck4")
+
+plot <-ggplot() +
+  geom_sf(data = fao_regions, aes(color = n_species, fill = n_species)) +
+  geom_sf(data = eez_regions, aes(fill = n_species), color = "grey30") +
+  geom_sf(data = World_land_sf, aes(), fill = "grey") +
+  scale_fill_viridis() +
+  scale_color_viridis() +
+  facet_wrap(~category) +
+  my_ggtheme_m(leg_pos = "bottom") 
+
+ggsave(
+  plot = plot,
+  width = 17,
+  height = 15,
+  units = "in",
+  filename = "Figures/stradling_maps.png"
+)
+
+```
+
+### Revenue straddling
+
+```{r}
+
 
 ```
 
@@ -2800,7 +2924,7 @@ Total_SAU_Sampled <- SAU_Global_Data %>%
   group_by(Variable) %>% 
   summarize(Total_Sampled = sum(Value,na.rm=T),
             Sampled_nspp = length(unique(taxon_key))
-            )
+  )
 
 # Get the total values for the world excluding not identified species
 Total_SAU_id <- SAU_Global_Data %>% 
@@ -2857,7 +2981,7 @@ Summary_Trans <- SAU_Sampled_Data %>%
 # Provided by Vicky Lam
 SAU_FAO_Data <- fread(paste(my_path("D"),"Distribution/LVCatch_byYrEEZFETaxa_2005_09.csv", sep ="")) %>% 
   filter(#eezid != 0,
-         year == 2006) %>%
+    year == 2006) %>%
   group_by(fishing_entity_id,taxon_key,eezid) %>% 
   summarise_at(c("sumcatch"),
                sum,na.rm=T)
@@ -2907,7 +3031,7 @@ Discrete <- Clean_Results_Trans %>%
 
 # Both categories (trans and Discrete)
 n_discrete <- Tresholded_T_Data %>% 
-   # Filter species that are also discrete
+  # Filter species that are also discrete
   filter(taxon_key %in% Discrete$taxon_key) %>% 
   group_by(taxon_key) %>% 
   summarise(n()) %>% 
@@ -2937,8 +3061,8 @@ Within these species, 305 were considered exclusively discrete, that is, they co
 # Discrete Exclusive
 # Species that are only discrete and are not present in the transboundary category
 ###_________________###
-  
-  # Discrete species (not in Tresholded)
+
+# Discrete species (not in Tresholded)
 Discrete_Exclusive <- Discrete %>% 
   filter(!taxon_key %in% Tresholded_T_Data$taxon_key) %>% 
   bind_rows(Species_Left_Out) %>%
@@ -2966,7 +3090,7 @@ Summary_Discrete_Exclusive <- Discrete_Exclusive %>%
   left_join(Total_SAU_Global) %>% 
   mutate(Per_sampled = Total_Discrete/Total_Sampled*100,
          Per_SAU = Total_Discrete/Total_Global*100)
-  
+
 ```
 
 ## Results per Territory
@@ -2990,9 +3114,9 @@ Transboundary_Spp <- Tresholded_T_Data %>%
     Bins = cut(n_trans_spp,breaks = 5),
     Bins_Plot = cut(n_trans_spp,breaks = 5,
                     labels = c('super low', 'low','median', 'high','super high')
-                    )
+    )
   )
-  
+
 # Get Catch and Revenue data for mapping 
 
 # Set manual breaks for bins
@@ -3002,7 +3126,7 @@ Map_Breaks <- c(-1,10,100,1000,5000,12000)
 Total_Value_Entity <- SAU_Global_Data %>% 
   group_by(fishing_entity_id,Variable) %>% 
   summarise(Total_Value = sum(Value,na.rm=T))
-  
+
 # Data for map
 
 Value_Trans_Country <- Tresholded_T_Data %>% 
@@ -3028,7 +3152,7 @@ Value_Trans_Country <- Tresholded_T_Data %>%
   spread(Variable,Trans_Total) %>%
   left_join(Entity_Area, 
             by = c("fishing_entity","fishing_entity_id")
-          # by = "fishing_entity"
+            # by = "fishing_entity"
   ) %>% 
   # Include the weighted method for supplementals
   mutate_at(
@@ -3052,7 +3176,7 @@ Value_Trans_Country <- Tresholded_T_Data %>%
     Value = ifelse(Variable == "catch",Value/1000, #million
                    Value),
     Trans_Per = (Value/Total_Value*100000000)#*100000000 #Return to percentage
-  )
+    )
 
 ```
 
@@ -3098,7 +3222,7 @@ World_sf_si <- World_sf %>%
   st_simplify(preserveTopology = TRUE, dTolerance = 0.1) %>%
   left_join(Transboundary_Spp, by ="eez_id") %>% 
   st_transform(crs = "+proj=eck4")
-  # st_transform(crs = 4326)
+# st_transform(crs = 4326)
 
 # Douuble check we are not missing EEZs
 Transboundary_Spp %>% anti_join(World_sf, by = "eez_id")
@@ -3217,7 +3341,7 @@ summary(Catch_aov)
 
 #  Post-hoc analysis
 TukeyHSD(Catch_aov) %>% 
-   tidy() %>% 
+  tidy() %>% 
   filter(adj.p.value < 0.05) # Eastern Asia
 
 
@@ -3256,8 +3380,8 @@ Subregion_Trans_raw_Value %>%
   select(sub_region,Size_Entity_sum) %>% 
   distinct(sub_region,.keep_all = TRUE) %>% 
   arrange(Size_Entity_sum)
-  # write_csv(.,
-            # "Table_S1.csv")
+# write_csv(.,
+# "Table_S1.csv")
 
 #--------------------------- #
 
@@ -3271,7 +3395,7 @@ Weighted_Data <- Subregion_Trans_Value %>%
     Value_sum = ifelse(Variable == "catch_weight", Value_sum*1000, Value_sum),
     Value_m = ifelse(Variable == "catch_weight", Value_m*1000, Value_m),
     Value_sd = ifelse(Variable == "catch_weight", Value_sd*1000, Value_sd)
-    )
+  )
 
 # Labels
 label_data_rev <- Weighted_Data %>% 
@@ -3287,10 +3411,10 @@ label_data_rev <- Weighted_Data %>%
     sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
                         ifelse(sub_region =="Northern America","Northern\nAmerica",
                                ifelse(sub_region =="Sub-Saharan Africa","Sub-Saharan\nAfrica",
-                               paste(sub_region)
+                                      paste(sub_region)
                                )
+                        )
     )
-  )
   )
 # Label info Catch
 label_data_catch <- Weighted_Data %>% 
@@ -3306,72 +3430,72 @@ label_data_catch <- Weighted_Data %>%
     sub_region = ifelse(str_detect(sub_region,"Latin"),"Ltn. Ame. &\nthe Car.",
                         ifelse(sub_region =="Northern America","Northern\nAmerica",
                                ifelse(sub_region =="Sub-Saharan Africa","Sub-Saharan\nAfrica",
-                               paste(sub_region)
+                                      paste(sub_region)
                                )
+                        )
     )
   )
-  )
 # Revenue Plot
-  # Set plot limits
-  
-  max_Rev_lim <- Weighted_Data %>%
-    filter(Variable == Weighted_values[1]) %>%
-    group_by() %>%
-    summarise(max(Value_sum)) %>%
-    pull()
-  
-  Subregion_Rev_Data <- Weighted_Data %>% 
-    filter(Variable == Weighted_values[1]) %>% 
-    arrange(Value_sum)
-  
+# Set plot limits
+
+max_Rev_lim <- Weighted_Data %>%
+  filter(Variable == Weighted_values[1]) %>%
+  group_by() %>%
+  summarise(max(Value_sum)) %>%
+  pull()
+
+Subregion_Rev_Data <- Weighted_Data %>% 
+  filter(Variable == Weighted_values[1]) %>% 
+  arrange(Value_sum)
+
 ````
 
 
 ### Plot weighted bars
 
 ```{r, eval = T, echo = F}
-  Rev_Plot <- ggplot(
-    # Regional plots
-    data = Subregion_Rev_Data,
-    aes(
-      x=reorder(id,Value_sum),
-      y=Value_sum, 
-      fill=Value_sum
-    )
-  ) +    
-    ylim(-5, 30) +
-    geom_bar(stat="identity") +
-    # Regional averages
-    geom_point(data = Subregion_Rev_Data,
-               aes(
-                 x=reorder(id,Value_sum),
-                 y=Value_m
-               ),
-               colour = "black",
-               alpha = 0.5,
-               size = 0.5
-    ) +
-    # Regional sds
-    geom_errorbar(data = Subregion_Rev_Data,
-                  aes(
-                    ymin=ifelse(Value_m-Value_sd <= 0,0,Value_m-Value_sd), # sets lower to 0
-                    ymax=Value_m+Value_sd
-                  ), 
-                  width=.2,
-                  position=position_dodge(.9),
-                  alpha = 0.5) +
-    # Looking good
-    theme_minimal(base_size = 9) +
-    theme(
-      legend.key.width =unit(1,"line"),
-      legend.key.height =unit(0.9,"line"),
-      legend.position = c(0.86,0.55),
-      axis.text = element_blank(),
-      axis.title = element_blank(),
-      panel.grid = element_blank(),
-      plot.margin = margin(1,0,0,-2.5,"cm") # top,x,x,left
-      # plot.margin = margin(0,-10,-6,-10,"cm")
-    )  +
+Rev_Plot <- ggplot(
+  # Regional plots
+  data = Subregion_Rev_Data,
+  aes(
+    x=reorder(id,Value_sum),
+    y=Value_sum, 
+    fill=Value_sum
+  )
+) +    
+  ylim(-5, 30) +
+  geom_bar(stat="identity") +
+  # Regional averages
+  geom_point(data = Subregion_Rev_Data,
+             aes(
+               x=reorder(id,Value_sum),
+               y=Value_m
+             ),
+             colour = "black",
+             alpha = 0.5,
+             size = 0.5
+  ) +
+  # Regional sds
+  geom_errorbar(data = Subregion_Rev_Data,
+                aes(
+                  ymin=ifelse(Value_m-Value_sd <= 0,0,Value_m-Value_sd), # sets lower to 0
+                  ymax=Value_m+Value_sd
+                ), 
+                width=.2,
+                position=position_dodge(.9),
+                alpha = 0.5) +
+  # Looking good
+  theme_minimal(base_size = 9) +
+  theme(
+    legend.key.width =unit(1,"line"),
+    legend.key.height =unit(0.9,"line"),
+    legend.position = c(0.86,0.55),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    panel.grid = element_blank(),
+    plot.margin = margin(1,0,0,-2.5,"cm") # top,x,x,left
+    # plot.margin = margin(0,-10,-6,-10,"cm")
+  )  +
   coord_polar(start = 0) + 
   geom_text(data=label_data_rev, 
             aes(x=id,
@@ -3384,29 +3508,29 @@ label_data_catch <- Weighted_Data %>%
             size=2, 
             angle= label_data_rev$angleb, 
             inherit.aes = FALSE) +
-    scale_fill_gradientn("",
-                         colours = pal,
-                         limits = c(0,30),
-                         breaks = seq(0,30,6)
-                         ) + # puts legend text on the left
-    guides(fill = guide_colorbar(label.position = "left"));Rev_Plot
-  
-  
-  ###____________###
-  ### Catch plot
-  ###____________###
-  
-  
-  max_Catch_lim <- Weighted_Data %>% 
-    filter(Variable == Weighted_values[2]) %>% 
-    group_by() %>% 
-    summarise(max(Value_sum)) %>% 
-    pull()
-  
-  Subregion_Catch_Data <- Weighted_Data %>% 
-    filter(Variable == Weighted_values[2])
-  
-  Catch_Plot <- ggplot(data = Subregion_Catch_Data,
+  scale_fill_gradientn("",
+                       colours = pal,
+                       limits = c(0,30),
+                       breaks = seq(0,30,6)
+  ) + # puts legend text on the left
+  guides(fill = guide_colorbar(label.position = "left"));Rev_Plot
+
+
+###____________###
+### Catch plot
+###____________###
+
+
+max_Catch_lim <- Weighted_Data %>% 
+  filter(Variable == Weighted_values[2]) %>% 
+  group_by() %>% 
+  summarise(max(Value_sum)) %>% 
+  pull()
+
+Subregion_Catch_Data <- Weighted_Data %>% 
+  filter(Variable == Weighted_values[2])
+
+Catch_Plot <- ggplot(data = Subregion_Catch_Data,
                      aes(x=reorder(id,Value_sum),
                          y=Value_sum, 
                          fill=Value_sum
@@ -3426,13 +3550,13 @@ label_data_catch <- Weighted_Data %>%
   ) +
   # Regional sd's
   geom_errorbar(data = Subregion_Catch_Data,
-    aes(
-      ymin=ifelse(Value_m-Value_sd <= 0,0,Value_m-Value_sd),
-      ymax=Value_m+Value_sd
-    ), 
-    width=.2,
-    position=position_dodge(.9),
-    alpha = 0.5) +
+                aes(
+                  ymin=ifelse(Value_m-Value_sd <= 0,0,Value_m-Value_sd),
+                  ymax=Value_m+Value_sd
+                ), 
+                width=.2,
+                position=position_dodge(.9),
+                alpha = 0.5) +
   theme_minimal(base_size = 9) +
   theme(
     # legend.position = "bottom",
@@ -3462,15 +3586,15 @@ label_data_catch <- Weighted_Data %>%
                        breaks = seq(0,20,4),
                        colours = pal
   ); Catch_Plot
-  
-  ## Joining everything in one ploit
-  
-  # Get legend for cowplot
+
+## Joining everything in one ploit
+
+# Get legend for cowplot
 legend_plot <- get_legend(Catch_Plot)
 # Re-plot without legend
 Catch_Plot <- Catch_Plot +
   theme(legend.position = "")
-  p<- ggdraw() +
+p<- ggdraw() +
   # Revenue circular
   draw_plot(Rev_Plot, x = 0, y = 0, width = 0.8, height = 1) +
   # Catch circular
@@ -3489,26 +3613,26 @@ Catch_Plot <- Catch_Plot +
   #                 x = c(0.27,0.49),
   #                 y = c(0.66,0.63)
   # )
-    draw_plot_label(
+  draw_plot_label(
     label = c("Revenue     |     Catch",
               "(Thousand)  |    (Tonnes)",
               "  (Per km  )"),
-                  size = 6,
-                  x = c(0.41,
-                        0.395,
-                        0.48),
-                  y = c(0.675,
-                        0.65,
-                        0.623)
+    size = 6,
+    x = c(0.41,
+          0.395,
+          0.48),
+    y = c(0.675,
+          0.65,
+          0.623)
   )
-  
-  
-  save_plot(
-    "weight_plot.png",
-    p,
-    base_height = 4.2,
-    base_width = 7
-  ) 
+
+
+save_plot(
+  "weight_plot.png",
+  p,
+  base_height = 4.2,
+  base_width = 7
+) 
 
 
 ```
@@ -3643,7 +3767,7 @@ D_Summary <- Discrete_Trend_Data %>%
 
 T_Summary %>%
   left_join(D_Summary, by = "observation") %>%
-    write_csv("Table_S2.csv")
+  write_csv("Table_S2.csv")
 
 
 # -------------------------- #
@@ -3729,7 +3853,7 @@ label_data <- Trend_Plot_Data %>%
     individual = ifelse(individual == "Saint Vincent & the Grenadines","Snt. Vincent & Grenadines",
                         ifelse(individual == "Brunei Darussalam","Burnei",
                                individual)
-                        )
+    )
   )
 
 number_of_bar <- nrow(label_data)
@@ -3857,7 +3981,7 @@ Using MANOVA to investigate differences in catch category between discrete and t
 
 # Transboundary Data
 Transboundary_Data_Stats <- Trend_Plot_Data %>% 
-filter(observation != "No Category") %>%
+  filter(observation != "No Category") %>%
   mutate(value = abs(value))
 
 # Discrete Data (trans.not shared)
@@ -3974,7 +4098,7 @@ summary(Stat_Cat_aov)
 # observation   2  22778   11389   55.01 <2e-16 ***
 # Residuals   447  92555     207         
 
-     # Df Sum Sq Mean Sq F value Pr(>F)    
+# Df Sum Sq Mean Sq F value Pr(>F)    
 # observation   2  24776   12388   53.93 <2e-16 ***
 # Residuals   459 105436     230                   
 
@@ -4083,7 +4207,7 @@ Conflict_Values <- Clean_sau_eez_fes %>%
   summarise(n()) %>% 
   left_join(SAU_Sampled_Data, by = "fishing_entity_id") %>% 
   filter(
-         fishing_entity %in% Conflict_nations
+    fishing_entity %in% Conflict_nations
   ) %>% 
   group_by(Variable) %>% 
   summarise(Conflict= sum(Value))
